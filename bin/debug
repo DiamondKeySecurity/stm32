@@ -1,0 +1,7 @@
+#!/bin/sh
+
+PROJ="${1?'project'}"
+
+GDB=arm-none-eabi-gdb
+
+$GDB -ex "target remote localhost:3333" -ex "set remote hardware-breakpoint-limit 6" -ex "set remote hardware-watchpoint-limit 4" $PROJ.elf
