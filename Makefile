@@ -28,11 +28,13 @@ SRCS += $(TOPLEVEL)/Device/system_stm32f4xx.c
 
 ###################################################
 
-CC=arm-none-eabi-gcc
-AS=arm-none-eabi-as
-OBJCOPY=arm-none-eabi-objcopy
-OBJDUMP=arm-none-eabi-objdump
-SIZE=arm-none-eabi-size
+PREFIX=arm-none-eabi-
+export CC=$(PREFIX)gcc
+export AS=$(PREFIX)as
+export AR=$(PREFIX)ar
+export OBJCOPY=$(PREFIX)objcopy
+export OBJDUMP=$(PREFIX)objdump
+export SIZE=$(PREFIX)size
 
 CFLAGS  = -ggdb -O2 -Wall -Wextra -Warray-bounds
 CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
@@ -53,12 +55,25 @@ OBJS = $(patsubst %.s,%.o, $(patsubst %.c,%.o, $(SRCS)))
 
 ###################################################
 
-.PHONY: lib proj
+.PHONY: libstmf4 proj libhal libtfm lib
+
+LIBS = libstmf4 libtfm libhal
 
 all: lib proj
 
-lib:
+init:
+	git submodule update --init --recursive
+
+lib: $(LIBS)
+
+libstmf4:
 	$(MAKE) -C $(STD_PERIPH_LIB) STDPERIPH_SETTINGS="$(STDPERIPH_SETTINGS) -I $(PWD)/include"
+
+libtfm:
+	${MAKE} -C thirdparty/libtfm PREFIX=$(PREFIX)
+
+libhal: hal_io_fmc.o
+	${MAKE} -C libhal IO_OBJ=../hal_io_fmc.o libhal.a
 
 proj: $(PROJS:=.elf)
 
@@ -80,3 +95,5 @@ clean:
 
 distclean: clean
 	$(MAKE) -C $(STD_PERIPH_LIB) clean
+	$(MAKE) -C thirdparty/libtfm clean
+	$(MAKE) -C libhal clean
