@@ -46,6 +46,17 @@ static int inited = 0;
 #define FMC_IO_TIMEOUT  100000000
 #endif
 
+/* not available in arm-none-eabi libc */
+static uint32_t htonl(uint32_t w)
+{
+  return
+    ((w & 0x000000ff) << 24) +
+    ((w & 0x0000ff00) << 8) +
+    ((w & 0x00ff0000) >> 8) +
+    ((w & 0xff000000) >> 24);
+}
+#define ntohl htonl
+
 static hal_error_t init(void)
 {
   if (!inited) {
@@ -56,11 +67,17 @@ static hal_error_t init(void)
 }
 
 /* Translate cryptech register number to FMC address.
- * This is a lot simpler than EIM, just shift the register number.
+ *
+ * register number format:
+ * 3 bits segment selector
+ * 5 bits core selector (6 bits in native eim)
+ * 8 bits register selector
+ *
+ * sss ccccc rrrrrrrr => sss 0 ccccc rrrrrrrr 00
  */
 static off_t fmc_offset(off_t offset)
 {
-  return (offset << 2);
+  return ((offset & ~0x1fff) << 3) + ((offset & 0x1fff) << 2);
 }
 
 void hal_io_set_debug(int onoff)
@@ -94,7 +111,7 @@ hal_error_t hal_io_write(off_t offset, const uint8_t *buf, size_t len)
   offset = fmc_offset(offset);
   for (; len > 0; offset += 4, buf += 4, len -= 4) {
     uint32_t val;
-    val = *(uint32_t *)buf;
+    val = htonl(*(uint32_t *)buf);
     fmc_write_32(offset, &val);
   }
 
@@ -117,7 +134,7 @@ hal_error_t hal_io_read(off_t offset, uint8_t *buf, size_t len)
   for (; rlen > 0; offset += 4, rbuf += 4, rlen -= 4) {
     uint32_t val;
     fmc_read_32(offset, &val);
-    *(uint32_t *)rbuf = val;
+    *(uint32_t *)rbuf = ntohl(val);
   }
 
   dump("read  ", buf, len);

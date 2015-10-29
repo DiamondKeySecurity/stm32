@@ -23,7 +23,7 @@ main()
   {
     HAL_GPIO_TogglePin(LED_PORT, LED_RED);
 
-    HAL_UART_Transmit(&huart2, (uint8_t *) &c, 1, 0x1);
+    uart_send_char(c);
     DELAY();
 
     if (c++ == 'z') {

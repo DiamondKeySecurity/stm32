@@ -1,4 +1,6 @@
-PROJS = fmc-test led-test short-test uart-test
+SELF-TESTS = fmc-test led-test short-test uart-test fmc-probe
+
+LIBHAL-TESTS = test-hash test-aes-key-wrap test-pbkdf2 #test-ecdsa test-rsa
 
 # put your *.o targets here, make should handle the rest!
 SRCS = stm32f4xx_hal_msp.c stm32f4xx_it.c stm-fmc.c stm-init.c stm-uart.c
@@ -36,16 +38,18 @@ export OBJCOPY=$(PREFIX)objcopy
 export OBJDUMP=$(PREFIX)objdump
 export SIZE=$(PREFIX)size
 
-CFLAGS  = -ggdb -O2 -Wall -Wextra -Warray-bounds
+#CFLAGS  = -ggdb -O2 -Wall -Wextra -Warray-bounds
+CFLAGS  = -ggdb -O2 -Wall -Warray-bounds
 CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += $(STDPERIPH_SETTINGS)
 CFLAGS += -ffunction-sections -fdata-sections
 CFLAGS += -Wl,--gc-sections
+CFLAGS += -std=c99
 
 ###################################################
 
-vpath %.c src
+vpath %.c src self-test
 vpath %.a $(STD_PERIPH_LIB)
 
 CFLAGS += -I include -I $(STD_PERIPH_LIB) -I $(STD_PERIPH_LIB)/CMSIS/Device/ST/STM32F4xx/Include
@@ -55,38 +59,59 @@ OBJS = $(patsubst %.s,%.o, $(patsubst %.c,%.o, $(SRCS)))
 
 ###################################################
 
-.PHONY: libstmf4 proj libhal libtfm lib
+.PHONY: lib self-test
 
-LIBS = libstmf4 libtfm libhal
+LIBS = $(STD_PERIPH_LIB)/libstmf4.a libhal/libhal.a thirdparty/libtfm/libtfm.a
 
-all: lib proj
+all: lib self-test libhal-tests
 
 init:
 	git submodule update --init --recursive
 
 lib: $(LIBS)
 
-libstmf4:
+export CFLAGS
+
+$(STD_PERIPH_LIB)/libstmf4.a:
 	$(MAKE) -C $(STD_PERIPH_LIB) STDPERIPH_SETTINGS="$(STDPERIPH_SETTINGS) -I $(PWD)/include"
 
-libtfm:
-	${MAKE} -C thirdparty/libtfm PREFIX=$(PREFIX)
+thirdparty/libtfm/libtfm.a:
+	$(MAKE) -C thirdparty/libtfm PREFIX=$(PREFIX)
 
-libhal: hal_io_fmc.o
-	${MAKE} -C libhal IO_OBJ=../hal_io_fmc.o libhal.a
+libhal/libhal.a: hal_io_fmc.o thirdparty/libtfm/libtfm.a
+	$(MAKE) -C libhal IO_OBJ=../hal_io_fmc.o libhal.a
 
-proj: $(PROJS:=.elf)
+self-test: $(SELF-TESTS:=.elf)
 
-%.elf: %.o $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@ -L$(STD_PERIPH_LIB) -lstmf4 -L$(LDSCRIPT_INC) -T$(MCU_LINKSCRIPT) -g -Wl,-Map=$*.map
+%.elf: %.o $(OBJS) $(STD_PERIPH_LIB)/libstmf4.a
+	$(CC) $(CFLAGS) $^ -o $@ -L$(LDSCRIPT_INC) -T$(MCU_LINKSCRIPT) -g -Wl,-Map=$*.map
 	$(OBJCOPY) -O ihex $*.elf $*.hex
 	$(OBJCOPY) -O binary $*.elf $*.bin
 	$(OBJDUMP) -St $*.elf >$*.lst
 	$(SIZE) $*.elf
 
+libhal-tests: $(LIBHAL-TESTS:=.bin)
+
+vpath %.c libhal/tests
+CFLAGS += -I libhal
+
+# .mo extension for files with main() that need to be wrapped as __main()
+%.mo: %.c
+	$(CC) -c $(CFLAGS) -Dmain=__main -o $@ $<
+
+vpath %.c libc
+%.bin: %.mo main.o syscalls.o printf.o $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $*.elf -L$(LDSCRIPT_INC) -T$(MCU_LINKSCRIPT) -g -Wl,-Map=$*.map
+	$(OBJCOPY) -O ihex $*.elf $*.hex
+	$(OBJCOPY) -O binary $*.elf $*.bin
+	$(OBJDUMP) -St $*.elf >$*.lst
+	$(SIZE) $*.elf
+
+.SECONDARY: $(OBJS) *.mo main.o syscalls.o
+
 clean:
 	find ./ -name '*~' | xargs rm -f
-	rm -f $(OBJS)
+	rm -f $(OBJS) *.o *.mo
 	rm -f *.elf
 	rm -f *.hex
 	rm -f *.bin

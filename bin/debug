@@ -2,6 +2,11 @@
 
 PROJ="${1?'project'}"
 
-GDB=arm-none-eabi-gdb
+OPENOCD=openocd
+OPENOCD_PROC_FILE=/usr/share/openocd/scripts/board/st_nucleo_f401re.cfg
+$OPENOCD -f $OPENOCD_BOARD_DIR/$OPENOCD_PROC_FILE &
 
+GDB=arm-none-eabi-gdb
 $GDB -ex "target remote localhost:3333" -ex "set remote hardware-breakpoint-limit 6" -ex "set remote hardware-watchpoint-limit 4" $PROJ.elf
+
+kill -9 $(pidof $OPENOCD)

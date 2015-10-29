@@ -39,15 +39,12 @@
 #include "stm-fmc.h"
 #include "stm-uart.h"
 
-UART_HandleTypeDef huart2;
-
 /* Private variables ---------------------------------------------------------*/
 static GPIO_InitTypeDef  GPIO_InitStruct;
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_USART2_UART_Init(void);
 
 void stm_init(void)
 {
@@ -129,24 +126,6 @@ static void old_SystemClock_Config(void)
    */
 }
 #endif
-
-/* USART2 init function */
-static void MX_USART2_UART_Init(void)
-{
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = USART2_BAUD_RATE;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-
-  if (HAL_UART_Init(&huart2) != HAL_OK) {
-    /* Initialization Error */
-    Error_Handler();
-  }
-}
 
 /** Configure pins as
         * Analog

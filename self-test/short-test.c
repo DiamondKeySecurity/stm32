@@ -63,7 +63,7 @@ main()
 
   while (1) {
     HAL_GPIO_TogglePin(LED_PORT, LED_GREEN);
-    HAL_UART_Transmit(&huart2, (uint8_t *) "\r\n\r\n\r\n\r\n\r\n", 10, 0x1);
+    uart_send_string("\r\n\r\n\r\n\r\n\r\n");
 
     test_for_shorts('B', GPIOB, GPIOB_PINS);
     test_for_shorts('D', GPIOD, GPIOD_PINS);
@@ -103,19 +103,19 @@ uint8_t check_no_input(char port, GPIO_TypeDef* GPIOx, uint16_t GPIO_Test_Pins, 
 
   led_on(LED_RED);
 
-  HAL_UART_Transmit(&huart2, (uint8_t *) "Wrote ", 6, 0x1);
+  uart_send_string("Wrote ");
   uart_send_binary(wrote_value, 16);
 
-  HAL_UART_Transmit(&huart2, (uint8_t *) " to port GPIO", 13, 0x1);
-  HAL_UART_Transmit(&huart2, (uint8_t *) &wrote_port, 1, 0x1);
+  uart_send_string(" to port GPIO");
+  uart_send_char(wrote_port);
 
-  HAL_UART_Transmit(&huart2, (uint8_t *) ", read ", 7, 0x1);
+  uart_send_string(", read ");
   uart_send_binary(read, 16);
 
-  HAL_UART_Transmit(&huart2, (uint8_t *) " from GPIO", 10, 0x1);
-  HAL_UART_Transmit(&huart2, (uint8_t *) &port, 1, 0x1);
+  uart_send_string(" from GPIO");
+  uart_send_char(port);
 
-  HAL_UART_Transmit(&huart2, (uint8_t *) "\r\n", 2, 0x1);
+  uart_send_string("\r\n");
 
   return 1;
 }
@@ -170,19 +170,19 @@ void test_for_shorts(char port, GPIO_TypeDef* GPIOx, uint16_t GPIO_Test_Pins)
       led_toggle(LED_GREEN);
     } else {
       led_on(LED_RED);
-      HAL_UART_Transmit(&huart2, (uint8_t *) "GPIO", 4, 0x1);
-      HAL_UART_Transmit(&huart2, (uint8_t *) &port, 1, 0x1);
+      uart_send_string("GPIO");
+      uart_send_char(port);
 
-      HAL_UART_Transmit(&huart2, (uint8_t *) " exp ", 5, 0x1);
+      uart_send_string(" exp ");
       uart_send_binary(Test_Pin, 16);
 
-      HAL_UART_Transmit(&huart2, (uint8_t *) " got ", 5, 0x1);
+      uart_send_string(" got ");
       uart_send_binary(read, 16);
 
-      HAL_UART_Transmit(&huart2, (uint8_t *) " diff ", 6, 0x1);
+      uart_send_string(" diff ");
       uart_send_binary(read ^ Test_Pin, 16);
 
-      HAL_UART_Transmit(&huart2, (uint8_t *) "\r\n", 2, 0x1);
+      uart_send_string("\r\n");
 
       fail++;
     }
@@ -200,6 +200,6 @@ void test_for_shorts(char port, GPIO_TypeDef* GPIOx, uint16_t GPIO_Test_Pins)
   }
 
   if (fail) {
-    HAL_UART_Transmit(&huart2, (uint8_t *) "\r\n", 2, 0x1);
+    uart_send_string("\r\n");
   }
 }

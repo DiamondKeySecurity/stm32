@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-UART_HandleTypeDef huart2;
+static UART_HandleTypeDef huart2;
 
 extern void Error_Handler();
 
@@ -13,7 +13,6 @@ extern void Error_Handler();
 
 /* Private function prototypes -----------------------------------------------*/
 
-#if 0 /* XXX moved [back] to stm-init.c */
 /* USART2 init function */
 void MX_USART2_UART_Init(void)
 {
@@ -31,12 +30,21 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
 }
-#endif
+
+void uart_send_char(uint8_t ch)
+{
+  HAL_UART_Transmit(&huart2, &ch, 1, 0x1);
+}
+
+void uart_send_string(char *s)
+{
+  HAL_UART_Transmit(&huart2, (uint8_t *) s, strlen(s), 0x1);
+}
 
 void uart_send_binary(uint32_t num, uint8_t bits)
 {
   uint32_t i;
-  unsigned char ch;
+  uint8_t ch;
 
   bits--;  /* bits 4 should give i = 1000, not 10000 */
 
@@ -46,26 +54,21 @@ void uart_send_binary(uint32_t num, uint8_t bits)
     if (num & i) {
       ch = '1';
     }
-
-    HAL_UART_Transmit(&huart2, (uint8_t *) &ch, 1, 0x1);
+    uart_send_char(ch);
     i = i >> 1;
   }
 }
 
-void uart_send_string(char *s)
-{
-  HAL_UART_Transmit(&huart2, (uint8_t *) s, strlen(s), 0x1);
-}
-
+/* XXX this takes a mask, not a number of digits */
 void uart_send_integer(uint32_t data, uint32_t mag) {
   uint32_t i, t;
-  unsigned char ch;
+  uint8_t ch;
 
   if (! mag) {
     /* Find magnitude */
     if (data < 10) {
       ch = '0' + data;
-      HAL_UART_Transmit(&huart2, (uint8_t *) &ch, 1, 0x1);
+      uart_send_char(ch);
       return;
     }
 
@@ -79,7 +82,29 @@ void uart_send_integer(uint32_t data, uint32_t mag) {
   for (i = mag; i; i /= 10) {
     t = (data / i);
     ch = '0' + t;
-    HAL_UART_Transmit(&huart2, (uint8_t *) &ch, 1, 0x1);
+    uart_send_char(ch);
     data -= (t * i);
+  }
+}
+
+void uart_send_hex(uint32_t num, uint8_t digits)
+{
+  uint8_t ch;
+  uint32_t mask;
+
+  mask = 0x0FL << ((digits - 1) * 4);
+
+  if (digits == 0 || digits > 8)
+      digits = 8;
+
+  while (digits) {
+      ch = (num & mask) >> ((digits - 1) * 4);
+      if (ch < 10)
+	  ch += '0';
+      else
+	  ch += 'A' - 10;
+      uart_send_char(ch);
+      --digits;
+      mask >>= 4;
   }
 }

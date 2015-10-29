@@ -47,6 +47,7 @@ mod:	N	near ptr				DONE
 *****************************************************************************/
 #include <string.h> /* strlen() */
 #include <stdio.h> /* stdout, putchar(), fputs() (but not printf() :) */
+#undef putchar
 
 #if 1
 #include <stdarg.h> /* va_list, va_start(), va_arg(), va_end() */
@@ -93,15 +94,9 @@ typedef void *va_list;
 #define	PR_WS	0x20	/* PR_SG set and num was < 0 */
 #define	PR_LZ	0x40	/* pad left with '0' instead of ' ' */
 #define	PR_FP	0x80	/* pointers are far */
-#if 0
-/* largest number handled is 2^32-1, lowest radix handled is 8.
-2^32-1 in base 8 has 11 digits (add 5 for trailing NUL and for slop) */
-#define	PR_BUFLEN	16
-#else
 /* largest number handled is 2^64-1, lowest radix handled is 8.
 2^64-1 in base 8 has 22 digits (add 2 for trailing NUL and for slop) */
 #define	PR_BUFLEN	24
-#endif
 
 typedef int (*fnptr_t)(unsigned c, void **helper);
 /*****************************************************************************
@@ -410,3 +405,22 @@ int main(void)
 	return 0;
 }
 #endif
+
+/*****************************************************************************
+2015-10-29 pselkirk for cryptech
+*****************************************************************************/
+/* gcc decides that a plain string with no formatting is best handled by puts() */
+int puts(const char *s)
+{
+    return printf("%s\n", s);
+}
+
+/* transmit characters to the uart */
+#include "stm-uart.h"
+int putchar(int c)
+{
+    if (c == '\n')
+	uart_send_char('\r');
+    uart_send_char((uint8_t) c);
+    return c;
+}
