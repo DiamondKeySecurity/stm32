@@ -3,15 +3,15 @@
  */
 
 #include "stm-init.h"
+#include "stm-fmc.h"
 #include "stm-uart.h"
+
+extern void __main(void);
 
 void main(void)
 {
-  stm_init();
-  fmc_init();
-  while(1) {
+    stm_init();
+    fmc_init();
     __main();
-    uart_send_string("\r\n");
-    HAL_Delay(2000);
-  }
+    uart_send_string("Done.\r\n\r\n");
 }

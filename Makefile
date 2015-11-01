@@ -1,6 +1,6 @@
-SELF-TESTS = fmc-test led-test short-test uart-test fmc-probe
+SELF-TESTS = fmc-test led-test short-test uart-test fmc-perf
 
-LIBHAL-TESTS = test-hash test-aes-key-wrap test-pbkdf2 #test-ecdsa test-rsa
+LIBHAL-TESTS = cores test-bus test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa #test-rsa
 
 # put your *.o targets here, make should handle the rest!
 SRCS = stm32f4xx_hal_msp.c stm32f4xx_it.c stm-fmc.c stm-init.c stm-uart.c
@@ -99,8 +99,8 @@ CFLAGS += -I libhal
 %.mo: %.c
 	$(CC) -c $(CFLAGS) -Dmain=__main -o $@ $<
 
-vpath %.c libc
-%.bin: %.mo main.o syscalls.o printf.o $(OBJS) $(LIBS)
+vpath %.c libc libhal/utils
+%.bin: %.mo main.o syscalls.o printf.o gettimeofday.o $(OBJS) $(LIBS)
 	$(CC) $(CFLAGS) $^ -o $*.elf -L$(LDSCRIPT_INC) -T$(MCU_LINKSCRIPT) -g -Wl,-Map=$*.map
 	$(OBJCOPY) -O ihex $*.elf $*.hex
 	$(OBJCOPY) -O binary $*.elf $*.bin
@@ -122,3 +122,4 @@ distclean: clean
 	$(MAKE) -C $(STD_PERIPH_LIB) clean
 	$(MAKE) -C thirdparty/libtfm clean
 	$(MAKE) -C libhal clean
+
