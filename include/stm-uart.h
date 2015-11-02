@@ -9,8 +9,9 @@ extern void MX_USART2_UART_Init(void);
 
 extern void uart_send_char(uint8_t ch);
 extern void uart_send_string(char *s);
-extern void uart_send_binary(uint32_t num, uint8_t bits);
-extern void uart_send_integer(uint32_t data, uint32_t mag);
-extern void uart_send_hex(uint32_t num, uint8_t digits);
+extern void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix);
+#define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)
+#define uart_send_integer(num, digits) uart_send_number(num, digits, 10)
+#define uart_send_hex(num, digits)     uart_send_number(num, digits, 16)
 
 #endif /* __STM32_DEV_BRIDGE_UART_H */

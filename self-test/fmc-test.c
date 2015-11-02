@@ -91,9 +91,9 @@ int main(void)
       addr_test_ok = test_fpga_address_bus();
 
       uart_send_string("Data: ");
-      uart_send_integer(data_test_ok, 100000);
+      uart_send_integer(data_test_ok, 6);
       uart_send_string(", addr: ");
-      uart_send_integer(addr_test_ok, 100000);
+      uart_send_integer(addr_test_ok, 6);
       uart_send_string("\r\n");
 
       if (data_test_ok == TEST_NUM_ROUNDS &&

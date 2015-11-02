@@ -41,70 +41,36 @@ void uart_send_string(char *s)
   HAL_UART_Transmit(&huart2, (uint8_t *) s, strlen(s), 0x1);
 }
 
-void uart_send_binary(uint32_t num, uint8_t bits)
+/* Generalized routine to send binary, decimal, and hex integers.
+ * This code is adapted from Chris Giese's printf.c
+ */
+void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
 {
-  uint32_t i;
-  uint8_t ch;
+    #define BUFSIZE 32
+    char buf[BUFSIZE];
+    char *where = buf + BUFSIZE;
 
-  bits--;  /* bits 4 should give i = 1000, not 10000 */
+    /* initialize buf so we can add leading 0 by adjusting the pointer */
+    memset(buf, '0', BUFSIZE);
 
-  i = 1 << bits;
-  while (i) {
-    ch = '0';
-    if (num & i) {
-      ch = '1';
-    }
-    uart_send_char(ch);
-    i = i >> 1;
-  }
-}
+    /* build the string backwards, starting with the least significant digit */
+    do {
+	uint32_t temp;
+	temp = num % radix;
+	where--;
+	if (temp < 10)
+	    *where = temp + '0';
+	else
+	    *where = temp - 10 + 'A';
+	num = num / radix;
+    } while (num != 0);
 
-/* XXX this takes a mask, not a number of digits */
-void uart_send_integer(uint32_t data, uint32_t mag) {
-  uint32_t i, t;
-  uint8_t ch;
+    if (where > buf + BUFSIZE - digits)
+	/* pad with leading 0 */
+	where = buf + BUFSIZE - digits;
+    else
+	/* number is larger than the specified number of digits */
+	digits = buf + BUFSIZE - where;
 
-  if (! mag) {
-    /* Find magnitude */
-    if (data < 10) {
-      ch = '0' + data;
-      uart_send_char(ch);
-      return;
-    }
-
-    for (mag = 10; mag < data; mag = i) {
-      i = mag * 10;
-      if (i > data || i < mag)
-        break;
-    }
-  }
-  /* mag is now 10 if data is 45, and 1000 if data is 1009 */
-  for (i = mag; i; i /= 10) {
-    t = (data / i);
-    ch = '0' + t;
-    uart_send_char(ch);
-    data -= (t * i);
-  }
-}
-
-void uart_send_hex(uint32_t num, uint8_t digits)
-{
-  uint8_t ch;
-  uint32_t mask;
-
-  mask = 0x0FL << ((digits - 1) * 4);
-
-  if (digits == 0 || digits > 8)
-      digits = 8;
-
-  while (digits) {
-      ch = (num & mask) >> ((digits - 1) * 4);
-      if (ch < 10)
-	  ch += '0';
-      else
-	  ch += 'A' - 10;
-      uart_send_char(ch);
-      --digits;
-      mask >>= 4;
-  }
+    HAL_UART_Transmit(&huart2, (uint8_t *) where, digits, 0x1);
 }
