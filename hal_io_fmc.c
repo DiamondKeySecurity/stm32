@@ -47,7 +47,8 @@ static int inited = 0;
 #endif
 
 /* not available in arm-none-eabi libc */
-static uint32_t htonl(uint32_t w)
+#ifndef __ARMEB__   // Little endian
+static inline uint32_t htonl(uint32_t w)
 {
   return
     ((w & 0x000000ff) << 24) +
@@ -55,6 +56,9 @@ static uint32_t htonl(uint32_t w)
     ((w & 0x00ff0000) >> 8) +
     ((w & 0xff000000) >> 24);
 }
+#else               // Big endian
+#define htonl(x) (x)
+#endif
 #define ntohl htonl
 
 static hal_error_t init(void)
