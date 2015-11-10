@@ -52,8 +52,11 @@ CFLAGS += -std=c99
 vpath %.c src self-test
 vpath %.a $(STD_PERIPH_LIB)
 
-CFLAGS += -I include -I $(STD_PERIPH_LIB) -I $(STD_PERIPH_LIB)/CMSIS/Device/ST/STM32F4xx/Include
-CFLAGS += -I $(STD_PERIPH_LIB)/CMSIS/Include -I $(STD_PERIPH_LIB)/STM32F4xx_HAL_Driver/Inc
+IFLAGS += -I include -I $(STD_PERIPH_LIB) -I $(STD_PERIPH_LIB)/CMSIS/Device/ST/STM32F4xx/Include
+IFLAGS += -I $(STD_PERIPH_LIB)/CMSIS/Include -I $(STD_PERIPH_LIB)/STM32F4xx_HAL_Driver/Inc
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
 
 OBJS = $(patsubst %.s,%.o, $(patsubst %.c,%.o, $(SRCS)))
 
@@ -97,7 +100,7 @@ CFLAGS += -I libhal
 
 # .mo extension for files with main() that need to be wrapped as __main()
 %.mo: %.c
-	$(CC) -c $(CFLAGS) -Dmain=__main -o $@ $<
+	$(CC) -c $(CFLAGS) $(IFLAGS) -Dmain=__main -o $@ $<
 
 vpath %.c libc libhal/utils
 %.bin: %.mo main.o syscalls.o printf.o gettimeofday.o $(OBJS) $(LIBS)
@@ -107,7 +110,7 @@ vpath %.c libc libhal/utils
 	$(OBJDUMP) -St $*.elf >$*.lst
 	$(SIZE) $*.elf
 
-.SECONDARY: $(OBJS) *.mo main.o syscalls.o
+.SECONDARY: $(OBJS) *.mo main.o syscalls.o printf.o gettimeofday.o
 
 clean:
 	find ./ -name '*~' | xargs rm -f
@@ -122,4 +125,4 @@ distclean: clean
 	$(MAKE) -C $(STD_PERIPH_LIB) clean
 	$(MAKE) -C thirdparty/libtfm clean
 	$(MAKE) -C libhal clean
-
+	$(MAKE) -C libc clean
