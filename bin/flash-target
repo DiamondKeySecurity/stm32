@@ -22,6 +22,6 @@ OPENOCD_BOARD_DIR=/usr/share/openocd/scripts/board
 # the OPENOCD_BOARD_DIR directory.
 #
 #OPENOCD_PROC_FILE=stm32f4discovery.cfg
-OPENOCD_PROC_FILE=st_nucleo_f401re.cfg
+OPENOCD_PROC_FILE=st_nucleo_f4.cfg
 
-$OPENOCD -f $OPENOCD_BOARD_DIR/$OPENOCD_PROC_FILE -c "program $PROJ.elf verify reset"
+$OPENOCD -f $OPENOCD_BOARD_DIR/$OPENOCD_PROC_FILE -c "program $PROJ.elf verify reset exit"
