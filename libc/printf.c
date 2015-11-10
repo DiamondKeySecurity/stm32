@@ -49,41 +49,7 @@ mod:	N	near ptr				DONE
 #include <stdio.h> /* stdout, putchar(), fputs() (but not printf() :) */
 #undef putchar
 
-#if 1
 #include <stdarg.h> /* va_list, va_start(), va_arg(), va_end() */
-#else
-/* home-brew STDARG.H, also public-domain: */
-
-/* Assume: width of stack == width of int. Don't use sizeof(char *) or
-other pointer because sizeof(char *)==4 for LARGE-model 16-bit code.
-Assume: width is a power of 2 */
-#define	STACK_WIDTH	sizeof(int)
-
-/* Round up object width so it's an even multiple of STACK_WIDTH.
-Using & for division here, so STACK_WIDTH must be a power of 2. */
-#define	TYPE_WIDTH(TYPE)				\
-	((sizeof(TYPE) + STACK_WIDTH - 1) & ~(STACK_WIDTH - 1))
-
-/* point the va_list pointer to LASTARG,
-then advance beyond it to the first variable arg */
-#define	va_start(PTR, LASTARG)				\
-	PTR = (va_list)((char *)&(LASTARG) + TYPE_WIDTH(LASTARG))
-
-#define va_end(PTR)	/* nothing */
-
-/* Increment the va_list pointer, then return
-(evaluate to, actually) the previous value of the pointer.
-WHEEE! At last; a valid use for the C comma operator! */
-#define va_arg(PTR, TYPE)	(			\
-	(char *)(PTR) += TYPE_WIDTH(TYPE)		\
-				,			\
-	*((TYPE *)((char *)(PTR) - TYPE_WIDTH(TYPE)))	\
-				)
-/* Every other compiler/libc seems to be using 'void *', so...
-(I _was_ using 'unsigned char *') */
-typedef void *va_list;
-
-#endif
 
 /* flags used in processing format string */
 #define	PR_LJ	0x01	/* left justify */
@@ -219,10 +185,11 @@ DO_NUM:				if(flags & PR_32)
 /* h=short=16 bits (signed or unsigned) */
 				else if(flags & PR_16)
 				{
+					num = va_arg(args, int);
 					if(flags & PR_SG)
-						num = va_arg(args, short);
+					    num = (short) num;
 					else
-						num = va_arg(args, unsigned short);
+					    num = (unsigned short) num;
 				}
 /* no h nor l: sizeof(int) bits (signed or unsigned) */
 				else
@@ -263,8 +230,7 @@ OK, I found my mistake. The math here is _always_ unsigned */
 /* disallow pad-left-with-zeroes for %c */
 				flags &= ~PR_LZ;
 				where--;
-				*where = (unsigned char)va_arg(args,
-					unsigned char);
+				*where = (unsigned char)va_arg(args, int);
 				actual_wd = 1;
 				goto EMIT2;
 			case 's':
@@ -272,7 +238,7 @@ OK, I found my mistake. The math here is _always_ unsigned */
 				flags &= ~PR_LZ;
 				where = va_arg(args, unsigned char *);
 EMIT:
-				actual_wd = strlen(where);
+				actual_wd = strlen((const char *)where);
 				if(flags & PR_WS)
 					actual_wd++;
 /* if we pad left with ZEROES, do the sign now */
@@ -325,7 +291,7 @@ EMIT2:				if((flags & PR_LJ) == 0)
 	}
 	return count;
 }
-#if 1 /* testing */
+
 /*****************************************************************************
 SPRINTF
 *****************************************************************************/
@@ -387,8 +353,8 @@ int printf(const char *fmt, ...)
 	va_end(args);
 	return rv;
 }
-#endif
-#if 0
+
+#if 0 /* testing */
 /*****************************************************************************
 *****************************************************************************/
 int main(void)
@@ -402,9 +368,11 @@ int main(void)
 	fputs(buf, stdout); /* puts() adds newline */
 
 	printf("<%-8s> and <%8s> justified strings\n", "left", "right");
+
+	printf("short signed: %hd, short unsigned: %hu\n", -1, -1);
 	return 0;
 }
-#endif
+#else
 
 /*****************************************************************************
 2015-10-29 pselkirk for cryptech
@@ -424,3 +392,4 @@ int putchar(int c)
     uart_send_char((uint8_t) c);
     return c;
 }
+#endif
