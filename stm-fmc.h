@@ -1,8 +1,7 @@
 /*
- * main.c
- * ------
- * A wrapper for test programs that contain main() (currently libhal/tests).
- * We compile them with -Dmain=__main, so we can do stm setup first.
+ * stm-fmc.h
+ * ---------
+ * Functions to set up and use the FMC bus.
  *
  * Copyright (c) 2015, NORDUnet A/S All rights reserved.
  *
@@ -33,29 +32,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm-init.h"
-#include "stm-led.h"
-#include "stm-fmc.h"
-#include "stm-uart.h"
+#ifndef __STM_FMC_H
+#define __STM_FMC_H
 
-extern void __main(void);
+#include <stdint.h>
 
-int main(void)
-{
-    stm_init();
+extern void fmc_init(void);
 
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    fmc_init();
-    led_off(LED_BLUE);
-    led_on(LED_GREEN);
+extern int fmc_write_32(uint32_t addr, uint32_t *data);
+extern int fmc_read_32(uint32_t addr, uint32_t *data);
 
-    __main();
-
-    uart_send_string("Done.\r\n\r\n");
-    return 0;
-}
+#endif /* __STM_FMC_H */

@@ -1,8 +1,7 @@
 /*
- * main.c
- * ------
- * A wrapper for test programs that contain main() (currently libhal/tests).
- * We compile them with -Dmain=__main, so we can do stm setup first.
+ * stm-led.h
+ * ---------
+ * Defines to control the LEDs through GPIO pins.
  *
  * Copyright (c) 2015, NORDUnet A/S All rights reserved.
  *
@@ -33,29 +32,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm-init.h"
-#include "stm-led.h"
-#include "stm-fmc.h"
-#include "stm-uart.h"
+#ifndef __STM_LED_H
+#define __STM_LED_H
 
-extern void __main(void);
+#include "stm32f4xx_hal.h"
 
-int main(void)
-{
-    stm_init();
+#define LED_PORT        GPIOJ
+#define LED_RED         GPIO_PIN_1
+#define LED_YELLOW      GPIO_PIN_2
+#define LED_GREEN       GPIO_PIN_3
+#define LED_BLUE        GPIO_PIN_4
 
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    fmc_init();
-    led_off(LED_BLUE);
-    led_on(LED_GREEN);
+#define led_on(pin)     HAL_GPIO_WritePin(LED_PORT,pin,SET)
+#define led_off(pin)    HAL_GPIO_WritePin(LED_PORT,pin,RESET)
+#define led_toggle(pin) HAL_GPIO_TogglePin(LED_PORT,pin)
 
-    __main();
-
-    uart_send_string("Done.\r\n\r\n");
-    return 0;
-}
+#endif /* __STM_LED_H */

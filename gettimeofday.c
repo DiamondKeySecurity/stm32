@@ -1,8 +1,10 @@
 /*
- * main.c
- * ------
- * A wrapper for test programs that contain main() (currently libhal/tests).
- * We compile them with -Dmain=__main, so we can do stm setup first.
+ * gettimeofday.c
+ * --------------
+ * A simple implementation of gettimeofday() for CMSIS.
+ * This assumes a 1ms SysTick. It obviously does not return the absolute time,
+ * just the time since boot, but it's only used to calculate elapsed time in
+ * code we're porting from unix.
  *
  * Copyright (c) 2015, NORDUnet A/S All rights reserved.
  *
@@ -33,29 +35,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm-init.h"
-#include "stm-led.h"
-#include "stm-fmc.h"
-#include "stm-uart.h"
+#include <stdint.h>
 
-extern void __main(void);
+#include "stm32f4xx_hal.h"
 
-int main(void)
+/* Don't #include <sys/time.h> because of conflicting prototype in newlib. */
+
+/* from the manpage */
+struct timeval {
+    time_t      tv_sec;     /* seconds */
+    suseconds_t tv_usec;    /* microseconds */
+};
+
+struct timezone {
+    int tz_minuteswest;     /* minutes west of Greenwich */
+    int tz_dsttime;         /* type of DST correction */
+};
+
+int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
-    stm_init();
+    uint32_t tick = HAL_GetTick();      /* uptime in ms */
 
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    fmc_init();
-    led_off(LED_BLUE);
-    led_on(LED_GREEN);
+    tv->tv_sec = tick / 1000;
+    tv->tv_usec = (tick % 1000) * 1000;
 
-    __main();
-
-    uart_send_string("Done.\r\n\r\n");
     return 0;
 }

@@ -34,10 +34,11 @@
 *                   newlib version 1.17.0
 ****************************************************************************/
 
-/* 2015-10-29 pselkirk for cryptech:
- * Changed asm to __asm for c99 compatibility.
- * Added _exit, _kill, and _getpid from mifi's 2013 revision.
- */
+/****************************************************************************
+* 2015-10-29 pselkirk for cryptech:
+* Changed asm to __asm for c99 compatibility.
+* Added _exit, _kill, and _getpid from mifi's 2013 revision.
+****************************************************************************/
 
 #include <stdlib.h>
 #include <errno.h>

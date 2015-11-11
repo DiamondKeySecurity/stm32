@@ -1,8 +1,7 @@
 /*
- * main.c
- * ------
- * A wrapper for test programs that contain main() (currently libhal/tests).
- * We compile them with -Dmain=__main, so we can do stm setup first.
+ * stm-uart.c
+ * ----------
+ * Functions for sending strings and numbers over the uart.
  *
  * Copyright (c) 2015, NORDUnet A/S All rights reserved.
  *
@@ -33,29 +32,56 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm-init.h"
-#include "stm-led.h"
-#include "stm-fmc.h"
+#include "stm32f4xx_hal.h"
 #include "stm-uart.h"
 
-extern void __main(void);
+#include <string.h>
 
-int main(void)
+/* initialized in MX_USART2_UART_Init() in stm-init.c */
+UART_HandleTypeDef huart2;
+
+/* send a single character */
+void uart_send_char(uint8_t ch)
 {
-    stm_init();
+  HAL_UART_Transmit(&huart2, &ch, 1, 0x1);
+}
 
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    fmc_init();
-    led_off(LED_BLUE);
-    led_on(LED_GREEN);
+/* send a string */
+void uart_send_string(char *s)
+{
+  HAL_UART_Transmit(&huart2, (uint8_t *) s, strlen(s), 0x1);
+}
 
-    __main();
+/* Generalized routine to send binary, decimal, and hex integers.
+ * This code is adapted from Chris Giese's printf.c
+ */
+void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
+{
+    #define BUFSIZE 32
+    char buf[BUFSIZE];
+    char *where = buf + BUFSIZE;
 
-    uart_send_string("Done.\r\n\r\n");
-    return 0;
+    /* initialize buf so we can add leading 0 by adjusting the pointer */
+    memset(buf, '0', BUFSIZE);
+
+    /* build the string backwards, starting with the least significant digit */
+    do {
+	uint32_t temp;
+	temp = num % radix;
+	where--;
+	if (temp < 10)
+	    *where = temp + '0';
+	else
+	    *where = temp - 10 + 'A';
+	num = num / radix;
+    } while (num != 0);
+
+    if (where > buf + BUFSIZE - digits)
+	/* pad with leading 0 */
+	where = buf + BUFSIZE - digits;
+    else
+	/* number is larger than the specified number of digits */
+	digits = buf + BUFSIZE - where;
+
+    HAL_UART_Transmit(&huart2, (uint8_t *) where, digits, 0x1);
 }

@@ -6,20 +6,20 @@ AR=arm-none-eabi-ar
 vpath %.c STM32F4xx_HAL_Driver/Src
 
 # Default STDPERIPH_SETTINGS to settings suitable for  STM32F429BIT6 (dev-bridge rev01)
-STDPERIPH_SETTINGS ?= -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
+#STDPERIPH_SETTINGS ?= -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
 
-CFLAGS  = -ggdb -O2 -Wall -Wextra -Warray-bounds
-CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
-CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
-CFLAGS += $(STDPERIPH_SETTINGS)
-CFLAGS += -ICMSIS/Include -ICMSIS/Device/ST/STM32F4xx/Include -ISTM32F4xx_HAL_Driver/Inc
+#CFLAGS += -ggdb -O2 -Wall -Wextra -Warray-bounds
+#CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
+#CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+#CFLAGS += -ICMSIS/Include -ICMSIS/Device/ST/STM32F4xx/Include -ISTM32F4xx_HAL_Driver/Inc
+#CFLAGS += $(STDPERIPH_SETTINGS)
 
-SRCS = stm32f4xx_hal.c           stm32f4xx_hal_msp_template.c \
+SRCS = stm32f4xx_hal.c     stm32f4xx_hal_msp_template.c \
  stm32f4xx_hal_adc.c       stm32f4xx_hal_nand.c \
  stm32f4xx_hal_adc_ex.c    stm32f4xx_hal_nor.c \
  stm32f4xx_hal_can.c       stm32f4xx_hal_pccard.c \
  stm32f4xx_hal_cortex.c    stm32f4xx_hal_pcd.c \
- stm32f4xx_hal_crc.c stm32f4xx_hal_pwr.c \
+ stm32f4xx_hal_crc.c       stm32f4xx_hal_pwr.c \
  stm32f4xx_hal_cryp.c      stm32f4xx_hal_pwr_ex.c \
  stm32f4xx_hal_cryp_ex.c   stm32f4xx_hal_rcc.c \
  stm32f4xx_hal_dac.c       stm32f4xx_hal_rcc_ex.c \

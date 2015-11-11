@@ -35,16 +35,26 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 #include "stm-init.h"
+#ifdef HAL_GPIO_MODULE_ENABLED
 #include "stm-led.h"
+#endif
+#ifdef HAL_SRAM_MODULE_ENABLED
 #include "stm-fmc.h"
+#endif
+#ifdef HAL_UART_MODULE_ENABLED
 #include "stm-uart.h"
+#endif
 
 /* Private variables ---------------------------------------------------------*/
-static GPIO_InitTypeDef  GPIO_InitStruct;
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
+#ifdef HAL_GPIO_MODULE_ENABLED
 static void MX_GPIO_Init(void);
+#endif
+#ifdef HAL_UART_MODULE_ENABLED
+static void MX_USART2_UART_Init(void);
+#endif
 
 void stm_init(void)
 {
@@ -63,8 +73,12 @@ void stm_init(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
   /* Initialize all configured peripherals */
+#ifdef HAL_GPIO_MODULE_ENABLED
   MX_GPIO_Init();
+#endif
+#ifdef HAL_UART_MODULE_ENABLED
   MX_USART2_UART_Init();
+#endif
 }
 
 /** System Clock Configuration
@@ -127,6 +141,29 @@ static void old_SystemClock_Config(void)
 }
 #endif
 
+#ifdef HAL_UART_MODULE_ENABLED
+/* USART2 init function */
+static void MX_USART2_UART_Init(void)
+{
+  extern UART_HandleTypeDef huart2;
+
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = USART2_BAUD_RATE;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+
+  if (HAL_UART_Init(&huart2) != HAL_OK) {
+    /* Initialization Error */
+    Error_Handler();
+  }
+}
+#endif
+
+#ifdef HAL_GPIO_MODULE_ENABLED
 /** Configure pins as
         * Analog
         * Input
@@ -136,6 +173,8 @@ static void old_SystemClock_Config(void)
 */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct;
+
   /* GPIO Ports Clock Enable */
   __GPIOJ_CLK_ENABLE();
 
@@ -146,6 +185,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
 }
+#endif
 
 /**
  * @brief  This function is executed in case of error occurrence.
@@ -154,7 +194,9 @@ static void MX_GPIO_Init(void)
  */
 void Error_Handler(void)
 {
+#ifdef HAL_GPIO_MODULE_ENABLED
   HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_SET);
+#endif
   while (1) { ; }
 }
 

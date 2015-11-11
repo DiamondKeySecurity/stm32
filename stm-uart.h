@@ -1,8 +1,7 @@
 /*
- * main.c
- * ------
- * A wrapper for test programs that contain main() (currently libhal/tests).
- * We compile them with -Dmain=__main, so we can do stm setup first.
+ * stm-uart.h
+ * ---------
+ * Functions and defines to use the UART.
  *
  * Copyright (c) 2015, NORDUnet A/S All rights reserved.
  *
@@ -33,29 +32,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm-init.h"
-#include "stm-led.h"
-#include "stm-fmc.h"
-#include "stm-uart.h"
+#ifndef __STM32_UART_H
+#define __STM32_UART_H
 
-extern void __main(void);
+#include "stm32f4xx_hal.h"
 
-int main(void)
-{
-    stm_init();
+#define USART2_BAUD_RATE	115200
 
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    fmc_init();
-    led_off(LED_BLUE);
-    led_on(LED_GREEN);
+extern void uart_send_char(uint8_t ch);
+extern void uart_send_string(char *s);
+extern void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix);
+#define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)
+#define uart_send_integer(num, digits) uart_send_number(num, digits, 10)
+#define uart_send_hex(num, digits)     uart_send_number(num, digits, 16)
 
-    __main();
-
-    uart_send_string("Done.\r\n\r\n");
-    return 0;
-}
+#endif /* __STM32_UART_H */
