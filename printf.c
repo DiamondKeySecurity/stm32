@@ -28,7 +28,7 @@ flag:	-	left justify, pad right w/ blanks	DONE
 
 width:		(field width)				DONE
 
-prec:		(precision)				no
+prec:		(precision)				DONE
 
 conv:	d,i	decimal int				DONE
 	u	decimal unsigned			DONE
@@ -43,7 +43,7 @@ mod:	N	near ptr				DONE
 	F	far ptr					no
 	h	short (16-bit) int			DONE
 	l	long (32-bit) int			DONE
-	L	long long (64-bit) int			no
+	L/ll	long long (64-bit) int			no
 *****************************************************************************/
 #include <string.h> /* strlen() */
 #include <stdio.h> /* stdout, putchar(), fputs() (but not printf() :) */
@@ -64,6 +64,10 @@ mod:	N	near ptr				DONE
 2^64-1 in base 8 has 22 digits (add 2 for trailing NUL and for slop) */
 #define	PR_BUFLEN	24
 
+#ifndef max
+#define max(a,b) ((a > b) ? a : b)
+#endif
+
 typedef int (*fnptr_t)(unsigned c, void **helper);
 /*****************************************************************************
 name:	do_printf
@@ -73,12 +77,12 @@ returns:total number of characters output
 *****************************************************************************/
 int do_printf(const char *fmt, va_list args, fnptr_t fn, void *ptr)
 {
-	unsigned flags, actual_wd, count, given_wd;
+        unsigned flags, length, count, width, precision;
 	unsigned char *where, buf[PR_BUFLEN];
 	unsigned char state, radix;
 	long num;
 
-	state = flags = count = given_wd = 0;
+	state = flags = count = width = precision = 0;
 /* begin scanning format specifier list */
 	for(; *fmt; fmt++)
 	{
@@ -102,13 +106,13 @@ int do_printf(const char *fmt, va_list args, fnptr_t fn, void *ptr)
 			{
 				fn(*fmt, &ptr);
 				count++;
-				state = flags = given_wd = 0;
+				state = flags = width = precision = 0;
 				break;
 			}
 			if(*fmt == '-')
 			{
 				if(flags & PR_LJ)/* %-- is illegal */
-					state = flags = given_wd = 0;
+					state = flags = width = precision = 0;
 				else
 					flags |= PR_LJ;
 				break;
@@ -126,15 +130,26 @@ int do_printf(const char *fmt, va_list args, fnptr_t fn, void *ptr)
 		case 2:
 			if(*fmt >= '0' && *fmt <= '9')
 			{
-				given_wd = 10 * given_wd +
-					(*fmt - '0');
+				width = 10 * width + (*fmt - '0');
 				break;
 			}
-/* not field width: advance state to check if it's a modifier */
+/* not a field width: advance state to check if it's field precision */
 			state++;
 			/* FALL THROUGH */
-/* STATE 3: AWAITING MODIFIER CHARS (FNlh) */
+/* STATE 3: AWAITING (NUMERIC) FIELD PRECISION */
 		case 3:
+			if(*fmt == '.')
+				++fmt;
+			if(*fmt >= '0' && *fmt <= '9')
+			{
+				precision = 10 * precision + (*fmt - '0');
+				break;
+			}
+/* not field precision: advance state to check if it's a modifier */
+			state++;
+			/* FALL THROUGH */
+/* STATE 4: AWAITING MODIFIER CHARS (FNlh) */
+		case 4:
 			if(*fmt == 'F')
 			{
 				flags |= PR_FP;
@@ -155,8 +170,8 @@ int do_printf(const char *fmt, va_list args, fnptr_t fn, void *ptr)
 /* not modifier: advance state to check if it's a conversion char */
 			state++;
 			/* FALL THROUGH */
-/* STATE 4: AWAITING CONVERSION CHARS (Xxpndiuocs) */
-		case 4:
+/* STATE 5: AWAITING CONVERSION CHARS (Xxpndiuocs) */
+		case 5:
 			where = buf + PR_BUFLEN - 1;
 			*where = '\0';
 			switch(*fmt)
@@ -225,22 +240,36 @@ OK, I found my mistake. The math here is _always_ unsigned */
 					num = (unsigned long)num / radix;
 				}
 				while(num != 0);
+/* for integers, precision functions like width, but pads with zeros */
+				if (precision != 0)
+				{
+					width = max(width, precision);
+					if (precision > strlen(where))
+						flags |= PR_LZ;
+					precision = 0;
+				}
 				goto EMIT;
 			case 'c':
 /* disallow pad-left-with-zeroes for %c */
 				flags &= ~PR_LZ;
 				where--;
 				*where = (unsigned char)va_arg(args, int);
-				actual_wd = 1;
+				length = 1;
 				goto EMIT2;
 			case 's':
 /* disallow pad-left-with-zeroes for %s */
 				flags &= ~PR_LZ;
 				where = va_arg(args, unsigned char *);
 EMIT:
-				actual_wd = strlen((const char *)where);
+				length = strlen((const char *)where);
+/* if string is longer than precision, truncate */
+				if ((precision != 0) && (precision < length))
+				{
+					length = precision;
+					precision = 0;
+				}
 				if(flags & PR_WS)
-					actual_wd++;
+					length++;
 /* if we pad left with ZEROES, do the sign now */
 				if((flags & (PR_WS | PR_LZ)) ==
 					(PR_WS | PR_LZ))
@@ -251,12 +280,12 @@ EMIT:
 /* pad on left with spaces or zeroes (for right justify) */
 EMIT2:				if((flags & PR_LJ) == 0)
 				{
-					while(given_wd > actual_wd)
+					while(width > length)
 					{
 						fn(flags & PR_LZ ?
 							'0' : ' ', &ptr);
 						count++;
-						given_wd--;
+						width--;
 					}
 				}
 /* if we pad left with SPACES, do the sign now */
@@ -266,16 +295,17 @@ EMIT2:				if((flags & PR_LJ) == 0)
 					count++;
 				}
 /* emit string/char/converted number */
-				while(*where != '\0')
+				for(int i = (flags & PR_WS) ? 1 : 0;
+				    i < length; ++i)
 				{
 					fn(*where++, &ptr);
 					count++;
 				}
 /* pad on right with spaces (for left justify) */
-				if(given_wd < actual_wd)
-					given_wd = 0;
-				else given_wd -= actual_wd;
-				for(; given_wd; given_wd--)
+				if(width < length)
+					width = 0;
+				else width -= length;
+				for(; width; width--)
 				{
 					fn(' ', &ptr);
 					count++;
@@ -285,7 +315,7 @@ EMIT2:				if((flags & PR_LJ) == 0)
 				break;
 			}
 		default:
-			state = flags = given_wd = 0;
+			state = flags = width = precision = 0;
 			break;
 		}
 	}
@@ -369,7 +399,35 @@ int main(void)
 
 	printf("<%-8s> and <%8s> justified strings\n", "left", "right");
 
-	printf("short signed: %hd, short unsigned: %hu\n", -1, -1);
+	printf("short signed: %hd, short unsigned: %hu\n\n", -1, -1);
+
+    char str[] = "abcdefghijklmnopqrstuvwxyz";
+    printf("%8s\n", str);	/* abcdefghijklmnopqrstuvwxyz */
+    printf("%8.32s\n", str);	/* abcdefghijklmnopqrstuvwxyz */
+    printf("%8.16s\n", str);	/* abcdefghijklmnop */
+    printf("%8.8s\n", str);	/* abcdefgh */
+    printf("%8.4s\n", str);	/*     abcd */
+    printf("%4.8s\n", str);	/* abcdefgh */
+    printf("%.8s\n", str);	/* abcdefgh */
+    printf("%8s\n", "abcd");	/*     abcd */
+    printf("%8.8s\n", "abcd");	/*     abcd */
+    printf("%4.8s\n", "abcd");	/* abcd */
+    printf("%.8s\n", "abcd");	/* abcd */
+    printf("%.0s\n", str);	/* */
+    printf("\n");
+
+    int num = 123456;
+    printf("%016d\n", num);	/* 0000000000123456 */
+    printf("%16d\n", num);	/*           123456 */
+    printf("%8d\n", num);	/*   123456 */
+    printf("%8.16d\n", num);	/* 0000000000123456 */
+    printf("%8.8d\n", num);	/* 00123456 */
+    printf("%8.4d\n", num);	/*   123456 */
+    printf("%4.4d\n", num);	/* 123456 */
+    printf("%.16d\n", num);	/* 0000000000123456 */ 
+    printf("%.8d\n", num);	/* 00123456 */
+    printf("%.4d\n", num);	/* 123456 */
+
 	return 0;
 }
 #else
