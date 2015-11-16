@@ -30,7 +30,7 @@ SELF-TESTS = fmc-test led-test short-test uart-test fmc-perf
 vpath %.c self-test
 
 # apps originally written for unix-like environment
-LIBHAL-TESTS = cores test-bus test-hash test-aes-key-wrap test-pbkdf2 #test-ecdsa #test-rsa
+LIBHAL-TESTS = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa
 vpath %.c libhal/tests libhal/utils
 
 # absolute path, because we're going to be passing -I cflags to sub-makes
