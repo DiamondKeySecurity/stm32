@@ -32,7 +32,7 @@ SELF-TESTS = fmc-test led-test short-test uart-test fmc-perf
 vpath %.c self-test
 
 # apps originally written for unix-like environment
-LIBHAL-TESTS = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa
+LIBHAL-TESTS = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa test-rpc_server
 vpath %.c libhal/tests libhal/utils
 
 # absolute path, because we're going to be passing -I cflags to sub-makes
@@ -90,8 +90,8 @@ $(STD_PERIPH_LIB)/libstmf4.a:
 thirdparty/libtfm/libtfm.a:
 	$(MAKE) -C thirdparty/libtfm PREFIX=$(PREFIX)
 
-libhal/libhal.a: hal_io_fmc.o thirdparty/libtfm/libtfm.a
-	$(MAKE) -C libhal IO_OBJ=../hal_io_fmc.o libhal.a
+libhal/libhal.a: thirdparty/libtfm/libtfm.a
+	$(MAKE) -C libhal IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=volatile libhal.a
 
 self-test: $(SELF-TESTS:=.elf)
 

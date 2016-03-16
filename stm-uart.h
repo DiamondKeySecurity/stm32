@@ -39,9 +39,10 @@
 
 #define USART2_BAUD_RATE	115200
 
-extern void uart_send_char(uint8_t ch);
-extern void uart_send_string(char *s);
-extern void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix);
+extern HAL_StatusTypeDef uart_send_char(uint8_t ch);
+extern HAL_StatusTypeDef uart_recv_char(uint8_t *cp);
+extern HAL_StatusTypeDef uart_send_string(char *s);
+extern HAL_StatusTypeDef uart_send_number(uint32_t num, uint8_t digits, uint8_t radix);
 #define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)
 #define uart_send_integer(num, digits) uart_send_number(num, digits, 10)
 #define uart_send_hex(num, digits)     uart_send_number(num, digits, 16)

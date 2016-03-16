@@ -41,21 +41,27 @@
 UART_HandleTypeDef huart2;
 
 /* send a single character */
-void uart_send_char(uint8_t ch)
+HAL_StatusTypeDef uart_send_char(uint8_t ch)
 {
-  HAL_UART_Transmit(&huart2, &ch, 1, 0x1);
+    return HAL_UART_Transmit(&huart2, &ch, 1, 0x1);
+}
+
+/* receive a single character */
+HAL_StatusTypeDef uart_recv_char(uint8_t *cp)
+{
+    return HAL_UART_Receive(&huart2, cp, 1, 0x0);
 }
 
 /* send a string */
-void uart_send_string(char *s)
+HAL_StatusTypeDef uart_send_string(char *s)
 {
-  HAL_UART_Transmit(&huart2, (uint8_t *) s, strlen(s), 0x1);
+    return HAL_UART_Transmit(&huart2, (uint8_t *) s, strlen(s), 0x1);
 }
 
 /* Generalized routine to send binary, decimal, and hex integers.
  * This code is adapted from Chris Giese's printf.c
  */
-void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
+HAL_StatusTypeDef uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
 {
     #define BUFSIZE 32
     char buf[BUFSIZE];
@@ -83,5 +89,5 @@ void uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
 	/* number is larger than the specified number of digits */
 	digits = buf + BUFSIZE - where;
 
-    HAL_UART_Transmit(&huart2, (uint8_t *) where, digits, 0x1);
+    return HAL_UART_Transmit(&huart2, (uint8_t *) where, digits, 0x1);
 }
