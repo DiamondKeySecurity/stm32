@@ -21,7 +21,7 @@ OPENOCD_BOARD_DIR=/usr/share/openocd/scripts/board
 # If you are using something else, look for a matching configuration file in
 # the OPENOCD_BOARD_DIR directory.
 #
-#OPENOCD_PROC_FILE=stm32f4discovery.cfg
-OPENOCD_PROC_FILE=st_nucleo_f4.cfg
+OPENOCD_PROC_FILE=stm32f4discovery.cfg
+#OPENOCD_PROC_FILE=st_nucleo_f4.cfg
 
 $OPENOCD -f $OPENOCD_BOARD_DIR/$OPENOCD_PROC_FILE -c "program $PROJ.elf verify reset exit"

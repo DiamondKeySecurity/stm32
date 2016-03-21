@@ -4,8 +4,8 @@ PROJ="${1?'project'}"
 
 OPENOCD=openocd
 OPENOCD_BOARD_DIR=/usr/share/openocd/scripts/board
-#OPENOCD_PROC_FILE=stm32f4discovery.cfg
-OPENOCD_PROC_FILE=st_nucleo_f4.cfg
+OPENOCD_PROC_FILE=stm32f4discovery.cfg
+#OPENOCD_PROC_FILE=st_nucleo_f4.cfg
 $OPENOCD -f $OPENOCD_BOARD_DIR/$OPENOCD_PROC_FILE &
 
 GDB=arm-none-eabi-gdb
