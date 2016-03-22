@@ -49,7 +49,7 @@ HAL_StatusTypeDef uart_send_char(uint8_t ch)
 /* receive a single character */
 HAL_StatusTypeDef uart_recv_char(uint8_t *cp)
 {
-    return HAL_UART_Receive(&huart2, cp, 1, 0x0);
+    return HAL_UART_Receive(&huart2, cp, 1, HAL_MAX_DELAY);
 }
 
 /* send a string */
