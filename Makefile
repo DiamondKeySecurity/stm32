@@ -1,4 +1,4 @@
-# Copyright (c) 2015, NORDUnet A/S
+# Copyright (c) 2015-2016, NORDUnet A/S
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,9 @@ SELF-TESTS = fmc-test led-test short-test uart-test fmc-perf
 vpath %.c self-test
 
 # apps originally written for unix-like environment
-LIBHAL-TESTS = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa test-rpc_server
+#LIBHAL-TESTS = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa
+#LIBHAL-TESTS = cores test-hash test-rpc_hash
+LIBHAL-TESTS = test-rpc_server
 vpath %.c libhal/tests libhal/utils
 
 # absolute path, because we're going to be passing -I cflags to sub-makes
@@ -67,8 +69,7 @@ CFLAGS  = -ggdb -O2 -Wall -Warray-bounds #-Wextra
 CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
-CFLAGS += -ffunction-sections -fdata-sections
-CFLAGS += -Wl,--gc-sections
+CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=c99
 CFLAGS += -I $(TOPLEVEL) -I $(STD_PERIPH_LIB)
 CFLAGS += -I $(STD_PERIPH_LIB)/CMSIS/Device/ST/STM32F4xx/Include
@@ -77,7 +78,8 @@ CFLAGS += -I $(STD_PERIPH_LIB)/STM32F4xx_HAL_Driver/Inc
 CFLAGS += -I libhal
 export CFLAGS
 
-all: lib self-test libhal-tests
+#all: lib self-test libhal-tests
+all: lib libhal-tests
 
 init:
 	git submodule update --init --recursive
@@ -92,6 +94,7 @@ thirdparty/libtfm/libtfm.a:
 
 libhal/libhal.a: thirdparty/libtfm/libtfm.a
 	$(MAKE) -C libhal IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=volatile libhal.a
+#	$(MAKE) -C libhal RPC_CLIENT=local IO_BUS=fmc KS=volatile libhal.a
 
 self-test: $(SELF-TESTS:=.elf)
 
