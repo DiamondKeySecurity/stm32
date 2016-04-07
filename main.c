@@ -57,5 +57,5 @@ int main(void)
     __main();
 
     uart_send_string("Done.\r\n\r\n");
-    return 0;
+    while(1);
 }
