@@ -1,7 +1,7 @@
 [submodule "libhal"]
-	path = libhal
+	path = libraries/libhal
 	url = git@git.cryptech.is:sw/libhal.git
 	branch = rpc
 [submodule "thirdparty/libtfm"]
-	path = thirdparty/libtfm
+	path = libraries/thirdparty/libtfm
 	url = git@git.cryptech.is:sw/thirdparty/libtfm.git
