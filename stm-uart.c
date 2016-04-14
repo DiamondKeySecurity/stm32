@@ -37,7 +37,6 @@
 
 #include <string.h>
 
-/* initialized in MX_USART2_UART_Init() in stm-init.c */
 UART_HandleTypeDef huart2;
 
 /* send a single character */

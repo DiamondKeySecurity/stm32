@@ -21,7 +21,7 @@ main()
 
   while (1)
   {
-    HAL_GPIO_TogglePin(LED_PORT, LED_RED);
+    HAL_GPIO_TogglePin(LED_PORT, LED_GREEN);
 
     uart_send_char(c);
     DELAY();

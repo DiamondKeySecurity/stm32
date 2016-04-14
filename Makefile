@@ -27,25 +27,29 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# absolute path, because we're going to be passing -I cflags to sub-makes
+# absolute path, because we're going to be passing things to sub-makes
 export TOPLEVEL = $(shell pwd)
 
-# Location of the Libraries folder from the STM32F0xx Standard Peripheral Library
-STD_PERIPH_LIB = $(TOPLEVEL)/Drivers
-export LIBS = $(STD_PERIPH_LIB)/libstmf4.a
+# Location of the Libraries folder from the STM32F4 Standard Peripheral Library
+MBED_DIR = $(TOPLEVEL)/libraries/mbed
+CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
+BOARD_DIR = $(CMSIS_DIR)/TARGET_CRYPTECH_DEV_BRIDGE
+RTOS_DIR = $(MBED_DIR)/rtos
+
+export LIBS = $(MBED_DIR)/libstmf4.a $(RTOS_DIR)/librtos.a
 
 # linker script
-export LDSCRIPT = $(TOPLEVEL)/Device/ldscripts/stm32f429bitx.ld
+export LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
 
 # board-specific objects, to link into every project
-export BOARD_OBJS = $(TOPLEVEL)/stm32f4xx_hal_msp.o \
-	$(TOPLEVEL)/stm32f4xx_it.o \
-	$(TOPLEVEL)/stm-fmc.o \
+export BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
+	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
 	$(TOPLEVEL)/syscalls.o \
-	$(TOPLEVEL)/Device/startup_stm32f429xx.o \
-	$(TOPLEVEL)/Device/system_stm32f4xx.o
+	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx.o \
+	$(BOARD_DIR)/system_stm32f4xx.o \
+	$(BOARD_DIR)/stm32f4xx_hal_msp.o
 
 # cross-building tools
 PREFIX=arm-none-eabi-
@@ -65,22 +69,38 @@ CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOO
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=c99
 CFLAGS += -I $(TOPLEVEL)
-CFLAGS += -I $(STD_PERIPH_LIB)
-CFLAGS += -I $(STD_PERIPH_LIB)/CMSIS/Device/ST/STM32F4xx/Include
-CFLAGS += -I $(STD_PERIPH_LIB)/CMSIS/Include
-CFLAGS += -I $(STD_PERIPH_LIB)/STM32F4xx_HAL_Driver/Inc
+CFLAGS += -I $(MBED_DIR)/api
+CFLAGS += -I $(MBED_DIR)/rtos/rtos
+CFLAGS += -I $(MBED_DIR)/rtos/rtx/TARGET_CORTEX_M
+CFLAGS += -I $(MBED_DIR)/targets/cmsis
+CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
+CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/TARGET_CRYPTECH_DEV_BRIDGE
+CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
+CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/TARGET_CRYPTECH_DEV_BRIDGE
 export CFLAGS
+
+%.o : %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o : %.S
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 all: board-test libhal-test
 
 init:
 	git submodule update --init --recursive
 
-$(STD_PERIPH_LIB)/libstmf4.a:
-	$(MAKE) -C $(STD_PERIPH_LIB)
+$(MBED_DIR)/libstmf4.a:
+	$(MAKE) -C $(MBED_DIR)
 
 board-test: $(BOARD_OBJS) $(LIBS)
 	$(MAKE) -C projects/board-test
+
+$(RTOS_DIR)/librtos.a:
+	$(MAKE) -C $(RTOS_DIR)
+
+rtos-test: $(RTOS_OBJS) $(LIBS)
+	$(MAKE) -C projects/rtos-test
 
 LIBS_DIR = $(TOPLEVEL)/libraries
 
@@ -101,14 +121,16 @@ libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
-.PHONY: board-test libhal-test
+.PHONY: board-test rtos-test libhal-test
 
 clean:
 	rm -f $(BOARD_OBJS)
 	$(MAKE) -C projects/board-test clean
+	$(MAKE) -C projects/rtos-test clean
 	$(MAKE) -C projects/libhal-test clean
 
 distclean: clean
-	$(MAKE) -C $(STD_PERIPH_LIB) clean
+	$(MAKE) -C $(MBED_DIR) clean
+	$(MAKE) -C $(RTOS_DIR) clean
 	$(MAKE) -C $(LIBHAL_DIR) clean
 	$(MAKE) -C $(LIBTFM_DIR) clean

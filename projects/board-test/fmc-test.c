@@ -2,6 +2,34 @@
 // main.c
 //------------------------------------------------------------------------------
 
+/*
+ This requires a special bitstream with a special test register.
+ See core/platform/novena/fmc/rtl/novena_fmc_top.v, sections marked
+ `ifdef test:
+   //----------------------------------------------------------------
+   // Dummy Register
+   //
+   // General-purpose register to test FMC interface using STM32
+   // demo program instead of core selector logic.
+   //
+   // This register is a bit tricky, but it allows testing of both
+   // data and address buses. Reading from FPGA will always return
+   // value, which is currently stored in the test register, 
+   // regardless of read transaction address. Writing to FPGA has
+   // two variants: a) writing to address 0 will store output data
+   // data value in the test register, b) writing to any non-zero
+   // address will store _address_ of write transaction in the test
+   // register.
+   //
+   // To test data bus, write some different patterns to address 0,
+   // then readback from any address and compare.
+   //
+   // To test address bus, write anything to some different non-zero
+   // addresses, then readback from any address and compare returned
+   // value with previously written address.
+   //
+   //----------------------------------------------------------------
+ */
 
 //------------------------------------------------------------------------------
 // Headers
