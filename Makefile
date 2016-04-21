@@ -30,11 +30,17 @@
 # absolute path, because we're going to be passing things to sub-makes
 export TOPLEVEL = $(shell pwd)
 
+# define board: dev-bridge or alpha
+BOARD = TARGET_CRYPTECH_DEV_BRIDGE
+
 # Location of the Libraries folder from the STM32F4 Standard Peripheral Library
-MBED_DIR = $(TOPLEVEL)/libraries/mbed
+LIBS_DIR = $(TOPLEVEL)/libraries
+MBED_DIR = $(LIBS_DIR)/mbed
 CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
-BOARD_DIR = $(CMSIS_DIR)/TARGET_CRYPTECH_DEV_BRIDGE
+BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
 RTOS_DIR = $(MBED_DIR)/rtos
+export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
+export LIBHAL_DIR = $(LIBS_DIR)/libhal
 
 export LIBS = $(MBED_DIR)/libstmf4.a $(RTOS_DIR)/librtos.a
 
@@ -65,7 +71,7 @@ CFLAGS  = -ggdb -O2 -Wall -Warray-bounds #-Wextra
 CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
-CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOOLCHAIN_GCC -D__FPU_PRESENT=1
+CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOOLCHAIN_GCC -D__FPU_PRESENT=1 -D$(BOARD)
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=c99
 CFLAGS += -I $(TOPLEVEL)
@@ -74,9 +80,9 @@ CFLAGS += -I $(MBED_DIR)/rtos/rtos
 CFLAGS += -I $(MBED_DIR)/rtos/rtx/TARGET_CORTEX_M
 CFLAGS += -I $(MBED_DIR)/targets/cmsis
 CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
-CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/TARGET_CRYPTECH_DEV_BRIDGE
+CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
 CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
-CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/TARGET_CRYPTECH_DEV_BRIDGE
+CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
 export CFLAGS
 
 %.o : %.c
@@ -85,7 +91,7 @@ export CFLAGS
 %.o : %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-all: board-test libhal-test
+all: board-test libhal-test hsm
 
 init:
 	git submodule update --init --recursive
@@ -102,14 +108,8 @@ $(RTOS_DIR)/librtos.a:
 rtos-test: $(RTOS_OBJS) $(LIBS)
 	$(MAKE) -C projects/rtos-test
 
-LIBS_DIR = $(TOPLEVEL)/libraries
-
-export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
-
 $(LIBTFM_DIR)/libtfm.a:
 	$(MAKE) -C $(LIBTFM_DIR) PREFIX=$(PREFIX)
-
-export LIBHAL_DIR = $(LIBS_DIR)/libhal
 
 $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
 #	$(MAKE) -C $(LIBHAL_DIR) RPC_CLIENT=local IO_BUS=fmc KS=volatile libhal.a
@@ -117,6 +117,9 @@ $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
 
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/libhal-test
+
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
+	$(MAKE) -C projects/hsm
 
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
@@ -128,6 +131,7 @@ clean:
 	$(MAKE) -C projects/board-test clean
 	$(MAKE) -C projects/rtos-test clean
 	$(MAKE) -C projects/libhal-test clean
+	$(MAKE) -C projects/hsm clean
 
 distclean: clean
 	$(MAKE) -C $(MBED_DIR) clean
