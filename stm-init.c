@@ -78,8 +78,6 @@ void stm_init(void)
 /* USART2 init function */
 static void MX_USART2_UART_Init(void)
 {
-  extern UART_HandleTypeDef huart2;
-
   huart2.Instance = USART2;
   huart2.Init.BaudRate = USART2_BAUD_RATE;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;

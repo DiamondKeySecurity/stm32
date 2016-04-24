@@ -14,7 +14,6 @@ $(PROJ).elf: $(OBJS) $(BOARD_OBJS) $(LIBS)
 	$(CC) $(CFLAGS) $^ -o $@ -T$(LDSCRIPT) -g -Wl,-Map=$(PROJ).map
 	$(OBJCOPY) -O ihex $(PROJ).elf $(PROJ).hex
 	$(OBJCOPY) -O binary $(PROJ).elf $(PROJ).bin
-	$(OBJDUMP) -St $(PROJ).elf >$(PROJ).lst
 	$(SIZE) $(PROJ).elf
 
 clean:
@@ -23,4 +22,3 @@ clean:
 	rm -f *.hex
 	rm -f *.bin
 	rm -f *.map
-	rm -f *.lst

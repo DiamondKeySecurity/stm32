@@ -39,6 +39,8 @@
 
 #define USART2_BAUD_RATE	115200
 
+extern UART_HandleTypeDef huart2;
+
 extern HAL_StatusTypeDef uart_send_char(uint8_t ch);
 extern HAL_StatusTypeDef uart_recv_char(uint8_t *cp);
 extern HAL_StatusTypeDef uart_send_string(char *s);
