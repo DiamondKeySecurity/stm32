@@ -169,7 +169,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
-  __GPIOJ_CLK_ENABLE();
+  __GPIOK_CLK_ENABLE();
 
   /* Configure LED GPIO pins PJ1==red, PJ2==yellow, PJ3==green, PJ4==blue */
   GPIO_InitStruct.Pin = LED_RED | LED_YELLOW | LED_GREEN | LED_BLUE;

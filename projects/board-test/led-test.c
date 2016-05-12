@@ -7,6 +7,14 @@
 
 #define DELAY() HAL_Delay(125)
 
+/*
+ * PK4 = ARM_LED1 - GREEN
+ * PK5 = ARM_LED2 - RED
+ * PK6 = ARM_LED3 - BLUE
+ ' PK7 = ARM_LED4 - YELLOW
+ */
+
+
 void toggle_led(uint32_t times, uint32_t led_pin)
 {
   uint32_t i;
