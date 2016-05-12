@@ -31,7 +31,7 @@
 export TOPLEVEL = $(shell pwd)
 
 # define board: dev-bridge or alpha
-BOARD = TARGET_CRYPTECH_DEV_BRIDGE
+BOARD = TARGET_CRYPTECH_ALPHA
 
 # Location of the Libraries folder from the STM32F4 Standard Peripheral Library
 LIBS_DIR = $(TOPLEVEL)/libraries
