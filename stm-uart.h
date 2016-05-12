@@ -37,12 +37,23 @@
 
 #include "stm32f4xx_hal.h"
 
+#define USART1_BAUD_RATE	115200
 #define USART2_BAUD_RATE	115200
 
+enum stm_uart_port {
+  STM_UART_USER,
+  STM_UART_MGMT
+};
+
+extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 
 extern HAL_StatusTypeDef uart_send_char(uint8_t ch);
 extern HAL_StatusTypeDef uart_recv_char(uint8_t *cp);
+
+extern HAL_StatusTypeDef uart_send_char2(enum stm_uart_port port, uint8_t ch);
+extern HAL_StatusTypeDef uart_recv_char2(enum stm_uart_port port, uint8_t *cp, uint32_t timeout);
+
 extern HAL_StatusTypeDef uart_send_string(char *s);
 extern HAL_StatusTypeDef uart_send_number(uint32_t num, uint8_t digits, uint8_t radix);
 #define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)

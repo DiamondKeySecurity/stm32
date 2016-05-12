@@ -52,6 +52,7 @@
 static void MX_GPIO_Init(void);
 #endif
 #ifdef HAL_UART_MODULE_ENABLED
+static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 #endif
 
@@ -70,11 +71,29 @@ void stm_init(void)
   MX_GPIO_Init();
 #endif
 #ifdef HAL_UART_MODULE_ENABLED
+  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
 #endif
 }
 
 #ifdef HAL_UART_MODULE_ENABLED
+/* USART1 init function */
+static void MX_USART1_UART_Init(void)
+{
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = USART1_BAUD_RATE;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+
+  if (HAL_UART_Init(&huart1) != HAL_OK) {
+    /* Initialization Error */
+    Error_Handler();
+  }
+}
 /* USART2 init function */
 static void MX_USART2_UART_Init(void)
 {

@@ -37,6 +37,7 @@
 
 #include <string.h>
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* send a single character */
@@ -45,10 +46,31 @@ HAL_StatusTypeDef uart_send_char(uint8_t ch)
     return HAL_UART_Transmit(&huart2, &ch, 1, 0x1);
 }
 
+HAL_StatusTypeDef uart_send_char2(enum stm_uart_port port, uint8_t ch)
+{
+    if (port == STM_UART_USER) {
+      return HAL_UART_Transmit(&huart2, &ch, 1, 0x1);
+    } else if (port == STM_UART_MGMT) {
+      return HAL_UART_Transmit(&huart1, &ch, 1, 0x1);
+    }
+    return HAL_ERROR;
+}
+
 /* receive a single character */
 HAL_StatusTypeDef uart_recv_char(uint8_t *cp)
 {
     return HAL_UART_Receive(&huart2, cp, 1, HAL_MAX_DELAY);
+}
+
+/* receive a single character */
+HAL_StatusTypeDef uart_recv_char2(enum stm_uart_port port, uint8_t *cp, uint32_t timeout)
+{
+    if (port == STM_UART_USER) {
+      return HAL_UART_Receive(&huart2, cp, 1, timeout);
+    } else if (port == STM_UART_MGMT) {
+      return HAL_UART_Receive(&huart1, cp, 1, timeout);
+    }
+    return HAL_ERROR;
 }
 
 /* send a string */
