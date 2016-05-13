@@ -37,8 +37,8 @@
 
 #include <string.h>
 
-UART_HandleTypeDef huart1;
-UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart_mgmt;
+UART_HandleTypeDef huart_user;
 
 #define DEFAULT_UART STM_UART_USER
 
@@ -46,9 +46,9 @@ UART_HandleTypeDef huart2;
 inline UART_HandleTypeDef *_which_uart(enum stm_uart_port port)
 {
     if (port == STM_UART_USER) {
-        return &huart2;
+        return &huart_user;
     } else if (port == STM_UART_MGMT) {
-        return &huart1;
+        return &huart_mgmt;
     }
 
     return NULL;
