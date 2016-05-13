@@ -16,36 +16,34 @@
 int
 main()
 {
-  uint8_t tx = 'A';
-  uint8_t rx = 0;
-  uint8_t upper = 0;
+    uint8_t crlf[] = "\r\n";
+    uint8_t tx = 'A';
+    uint8_t rx = 0;
+    uint8_t upper = 0;
 
-  stm_init();
+    stm_init();
 
-  while (1)
-  {
-    led_toggle(LED_GREEN);
+    while (1) {
+	led_toggle(LED_GREEN);
 
-    uart_send_char2(STM_UART_USER, tx + upper);
-    uart_send_char2(STM_UART_MGMT, tx + upper);
-    DELAY();
+	uart_send_char2(STM_UART_USER, tx + upper);
+	uart_send_char2(STM_UART_MGMT, tx + upper);
+	DELAY();
 
-    if (uart_recv_char2(STM_UART_USER, &rx, 0) == HAL_OK ||
-	uart_recv_char2(STM_UART_MGMT, &rx, 0) == HAL_OK) {
-        led_toggle(LED_YELLOW);
-        if (rx == '\r') {
-	  upper = upper == 0 ? ('a' - 'A'):0;
+	if (uart_recv_char2(STM_UART_USER, &rx, 0) == HAL_OK ||
+	    uart_recv_char2(STM_UART_MGMT, &rx, 0) == HAL_OK) {
+	    led_toggle(LED_YELLOW);
+	    if (rx == '\r') {
+		upper = upper == 0 ? ('a' - 'A'):0;
+	    }
+	}
+
+	if (tx++ == 'Z') {
+	    /* linefeed after each alphabet */
+	    uart_send_string2(STM_UART_USER, crlf);
+	    uart_send_string2(STM_UART_MGMT, crlf);
+	    tx = 'A';
+	    led_toggle(LED_BLUE);
 	}
     }
-
-    if (tx++ == 'Z') {
-      /* linefeed after each alphabet */
-      uart_send_char2(STM_UART_USER, '\r');
-      uart_send_char2(STM_UART_USER, '\n');
-      uart_send_char2(STM_UART_MGMT, '\r');
-      uart_send_char2(STM_UART_MGMT, '\n');
-      tx = 'A';
-      led_toggle(LED_BLUE);
-    }
-  }
 }
