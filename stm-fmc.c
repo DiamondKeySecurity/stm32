@@ -44,7 +44,7 @@
 // Defined Values
 //------------------------------------------------------------------------------
 #define FMC_FPGA_BASE_ADDR              0x60000000
-#define FMC_FPGA_ADDR_MASK              0x00FFFFFC
+#define FMC_FPGA_ADDR_MASK              0x03FFFFFC  // there are 26 physical lines, but "only" 24 usable for now
 #define FMC_FPGA_NWAIT_MAX_POLL_TICKS   10
 
 #define FMC_GPIO_PORT_NWAIT             GPIOD
@@ -213,7 +213,7 @@ static void _fmc_init_gpio(void)
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   // Port E
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7
     |GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
     |GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;

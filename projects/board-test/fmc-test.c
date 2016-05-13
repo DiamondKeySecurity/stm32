@@ -90,7 +90,7 @@ int main(void)
 
   // Blink blue LED for six seconds to not upset the Novena at boot.
   led_on(LED_BLUE);
-  for (i = 0; i < 12; i++) {
+  for (i = 0; i < 4; i++) {
     HAL_Delay(500);
     led_toggle(LED_BLUE);
   }
@@ -130,7 +130,7 @@ int main(void)
 	led_toggle(LED_YELLOW);
 
 	successful_runs++;
-	sleep = 100;
+	sleep = 0;
       } else {
 	led_on(LED_RED);
 	failed_runs++;
@@ -192,6 +192,16 @@ int test_fpga_data_bus(void)
 	}
     }
 
+  data_diff = buf;
+  data_diff ^= rnd;
+
+  uart_send_string("Sample of data bus test data: expected ");
+  uart_send_binary(rnd, 32);
+  uart_send_string(", got ");
+  uart_send_binary(buf, 32);
+  uart_send_string(", diff ");
+  uart_send_binary(data_diff, 32);
+  uart_send_string("\r\n");
   // return number of successful tests
   return c;
 }
@@ -213,9 +223,10 @@ int test_fpga_address_bus(void)
       hal_result = HAL_RNG_GenerateRandomNumber(&rng_inst, &rnd);
       if (hal_result != HAL_OK) break;
 
-      // we only have 2^22 32-bit words
-      //rnd &= 0x00FFFFFC;
-      rnd &= 0x0007FFFC;
+      // there are 26 physicaly connected address lines on the alpha,
+      // but "only" 24 usable for now (the top two ones are used by FMC
+      // to choose bank, and we only have one bank set up currently)
+      rnd &= 0x3fffffc;
 
       // don't test zero addresses (fpga will store data, not address)
       if (rnd == 0) continue;
@@ -249,6 +260,17 @@ int test_fpga_address_bus(void)
 	  break;
 	}
     }
+
+  addr_diff = buf;
+  addr_diff ^= rnd;
+
+  uart_send_string("Sample of addr bus test data: expected ");
+  uart_send_binary(rnd, 32);
+  uart_send_string(", got ");
+  uart_send_binary(buf, 32);
+  uart_send_string(", diff ");
+  uart_send_binary(addr_diff, 32);
+  uart_send_string("\r\n");
 
   return c;
 }
