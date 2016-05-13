@@ -91,7 +91,7 @@ export CFLAGS
 %.o : %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-all: board-test libhal-test hsm
+all: board-test cli-test libhal-test hsm
 
 init:
 	git submodule update --init --recursive
@@ -101,6 +101,9 @@ $(MBED_DIR)/libstmf4.a:
 
 board-test: $(BOARD_OBJS) $(LIBS)
 	$(MAKE) -C projects/board-test
+
+cli-test: $(BOARD_OBJS) $(LIBS)
+	$(MAKE) -C projects/cli-test
 
 $(RTOS_DIR)/librtos.a:
 	$(MAKE) -C $(RTOS_DIR)
