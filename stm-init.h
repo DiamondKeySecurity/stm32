@@ -43,6 +43,4 @@ extern void Error_Handler(void);
 
 #define HAL_Delay osDelay
 
-#define CRYPTECH_USE_HSE_CLOCK
-
 #endif /* __STM_INIT_H */
