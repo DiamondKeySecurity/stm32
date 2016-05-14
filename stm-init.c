@@ -82,7 +82,7 @@ void stm_init(void)
 static void MX_USART1_UART_Init(void)
 {
   huart_mgmt.Instance = USART1;
-  huart_mgmt.Init.BaudRate = USART1_BAUD_RATE;
+  huart_mgmt.Init.BaudRate = USART_MGMT_BAUD_RATE;
   huart_mgmt.Init.WordLength = UART_WORDLENGTH_8B;
   huart_mgmt.Init.StopBits = UART_STOPBITS_1;
   huart_mgmt.Init.Parity = UART_PARITY_NONE;
@@ -99,7 +99,7 @@ static void MX_USART1_UART_Init(void)
 static void MX_USART2_UART_Init(void)
 {
   huart_user.Instance = USART2;
-  huart_user.Init.BaudRate = USART2_BAUD_RATE;
+  huart_user.Init.BaudRate = USART_USER_BAUD_RATE;
   huart_user.Init.WordLength = UART_WORDLENGTH_8B;
   huart_user.Init.StopBits = UART_STOPBITS_1;
   huart_user.Init.Parity = UART_PARITY_NONE;
