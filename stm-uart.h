@@ -37,8 +37,8 @@
 
 #include "stm32f4xx_hal.h"
 
-#define USART_MGMT_BAUD_RATE	9600
-#define USART_USER_BAUD_RATE	9600
+#define USART_MGMT_BAUD_RATE	115200
+#define USART_USER_BAUD_RATE	115200
 
 enum stm_uart_port {
   STM_UART_USER,
@@ -61,6 +61,7 @@ extern HAL_StatusTypeDef uart_send_string2(enum stm_uart_port port, const char *
 extern HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8_t digits, uint8_t radix);
 
 extern HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t len);
+extern HAL_StatusTypeDef uart_receive_bytes(enum stm_uart_port port, uint8_t *buf, size_t len, uint32_t timeout);
 
 #define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)
 #define uart_send_integer(num, digits) uart_send_number(num, digits, 10)

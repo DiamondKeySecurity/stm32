@@ -1,0 +1,89 @@
+#!/usr/bin/python
+
+import os
+import sys
+import time
+import struct
+import serial
+
+from binascii import crc32
+
+
+def _write(dst, data):
+    dst.write(data)
+    if len(data) == 4:
+        print("Wrote 0x{:02x}{:02x}{:02x}{:02x}".format(ord(data[0]), ord(data[1]), ord(data[2]), ord(data[3])))
+    else:
+        print("Wrote {!r}".format(data))
+
+
+def _read(dst):
+    res = ''
+    while True:
+        x = dst.read(1)
+        if not x:
+            break
+        res += x
+    print ("Read {!r}".format(res))
+    return res
+
+
+def _execute(dst, cmd):
+    _write(dst, '\r')
+    prompt = _read(dst)
+    if prompt.endswith('Username: '):
+        _write(dst, 'ct\r')
+        prompt = _read(dst)
+    if prompt.endswith('Password: '):
+        _write(dst, 'ct\r')
+        prompt = _read(dst)
+    if not prompt.endswith('> '):
+        sys.stderr.write('Device does not seem to be ready for a file transfer (got {!r})\n'.format(prompt))
+        return False
+    _write(dst, cmd + '\r')
+    response = _read(dst)
+    return response
+
+def send_file(filename, device='/dev/ttyUSB0', initiate=True):
+    s = os.stat(filename)
+    size = s.st_size
+    src = open(filename, 'rb')
+
+    dst = serial.Serial(device, 115200, timeout=0.5)
+
+    if initiate:
+        response = _execute(dst, 'filetransfer')
+        if 'OK' not in response:
+            sys.stderr.write('Device did not accept the filetransfer command (got {!r})\n'.format(response))
+            return False
+
+    # 1. Write size of file (4 bytes)
+    _write(dst, struct.pack('<I', size))
+    _read(dst)
+    # 2. Write file contents while calculating CRC-32
+    crc = 0
+    while True:
+        data = src.read(1024)
+        if not data:
+            break
+        dst.write(data)
+        print("Wrote {!s} bytes".format(len(data)))
+        crc = crc32(data, crc) & 0xffffffff
+    # 3. Write CRC-32 (4 bytes)
+    _write(dst, struct.pack('<I', crc))
+    _read(dst)
+
+    src.close()
+    dst.close()
+    return True
+
+
+if len(sys.argv) != 2:
+    sys.stderr.write('Syntax: {!s} filename\n'.format(sys.argv[0]))
+    sys.exit(1)
+
+if send_file(sys.argv[1]):
+    sys.exit(0)
+
+sys.exit(1)
+

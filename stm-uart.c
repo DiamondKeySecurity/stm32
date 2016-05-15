@@ -115,6 +115,17 @@ HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t 
     return HAL_ERROR;
 }
 
+/* receive raw bytes */
+HAL_StatusTypeDef uart_receive_bytes(enum stm_uart_port port, uint8_t *buf, size_t len, uint32_t timeout)
+{
+    UART_HandleTypeDef *uart = _which_uart(port);
+
+    if (uart)
+        return HAL_UART_Receive(uart, (uint8_t *) buf, (uint32_t) len, timeout);
+
+    return HAL_ERROR;
+}
+
 /* Generalized routine to send binary, decimal, and hex integers.
  * This code is adapted from Chris Giese's printf.c
  */

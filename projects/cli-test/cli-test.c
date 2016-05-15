@@ -12,14 +12,6 @@
 
 #define DELAY() HAL_Delay(250)
 
-int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    volatile uint32_t hclk;
-
-    hclk = HAL_RCC_GetHCLKFreq();
-    cli_print(cli, "HCLK: %li (%i MHz)", hclk, (int) hclk / 1000 / 1000);
-    return CLI_OK;
-}
 
 void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
 {
@@ -40,6 +32,50 @@ int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf
 {
     uart_send_bytes(STM_UART_MGMT, (uint8_t *) buf, count);
     return (int) count;
+}
+
+int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    volatile uint32_t hclk;
+
+    hclk = HAL_RCC_GetHCLKFreq();
+    cli_print(cli, "HSE_VALUE:       %li", HSE_VALUE);
+    cli_print(cli, "HCLK:            %li (%i MHz)", hclk, (int) hclk / 1000 / 1000);
+    cli_print(cli, "SystemCoreClock: %li (%i MHz)", SystemCoreClock, (int) SystemCoreClock / 1000 / 1000);
+    return CLI_OK;
+}
+
+extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
+
+int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 4;
+    uint8_t buf[4];
+
+    cli_print(cli, "OK, write file size (4 bytes), data, CRC-32 (4 bytes)");
+
+    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
+    cli_print(cli, "Filesize %li", filesize);
+
+    while (filesize) {
+	if (filesize < n) {
+	    n = filesize;
+	}
+
+	uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000);
+	filesize -= n;
+	my_crc = update_crc(my_crc, buf, n);
+    }
+
+    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
+    cli_print(cli, "CRC-32 %li", crc);
+    if (crc == my_crc) {
+	cli_print(cli, "CRC checksum MATCHED");
+    } else {
+	cli_print(cli, "CRC checksum did NOT match");
+    }
+
+    return CLI_OK;
 }
 
 int embedded_cli_loop(struct cli_def *cli)
@@ -109,6 +145,9 @@ main()
     struct cli_command cmd_show_cpuspeed_s = {(char *) "cpuspeed", cmd_show_cpuspeed, 0,
                                              (char *) "Show the speed at which the CPU currently operates",
                                              PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_filetransfer_s = {(char *) "filetransfer", cmd_filetransfer, 0,
+                                             (char *) "Test file transfering",
+                                             PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
 
     char crlf[] = "\r\n";
     uint8_t tx = 'A';
@@ -133,6 +172,8 @@ main()
 
     cli_register_command2(&cli, &cmd_show_s, NULL);
     cli_register_command2(&cli, &cmd_show_cpuspeed_s, &cmd_show_s);
+
+    cli_register_command2(&cli, &cmd_filetransfer_s, NULL);
 
     HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LED_PORT, LED_GREEN, GPIO_PIN_SET);
