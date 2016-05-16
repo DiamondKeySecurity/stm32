@@ -1,4 +1,4 @@
-TEST = led-test short-test uart-test fmc-test fmc-perf fmc-probe
+TEST = led-test short-test uart-test fmc-test fmc-perf fmc-probe rtc-test
 
 all: $(TEST:=.elf)
 

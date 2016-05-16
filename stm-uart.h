@@ -63,6 +63,9 @@ extern HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num
 extern HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t len);
 extern HAL_StatusTypeDef uart_receive_bytes(enum stm_uart_port port, uint8_t *buf, size_t len, uint32_t timeout);
 
+extern HAL_StatusTypeDef uart_send_hexdump(enum stm_uart_port port, const uint8_t *buf,
+					   const uint8_t start_offset, const uint8_t end_offset);
+
 #define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)
 #define uart_send_integer(num, digits) uart_send_number(num, digits, 10)
 #define uart_send_hex(num, digits)     uart_send_number(num, digits, 16)

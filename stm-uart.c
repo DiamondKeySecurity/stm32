@@ -165,3 +165,26 @@ HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8
 
     return HAL_UART_Transmit(uart, (uint8_t *) where, digits, 0x1);
 }
+
+HAL_StatusTypeDef uart_send_hexdump(enum stm_uart_port port, const uint8_t *buf,
+				    const uint8_t start_offset, const uint8_t end_offset)
+{
+    uint32_t i;
+
+    uart_send_string2(port, "00 -- ");
+
+    for (i = 0; i <= end_offset; i++) {
+	if (i && (! (i % 16))) {
+	    uart_send_string2(port, "\r\n");
+
+	    if (i != end_offset) {
+		/* Output new offset unless the last byte is reached */
+		uart_send_number2(port, i, 2, 16);
+		uart_send_string2(port, " -- ");
+	    }
+	}
+
+	uart_send_number2(port, *(buf + i), 2, 16);
+	uart_send_string2(port, " ");
+    }
+}

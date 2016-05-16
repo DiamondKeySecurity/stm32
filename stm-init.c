@@ -44,6 +44,9 @@
 #ifdef HAL_UART_MODULE_ENABLED
 #include "stm-uart.h"
 #endif
+#ifdef HAL_I2C_MODULE_ENABLED
+#include "stm-rtc.h"
+#endif
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -54,6 +57,9 @@ static void MX_GPIO_Init(void);
 #ifdef HAL_UART_MODULE_ENABLED
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
+#endif
+#ifdef HAL_I2C_MODULE_ENABLED
+static void MX_I2C2_Init(void);
 #endif
 
 void stm_init(void)
@@ -73,6 +79,9 @@ void stm_init(void)
 #ifdef HAL_UART_MODULE_ENABLED
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+#endif
+#ifdef HAL_I2C_MODULE_ENABLED
+  MX_I2C2_Init();
 #endif
 }
 
@@ -135,6 +144,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+}
+#endif
+
+#ifdef HAL_I2C_MODULE_ENABLED
+/* I2C2 init function (external RTC chip) */
+void MX_I2C2_Init(void)
+{
+    hi2c_rtc.Instance = I2C2;
+    hi2c_rtc.Init.ClockSpeed = 10000;
+    hi2c_rtc.Init.DutyCycle = I2C_DUTYCYCLE_2;
+    hi2c_rtc.Init.OwnAddress1 = 0;  /* Will operate as Master */
+    hi2c_rtc.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+    hi2c_rtc.Init.DualAddressMode = I2C_DUALADDRESS_DISABLED;
+    hi2c_rtc.Init.OwnAddress2 = 0;
+    hi2c_rtc.Init.GeneralCallMode = I2C_GENERALCALL_DISABLED;
+    hi2c_rtc.Init.NoStretchMode = I2C_NOSTRETCH_DISABLED;
+
+    if (HAL_I2C_Init(&hi2c_rtc) != HAL_OK) {
+	Error_Handler();
+    }
 }
 #endif
 

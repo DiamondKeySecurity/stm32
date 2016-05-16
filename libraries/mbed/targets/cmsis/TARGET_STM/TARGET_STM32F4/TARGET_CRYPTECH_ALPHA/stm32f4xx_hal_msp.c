@@ -47,7 +47,7 @@ void HAL_MspInit(void)
 
   /* USER CODE END MspInit 0 */
 
-  /* XXX 
+  /* XXX
    * Fredrik's HAL_MspInit sets this to NVIC_PRIORITYGROUP_4 (as just
    * happened in HAL_Init), but then he resets it to NVIC_PRIORITYGROUP_0
    * in stm_init. */
@@ -176,5 +176,38 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     HAL_NVIC_DisableIRQ(USART2_IRQn);
   }
 }
+
+void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+    if (hi2c->Instance == I2C2) {
+	/*
+	 * I2C2 GPIO Configuration
+	 * PH5     ------> I2C2_SDA
+	 * PH4     ------> I2C2_SCL
+	*/
+	__GPIOH_CLK_ENABLE();
+
+	GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_5;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+	HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
+
+	/* Peripheral clock enable */
+	__I2C2_CLK_ENABLE();
+    }
+
+}
+
+void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
+{
+    if(hi2c->Instance == I2C2) {
+	__I2C2_CLK_DISABLE();
+	HAL_GPIO_DeInit(GPIOH, GPIO_PIN_4 | GPIO_PIN_5);
+    }
+}
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

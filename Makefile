@@ -52,6 +52,7 @@ export BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
 	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
+	$(TOPLEVEL)/stm-rtc.o \
 	$(TOPLEVEL)/syscalls.o \
 	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx.o \
 	$(BOARD_DIR)/system_stm32f4xx.o \
@@ -127,7 +128,7 @@ hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
-.PHONY: board-test rtos-test libhal-test
+.PHONY: board-test rtos-test libhal-test cli-test
 
 clean:
 	rm -f $(BOARD_OBJS)
