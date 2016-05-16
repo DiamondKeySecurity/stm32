@@ -10,7 +10,9 @@ from binascii import crc32
 
 
 def _write(dst, data):
-    dst.write(data)
+    for i in range(len(data)):
+        dst.write(data[i])
+        time.sleep(0.1)
     if len(data) == 4:
         print("Wrote 0x{:02x}{:02x}{:02x}{:02x}".format(ord(data[0]), ord(data[1]), ord(data[2]), ord(data[3])))
     else:
@@ -49,7 +51,7 @@ def send_file(filename, device='/dev/ttyUSB0', initiate=True):
     size = s.st_size
     src = open(filename, 'rb')
 
-    dst = serial.Serial(device, 115200, timeout=0.5)
+    dst = serial.Serial(device, 921600, timeout=1)
 
     if initiate:
         response = _execute(dst, 'filetransfer')

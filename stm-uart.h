@@ -37,8 +37,8 @@
 
 #include "stm32f4xx_hal.h"
 
-#define USART_MGMT_BAUD_RATE	115200
-#define USART_USER_BAUD_RATE	115200
+#define USART_MGMT_BAUD_RATE	921600
+#define USART_USER_BAUD_RATE	921600
 
 enum stm_uart_port {
   STM_UART_USER,
