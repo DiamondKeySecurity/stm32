@@ -1,6 +1,6 @@
 TEST = cli-test
 
-OBJS = crc32.o
+OBJS = crc32.o mgmt-cli.o
 
 CFLAGS += -I$(LIBCLI_DIR)
 LIBS += $(LIBCLI_DIR)/libcli.a

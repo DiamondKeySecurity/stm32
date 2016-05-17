@@ -1,38 +1,47 @@
 /*
+ * cli-test.c
+ * ---------
  * Test code with a small CLI on the management interface
  *
+ * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the NORDUnet nor the names of its contributors may
+ *   be used to endorse or promote products derived from this software
+ *   without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-uart.h"
+#include "mgmt-cli.h"
 
 #include <string.h>
-#include <libcli.h>
-
-#define DELAY() HAL_Delay(250)
 
 
-void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
-{
-    char crlf[] = "\r\n";
-    uart_send_string2(STM_UART_MGMT, buf);
-    uart_send_string2(STM_UART_MGMT, crlf);
-}
+extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
-int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
-{
-    if (uart_recv_char2(STM_UART_MGMT, buf, count) != HAL_OK) {
-	return -1;
-    }
-    return 1;
-}
-
-int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count)
-{
-    uart_send_bytes(STM_UART_MGMT, (uint8_t *) buf, count);
-    return (int) count;
-}
 
 int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
@@ -44,8 +53,6 @@ int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], in
     cli_print(cli, "SystemCoreClock: %li (%i MHz)", SystemCoreClock, (int) SystemCoreClock / 1000 / 1000);
     return CLI_OK;
 }
-
-extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
 int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
@@ -82,58 +89,9 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
 
 int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    cli_print(cli, "\n\n\nRebooting\n\n\n");
     HAL_NVIC_SystemReset();
-}
-
-int embedded_cli_loop(struct cli_def *cli)
-{
-    unsigned char c;
-    int n = 0;
-    static struct cli_loop_ctx ctx;
-
-    memset(&ctx, 0, sizeof(ctx));
-    ctx.insertmode = 1;
-
-    cli->state = CLI_STATE_LOGIN;
-
-    /* start off in unprivileged mode */
-    cli_set_privilege(cli, PRIVILEGE_UNPRIVILEGED);
-    cli_set_configmode(cli, MODE_EXEC, NULL);
-
-    cli_error(cli, "%s", cli->banner);
-
-    while (1) {
-	cli_loop_start_new_command(cli, &ctx);
-	HAL_GPIO_TogglePin(LED_PORT, LED_YELLOW);
-
-	while (1) {
-	    HAL_GPIO_TogglePin(LED_PORT, LED_BLUE);
-
-	    cli_loop_show_prompt(cli, &ctx);
-
-	    n = cli_loop_read_next_char(cli, &ctx, &c);
-	    //cli_print(cli, "Next char: '%c' (n == %i)", c, n);
-	    if (n == CLI_LOOP_CTRL_BREAK)
-		break;
-	    if (n == CLI_LOOP_CTRL_CONTINUE)
-		continue;
-
-	    n = cli_loop_process_char(cli, &ctx, c);
-	    if (n == CLI_LOOP_CTRL_BREAK)
-		break;
-	    if (n == CLI_LOOP_CTRL_CONTINUE)
-		continue;
-	}
-
-	if (ctx.l < 0) break;
-
-	//cli_print(cli, "Process command: '%s'", ctx.cmd);
-	n = cli_loop_process_cmd(cli, &ctx);
-	if (n == CLI_LOOP_CTRL_BREAK)
-	    break;
-    }
-
-    return CLI_OK;
+    while (1) {};
 }
 
 int check_auth(const char *username, const char *password)
@@ -148,6 +106,8 @@ int check_auth(const char *username, const char *password)
 int
 main()
 {
+    int i;
+    static struct cli_def cli;
     struct cli_command cmd_show_s = {(char *) "show", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
     struct cli_command cmd_show_cpuspeed_s = {(char *) "cpuspeed", cmd_show_cpuspeed, 0,
                                              (char *) "Show the speed at which the CPU currently operates",
@@ -159,26 +119,13 @@ main()
 				       (char *) "Reboot the STM32",
 				       PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
 
-    char crlf[] = "\r\n";
-    uint8_t tx = 'A';
-    uint8_t rx = 0;
-    uint8_t upper = 0;
-    struct cli_def cli;
-
-    memset(&cli, 0, sizeof(cli));
-
     stm_init();
 
-    HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_SET);
+    led_on(LED_RED);
 
-    cli_init(&cli);
-    cli_read_callback(&cli, uart_cli_read);
-    cli_write_callback(&cli, uart_cli_write);
-    cli_print_callback(&cli, uart_cli_print);
-    cli_set_banner(&cli, "libcli on an STM32");
-    cli_set_hostname(&cli, "cryptech");
+    mgmt_cli_init(&cli);
+    led_on(LED_YELLOW);
     cli_set_auth_callback(&cli, check_auth);
-    cli_telnet_protocol(&cli, 0);
 
     cli_register_command2(&cli, &cmd_show_s, NULL);
     cli_register_command2(&cli, &cmd_show_cpuspeed_s, &cmd_show_s);
@@ -187,32 +134,15 @@ main()
 
     cli_register_command2(&cli, &cmd_reboot_s, NULL);
 
-    HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LED_PORT, LED_GREEN, GPIO_PIN_SET);
+    led_off(LED_RED);
+    led_on(LED_GREEN);
 
     embedded_cli_loop(&cli);
 
-    while (1) {
-	led_toggle(LED_GREEN);
+    cli_print(&cli, "Rebooting in 3 seconds");
+    HAL_Delay(3000);
+    HAL_NVIC_SystemReset();
 
-	uart_send_char2(STM_UART_USER, tx + upper);
-	uart_send_char2(STM_UART_MGMT, tx + upper);
-	DELAY();
-
-	if (uart_recv_char2(STM_UART_USER, &rx, 0) == HAL_OK ||
-	    uart_recv_char2(STM_UART_MGMT, &rx, 0) == HAL_OK) {
-	    led_toggle(LED_YELLOW);
-	    if (rx == '\r') {
-		upper = upper == 0 ? ('a' - 'A'):0;
-	    }
-	}
-
-	if (tx++ == 'Z') {
-	    /* linefeed after each alphabet */
-	    uart_send_string2(STM_UART_USER, crlf);
-	    uart_send_string2(STM_UART_MGMT, crlf);
-	    tx = 'A';
-	    led_toggle(LED_BLUE);
-	}
-    }
+    /* NOT REACHED */
+    Error_Handler();
 }
