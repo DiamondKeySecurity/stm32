@@ -80,6 +80,11 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
     return CLI_OK;
 }
 
+int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    HAL_NVIC_SystemReset();
+}
+
 int embedded_cli_loop(struct cli_def *cli)
 {
     unsigned char c;
@@ -150,6 +155,9 @@ main()
     struct cli_command cmd_filetransfer_s = {(char *) "filetransfer", cmd_filetransfer, 0,
                                              (char *) "Test file transfering",
                                              PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_reboot_s = {(char *) "reboot", cmd_reboot, 0,
+				       (char *) "Reboot the STM32",
+				       PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
 
     char crlf[] = "\r\n";
     uint8_t tx = 'A';
@@ -176,6 +184,8 @@ main()
     cli_register_command2(&cli, &cmd_show_cpuspeed_s, &cmd_show_s);
 
     cli_register_command2(&cli, &cmd_filetransfer_s, NULL);
+
+    cli_register_command2(&cli, &cmd_reboot_s, NULL);
 
     HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LED_PORT, LED_GREEN, GPIO_PIN_SET);
