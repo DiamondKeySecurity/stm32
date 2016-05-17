@@ -49,10 +49,10 @@ extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
 int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 4;
-    uint8_t buf[4];
+    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 4096, counter = 0;
+    uint8_t buf[4096];
 
-    cli_print(cli, "OK, write file size (4 bytes), data, CRC-32 (4 bytes)");
+    cli_print(cli, "OK, write file size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)");
 
     uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
     cli_print(cli, "Filesize %li", filesize);
@@ -65,6 +65,8 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
 	uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000);
 	filesize -= n;
 	my_crc = update_crc(my_crc, buf, n);
+	counter++;
+	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
     }
 
     uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);

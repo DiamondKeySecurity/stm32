@@ -64,13 +64,19 @@ def send_file(filename, device='/dev/ttyUSB0', initiate=True):
     _read(dst)
     # 2. Write file contents while calculating CRC-32
     crc = 0
+    counter = 0
     while True:
-        data = src.read(1024)
+        data = src.read(4096)
         if not data:
             break
         dst.write(data)
         print("Wrote {!s} bytes".format(len(data)))
         crc = crc32(data, crc) & 0xffffffff
+        new_counter = struct.unpack('<I', dst.read(4))[0]
+        if new_counter != counter + 1:
+            print('ERROR: Did not receive the expected counter as ACK (got {!r}, not {!r})'.format(new_counter, counter))
+            return False
+        counter += 1
     # 3. Write CRC-32 (4 bytes)
     _write(dst, struct.pack('<I', crc))
     _read(dst)
