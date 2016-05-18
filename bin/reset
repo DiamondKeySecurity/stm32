@@ -1,0 +1,25 @@
+#!/bin/sh
+
+OPENOCD=openocd
+
+# location of OpenOCD Board .cfg files (only used with 'make flash-target')
+#
+# This path is from Ubuntu 14.04.
+#
+OPENOCD_BOARD_DIR=/usr/share/openocd/scripts/board
+
+# Configuration (cfg) file containing programming directives for OpenOCD
+#
+# If you are using an STLINK v2.0 from an STM32 F4 DISCOVERY board,
+# set this variable to "stm32f4discovery.cfg".
+#
+# If you are using an STLINK v2.1 from an STM32 F4 NUCLEO board,
+# set this variable to "st_nucleo_f401re.cfg".
+#
+# If you are using something else, look for a matching configuration file in
+# the OPENOCD_BOARD_DIR directory.
+#
+OPENOCD_PROC_FILE=stm32f4discovery.cfg
+#OPENOCD_PROC_FILE=st_nucleo_f4.cfg
+
+$OPENOCD -f $OPENOCD_BOARD_DIR/$OPENOCD_PROC_FILE -c "init" -c "reset run" -c "exit"
