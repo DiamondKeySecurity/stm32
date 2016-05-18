@@ -182,6 +182,8 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     GPIO_InitTypeDef GPIO_InitStruct;
     if (hi2c->Instance == I2C2) {
 	/*
+	 * External RTC chip.
+	 *
 	 * I2C2 GPIO Configuration
 	 * PH5     ------> I2C2_SDA
 	 * PH4     ------> I2C2_SCL
@@ -203,11 +205,43 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 {
-    if(hi2c->Instance == I2C2) {
+    if (hi2c->Instance == I2C2) {
 	__I2C2_CLK_DISABLE();
 	HAL_GPIO_DeInit(GPIOH, GPIO_PIN_4 | GPIO_PIN_5);
     }
 }
 
+void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+    if (hspi->Instance == SPI2) {
+	/* Peripheral clock enable */
+	__HAL_RCC_SPI2_CLK_ENABLE();
+
+	/* SPI2 is the FPGA config memory.
+	 *
+	 * SPI2 GPIO Configuration
+	 * PB13     ------> SPI2_SCK
+	 * PB14     ------> SPI2_MISO
+	 * PB15     ------> SPI2_MOSI
+	*/
+	GPIO_InitStruct.Pin = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    }
+}
+
+void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
+{
+
+    if (hspi->Instance == SPI2) {
+	/* Peripheral clock disable */
+	__HAL_RCC_SPI2_CLK_DISABLE();
+	HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
+    }
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

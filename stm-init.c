@@ -47,6 +47,9 @@
 #ifdef HAL_I2C_MODULE_ENABLED
 #include "stm-rtc.h"
 #endif
+#ifdef HAL_SPI_MODULE_ENABLED
+#include "stm-fpgacfg.h"
+#endif
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -60,6 +63,9 @@ static void MX_USART2_UART_Init(void);
 #endif
 #ifdef HAL_I2C_MODULE_ENABLED
 static void MX_I2C2_Init(void);
+#endif
+#ifdef HAL_SPI_MODULE_ENABLED
+static void MX_SPI2_Init(void);
 #endif
 
 void stm_init(void)
@@ -82,6 +88,9 @@ void stm_init(void)
 #endif
 #ifdef HAL_I2C_MODULE_ENABLED
   MX_I2C2_Init();
+#endif
+#ifdef HAL_SPI_MODULE_ENABLED
+  MX_SPI2_Init();
 #endif
 }
 
@@ -144,6 +153,44 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+
+
+
+
+#ifdef HAL_SPI_MODULE_ENABLED
+  /* Set up GPIOs to manage access to the FPGA config memory. */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOI_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(PROM_FPGA_DIS_GPIO_Port, PROM_FPGA_DIS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(PROM_ARM_ENA_GPIO_Port, PROM_ARM_ENA_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(PROM_CS_N_GPIO_Port, PROM_CS_N_Pin, GPIO_PIN_SET);	// active-low!!!
+
+  /*Configure GPIO pin : PROM_FPGA_DIS */
+  GPIO_InitStruct.Pin = PROM_FPGA_DIS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(PROM_FPGA_DIS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PROM_ARM_ENA */
+  GPIO_InitStruct.Pin = PROM_ARM_ENA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(PROM_ARM_ENA_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PROM_CS_N */
+  GPIO_InitStruct.Pin = PROM_CS_N_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(PROM_CS_N_GPIO_Port, &GPIO_InitStruct);
+#endif /* HAL_SPI_MODULE_ENABLED */
 }
 #endif
 
@@ -166,6 +213,26 @@ void MX_I2C2_Init(void)
     }
 }
 #endif
+
+#ifdef HAL_SPI_MODULE_ENABLED
+/* SPI2 (FPGA config memory) init function */
+void MX_SPI2_Init(void)
+{
+    hspi_fpgacfg.Instance = SPI2;
+    hspi_fpgacfg.Init.Mode = SPI_MODE_MASTER;
+    hspi_fpgacfg.Init.Direction = SPI_DIRECTION_2LINES;
+    hspi_fpgacfg.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi_fpgacfg.Init.CLKPolarity = SPI_POLARITY_LOW;
+    hspi_fpgacfg.Init.CLKPhase = SPI_PHASE_1EDGE;
+    hspi_fpgacfg.Init.NSS = SPI_NSS_SOFT;
+    hspi_fpgacfg.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+    hspi_fpgacfg.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    hspi_fpgacfg.Init.TIMode = SPI_TIMODE_DISABLE;
+    hspi_fpgacfg.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    hspi_fpgacfg.Init.CRCPolynomial = 10;
+    HAL_SPI_Init(&hspi_fpgacfg);
+}
+#endif /* HAL_SPI_MODULE_ENABLED */
 
 /**
  * @brief  This function is executed in case of error occurrence.
