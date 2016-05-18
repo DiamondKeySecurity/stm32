@@ -81,6 +81,12 @@ void stm_init(void)
   /* Initialize all configured peripherals */
 #ifdef HAL_GPIO_MODULE_ENABLED
   MX_GPIO_Init();
+  #ifdef HAL_SPI_MODULE_ENABLED
+  /* Give the FPGA access to it's bitstream ASAP (maybe this should actually
+   * be done in the application, before calling stm_init()).
+   */
+  fpgacfg_give_access_to_fpga();
+  #endif
 #endif
 #ifdef HAL_UART_MODULE_ENABLED
   MX_USART1_UART_Init();
@@ -161,9 +167,9 @@ static void MX_GPIO_Init(void)
   /* Set up GPIOs to manage access to the FPGA config memory. */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOI_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __GPIOI_CLK_ENABLE();
+  __GPIOF_CLK_ENABLE();
+  __GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(PROM_FPGA_DIS_GPIO_Port, PROM_FPGA_DIS_Pin, GPIO_PIN_RESET);

@@ -216,7 +216,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     GPIO_InitTypeDef GPIO_InitStruct;
     if (hspi->Instance == SPI2) {
 	/* Peripheral clock enable */
-	__HAL_RCC_SPI2_CLK_ENABLE();
+	__SPI2_CLK_ENABLE();
 
 	/* SPI2 is the FPGA config memory.
 	 *

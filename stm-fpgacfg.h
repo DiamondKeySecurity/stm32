@@ -75,6 +75,9 @@ extern int n25q128_read_page(uint32_t page_offset, uint8_t *page_buffer);
 extern int n25q128_write_page(uint32_t page_offset, uint8_t *page_buffer);
 extern int n25q128_erase_sector(uint32_t sector_offset);
 
+extern void fpgacfg_give_access_to_stm32(void);
+extern void fpgacfg_give_access_to_fpga(void);
+
 extern SPI_HandleTypeDef hspi_fpgacfg;
 
 #endif /* __STM32_FPGACFG_H */

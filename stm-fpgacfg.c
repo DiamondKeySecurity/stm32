@@ -34,6 +34,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "stm-fpgacfg.h"
+#include "stm-init.h"
 
 SPI_HandleTypeDef hspi_fpgacfg;
 
@@ -276,4 +277,20 @@ int _n25q128_get_wel_flag(void)
 
     // done
     return ((spi_rx[1] >> 1) & 1);
+}
+
+void fpgacfg_give_access_to_stm32()
+{
+    // fpga disable = 1
+    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_14, GPIO_PIN_SET);
+    // arm enable = 0
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_6, GPIO_PIN_RESET);
+}
+
+void fpgacfg_give_access_to_fpga()
+{
+    // fpga disable = 0
+    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_14, GPIO_PIN_RESET);
+    // arm enable = 1
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_6, GPIO_PIN_SET);
 }

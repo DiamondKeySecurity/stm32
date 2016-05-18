@@ -35,6 +35,7 @@
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-uart.h"
+#include "stm-fpgacfg.h"
 #include "mgmt-cli.h"
 
 #include <string.h>
@@ -56,10 +57,10 @@ int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], in
 
 int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 4096, counter = 0;
-    uint8_t buf[4096];
+    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 256, counter = 0;
+    uint8_t buf[256];
 
-    cli_print(cli, "OK, write file size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)");
+    cli_print(cli, "OK, write file size (4 bytes), data in %li byte chunks, CRC-32 (4 bytes)", n);
 
     uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
     cli_print(cli, "File size %li", filesize);
@@ -87,6 +88,85 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
     } else {
 	cli_print(cli, "CRC checksum did NOT match");
     }
+
+    return CLI_OK;
+}
+
+int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 4096, counter = 0;
+    uint8_t buf[4096];
+
+    fpgacfg_give_access_to_stm32();
+
+    cli_print(cli, "Checking if FPGA config memory is accessible");
+    if (n25q128_check_id() != 1) {
+	cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "OK, write FPGA bitstream file size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)");
+
+    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
+    cli_print(cli, "File size %li", filesize);
+
+    while (filesize) {
+	uint32_t page, offset;
+	uint8_t *ptr;
+
+	memset(buf, 0xff, 4096);
+
+	if (filesize < n) {
+	    n = filesize;
+	}
+
+	if (uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000) != HAL_OK) {
+	    cli_print(cli, "Receive timed out");
+	    return CLI_ERROR;
+	}
+	filesize -= n;
+	my_crc = update_crc(my_crc, buf, n);
+
+	if ((counter % (N25Q128_SECTOR_SIZE / 4096)) == 0) {
+	    /* first page in sector, need to erase sector */
+	    offset = (counter * 4096) / N25Q128_SECTOR_SIZE;
+	    if (! n25q128_erase_sector(offset)) {
+		cli_print(cli, "Failed erasing sector at offset %li (counter = %li)", offset, counter);
+		return CLI_ERROR;
+	    }
+	    /* XXX add timeout and check for < 0 */
+	    while (n25q128_get_wip_flag()) { HAL_Delay(10); };
+	}
+
+	ptr = buf;
+	for (page = 0; page < 4096 / N25Q128_PAGE_SIZE; page++) {
+	    offset = counter * (4096 / N25Q128_PAGE_SIZE) + page;
+	    if (! n25q128_write_page(offset, ptr)) {
+		cli_print(cli, "Failed writing page %li at offset %li (counter = %li)", page, offset, counter);
+		return CLI_ERROR;
+	    }
+	    ptr += N25Q128_PAGE_SIZE;
+
+	    /* XXX add timeout and check for < 0 */
+	    while (n25q128_get_wip_flag()) { HAL_Delay(10); };
+
+	    /* XXX read back data and verify it */
+	}
+
+	counter++;
+	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
+    }
+
+    cli_print(cli, "Send CRC-32");
+    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
+    cli_print(cli, "CRC-32 %li", crc);
+    if (crc == my_crc) {
+	cli_print(cli, "CRC checksum MATCHED");
+    } else {
+	cli_print(cli, "CRC checksum did NOT match");
+    }
+
+    fpgacfg_give_access_to_fpga();
 
     return CLI_OK;
 }
@@ -119,6 +199,12 @@ main()
     struct cli_command cmd_filetransfer_s = {(char *) "filetransfer", cmd_filetransfer, 0,
                                              (char *) "Test file transfering",
                                              PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+
+    struct cli_command cmd_fpga_s = {(char *) "fpga", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_fpga_bitstream_s = {(char *) "bitstream", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_fpga_bitstream_upload_s = {(char *) "upload", cmd_fpga_bitstream_upload, 0,
+						      (char *) "Upload new FPGA bitstream",
+						      PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
     struct cli_command cmd_reboot_s = {(char *) "reboot", cmd_reboot, 0,
 				       (char *) "Reboot the STM32",
 				       PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
@@ -135,6 +221,10 @@ main()
     cli_register_command2(&cli, &cmd_show_cpuspeed_s, &cmd_show_s);
 
     cli_register_command2(&cli, &cmd_filetransfer_s, NULL);
+
+    cli_register_command2(&cli, &cmd_fpga_s, NULL);
+    cli_register_command2(&cli, &cmd_fpga_bitstream_s, &cmd_fpga_s);
+    cli_register_command2(&cli, &cmd_fpga_bitstream_upload_s, &cmd_fpga_bitstream_s);
 
     cli_register_command2(&cli, &cmd_reboot_s, NULL);
 
