@@ -187,4 +187,6 @@ HAL_StatusTypeDef uart_send_hexdump(enum stm_uart_port port, const uint8_t *buf,
 	uart_send_number2(port, *(buf + i), 2, 16);
 	uart_send_string2(port, " ");
     }
+
+    return HAL_OK;
 }

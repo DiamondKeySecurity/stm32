@@ -60,7 +60,7 @@ HAL_StatusTypeDef rtc_enable_oscillator()
     return HAL_OK;
 }
 
-HAL_StatusTypeDef rtc_send_byte(const uint16_t i2c_addr, const uint8_t value, const uint16_t timeout)
+HAL_StatusTypeDef rtc_send_byte(const uint16_t i2c_addr, uint8_t value, const uint16_t timeout)
 {
     HAL_StatusTypeDef res;
 
