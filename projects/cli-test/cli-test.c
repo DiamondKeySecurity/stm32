@@ -62,20 +62,24 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
     cli_print(cli, "OK, write file size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)");
 
     uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
-    cli_print(cli, "Filesize %li", filesize);
+    cli_print(cli, "File size %li", filesize);
 
     while (filesize) {
 	if (filesize < n) {
 	    n = filesize;
 	}
 
-	uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000);
+	if (uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000) != HAL_OK) {
+	    cli_print(cli, "Receive timed out");
+	    return CLI_ERROR;
+	}
 	filesize -= n;
 	my_crc = update_crc(my_crc, buf, n);
 	counter++;
 	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
     }
 
+    cli_print(cli, "Send CRC-32");
     uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
     cli_print(cli, "CRC-32 %li", crc);
     if (crc == my_crc) {

@@ -105,7 +105,7 @@ static void MX_USART1_UART_Init(void)
   huart_mgmt.Init.StopBits = UART_STOPBITS_1;
   huart_mgmt.Init.Parity = UART_PARITY_NONE;
   huart_mgmt.Init.Mode = UART_MODE_TX_RX;
-  huart_mgmt.Init.HwFlowCtl = UART_HWCONTROL_RTS_CTS; //UART_HWCONTROL_NONE;
+  huart_mgmt.Init.HwFlowCtl = UART_HWCONTROL_RTS_CTS;
   huart_mgmt.Init.OverSampling = UART_OVERSAMPLING_16;
 
   if (HAL_UART_Init(&huart_mgmt) != HAL_OK) {
@@ -122,7 +122,7 @@ static void MX_USART2_UART_Init(void)
   huart_user.Init.StopBits = UART_STOPBITS_1;
   huart_user.Init.Parity = UART_PARITY_NONE;
   huart_user.Init.Mode = UART_MODE_TX_RX;
-  huart_user.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart_user.Init.HwFlowCtl = UART_HWCONTROL_RTS_CTS;
   huart_user.Init.OverSampling = UART_OVERSAMPLING_16;
 
   if (HAL_UART_Init(&huart_user) != HAL_OK) {

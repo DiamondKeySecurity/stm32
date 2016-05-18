@@ -51,7 +51,7 @@ def send_file(filename, device='/dev/ttyUSB0', initiate=True):
     size = s.st_size
     src = open(filename, 'rb')
 
-    dst = serial.Serial(device, 921600, timeout=1)
+    dst = serial.Serial(device, 921600, timeout=0.1)
 
     if initiate:
         response = _execute(dst, 'filetransfer')
@@ -71,12 +71,25 @@ def send_file(filename, device='/dev/ttyUSB0', initiate=True):
             break
         dst.write(data)
         print("Wrote {!s} bytes".format(len(data)))
-        crc = crc32(data, crc) & 0xffffffff
-        new_counter = struct.unpack('<I', dst.read(4))[0]
+        # read ACK (a counter of number of 4k chunks received)
+        while True:
+            ack = dst.read(4)
+            if len(ack) == 4:
+                break
+            print('ERROR: Did not receive an ACK, got {!r}'.format(ack))
+            dst.write('\r')
+        new_counter = struct.unpack('<I', ack)[0]
         if new_counter != counter + 1:
-            print('ERROR: Did not receive the expected counter as ACK (got {!r}, not {!r})'.format(new_counter, counter))
+            print('ERROR: Did not receive the expected counter as ACK (got {!r}/{!r}, not {!r})'.format(new_counter, ack, counter))
+            flush = dst.read(100)
+            print('FLUSH data: {!r}'.format(flush))
             return False
         counter += 1
+
+        crc = crc32(data, crc) & 0xffffffff
+
+    _read(dst)
+
     # 3. Write CRC-32 (4 bytes)
     _write(dst, struct.pack('<I', crc))
     _read(dst)
