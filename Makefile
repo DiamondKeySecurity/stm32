@@ -41,6 +41,7 @@ BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
 RTOS_DIR = $(MBED_DIR)/rtos
 export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
 export LIBHAL_DIR = $(LIBS_DIR)/libhal
+export LIBCLI_DIR = $(LIBS_DIR)/libcli
 
 export LIBS = $(MBED_DIR)/libstmf4.a $(RTOS_DIR)/librtos.a
 
@@ -119,11 +120,17 @@ $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
 #	$(MAKE) -C $(LIBHAL_DIR) RPC_CLIENT=local IO_BUS=fmc KS=volatile libhal.a
 	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=volatile libhal.a
 
+$(LIBCLI_DIR)/libcli.a:
+	$(MAKE) -C $(LIBCLI_DIR)
+
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/libhal-test
 
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/hsm
+
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
+	$(MAKE) -C projects/cli-test
 
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
