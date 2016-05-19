@@ -85,7 +85,7 @@ void stm_init(void)
   /* Give the FPGA access to it's bitstream ASAP (maybe this should actually
    * be done in the application, before calling stm_init()).
    */
-  fpgacfg_give_access_to_fpga();
+  fpgacfg_access_control(ALLOW_FPGA);
   #endif
 #endif
 #ifdef HAL_UART_MODULE_ENABLED

@@ -92,28 +92,35 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
     return CLI_OK;
 }
 
+/* The chunk size have to be a multiple of the SPI flash page size (256 bytes),
+   and it has to match the chunk size in the program sending the bitstream over the UART.
+*/
+#define BITSTREAM_UPLOAD_CHUNK_SIZE 4096
+
 int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 4096, counter = 0;
-    uint8_t buf[4096];
+    uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0, i;
+    uint32_t offset = 0, n = BITSTREAM_UPLOAD_CHUNK_SIZE;
+    uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
 
-    fpgacfg_give_access_to_stm32();
+    fpgacfg_access_control(ALLOW_ARM);
 
     cli_print(cli, "Checking if FPGA config memory is accessible");
-    if (n25q128_check_id() != 1) {
+    if (fpgacfg_check_id() != 1) {
 	cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
 	return CLI_ERROR;
     }
 
     cli_print(cli, "OK, write FPGA bitstream file size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)");
 
+    /* Read file size (4 bytes) */
     uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
     cli_print(cli, "File size %li", filesize);
 
     while (filesize) {
-	uint32_t page, offset;
-	uint8_t *ptr;
-
+	/* By initializing buf to the same value that erased flash has (0xff), we don't
+	 * have to try and be smart when writing the last page of data to the memory.
+	 */
 	memset(buf, 0xff, 4096);
 
 	if (filesize < n) {
@@ -125,38 +132,25 @@ int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *ar
 	    return CLI_ERROR;
 	}
 	filesize -= n;
+
+	/* After reception of 4 KB but before ACKing we have "all" the time in the world to
+	 * calculate CRC and write it to flash.
+	 */
 	my_crc = update_crc(my_crc, buf, n);
 
-	if ((counter % (N25Q128_SECTOR_SIZE / 4096)) == 0) {
-	    /* first page in sector, need to erase sector */
-	    offset = (counter * 4096) / N25Q128_SECTOR_SIZE;
-	    if (! n25q128_erase_sector(offset)) {
-		cli_print(cli, "Failed erasing sector at offset %li (counter = %li)", offset, counter);
-		return CLI_ERROR;
-	    }
-	    /* XXX add timeout and check for < 0 */
-	    while (n25q128_get_wip_flag()) { HAL_Delay(10); };
+	if ((i = fpgacfg_write_data(offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE)) != 1) {
+	    cli_print(cli, "Failed writing data at offset %li (counter = %li): %li", offset, counter, i);
+	    return CLI_ERROR;
 	}
 
-	ptr = buf;
-	for (page = 0; page < 4096 / N25Q128_PAGE_SIZE; page++) {
-	    offset = counter * (4096 / N25Q128_PAGE_SIZE) + page;
-	    if (! n25q128_write_page(offset, ptr)) {
-		cli_print(cli, "Failed writing page %li at offset %li (counter = %li)", page, offset, counter);
-		return CLI_ERROR;
-	    }
-	    ptr += N25Q128_PAGE_SIZE;
+	offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
 
-	    /* XXX add timeout and check for < 0 */
-	    while (n25q128_get_wip_flag()) { HAL_Delay(10); };
-
-	    /* XXX read back data and verify it */
-	}
-
+	/* ACK this chunk by sending the current chunk counter (4 bytes) */
 	counter++;
 	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
     }
 
+    /* The sending side will now send it's calculated CRC-32 */
     cli_print(cli, "Send CRC-32");
     uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
     cli_print(cli, "CRC-32 %li", crc);
@@ -166,7 +160,7 @@ int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *ar
 	cli_print(cli, "CRC checksum did NOT match");
     }
 
-    fpgacfg_give_access_to_fpga();
+    fpgacfg_access_control(ALLOW_FPGA);
 
     return CLI_OK;
 }
@@ -190,7 +184,6 @@ int check_auth(const char *username, const char *password)
 int
 main()
 {
-    int i;
     static struct cli_def cli;
     struct cli_command cmd_show_s = {(char *) "show", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
     struct cli_command cmd_show_cpuspeed_s = {(char *) "cpuspeed", cmd_show_cpuspeed, 0,
@@ -233,7 +226,7 @@ main()
 
     embedded_cli_loop(&cli);
 
-    cli_print(&cli, "Rebooting in 3 seconds");
+    cli_print(&cli, "Rebooting in 4 seconds");
     HAL_Delay(3000);
     HAL_NVIC_SystemReset();
 

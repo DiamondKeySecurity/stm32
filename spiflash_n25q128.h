@@ -1,7 +1,10 @@
 /*
- * stm-fpgacfg.h
- * ---------
- * Functions and defines for accessing the FPGA config memory.
+ * spiflash_n25q128.h
+ * ------------------
+ * Functions and defines for accessing SPI flash with part number n25q128.
+ *
+ * The Alpha board has two of these SPI flash memorys, the FPGA config memory
+ * and the keystore memory.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -32,30 +35,41 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_FPGACFG_H
-#define __STM32_FPGACFG_H
+#ifndef __STM32_SPIFLASH_N25Q128_H
+#define __STM32_SPIFLASH_N25Q128_H
 
 #include "stm32f4xx_hal.h"
-#include "spiflash_n25q128.h"
 
-#define PROM_FPGA_DIS_Pin              GPIO_PIN_14
-#define PROM_FPGA_DIS_GPIO_Port        GPIOI
-#define PROM_ARM_ENA_Pin               GPIO_PIN_6
-#define PROM_ARM_ENA_GPIO_Port         GPIOF
-#define PROM_CS_N_Pin                  GPIO_PIN_12
-#define PROM_CS_N_GPIO_Port            GPIOB
+#define N25Q128_COMMAND_READ_ID		0x9E
+#define N25Q128_COMMAND_READ_PAGE	0x03
+#define N25Q128_COMMAND_READ_STATUS	0x05
+#define N25Q128_COMMAND_WRITE_ENABLE	0x06
+#define N25Q128_COMMAND_ERASE_SECTOR	0xD8
+#define N25Q128_COMMAND_PAGE_PROGRAM	0x02
 
+#define N25Q128_PAGE_SIZE		0x100		// 256
+#define N25Q128_NUM_PAGES		0x10000		// 65536
 
-enum fpgacfg_access_ctrl {
-  ALLOW_NONE,
-  ALLOW_FPGA,
-  ALLOW_ARM,
+#define N25Q128_SECTOR_SIZE		0x10000		// 65536
+#define N25Q128_NUM_SECTORS		0x100		// 256
+
+#define N25Q128_SPI_TIMEOUT		1000
+
+#define N25Q128_ID_MANUFACTURER		0x20
+#define N25Q128_ID_DEVICE_TYPE		0xBA
+#define N25Q128_ID_DEVICE_CAPACITY	0x18
+
+struct spiflash_ctx {
+    SPI_HandleTypeDef *hspi;
+    GPIO_TypeDef *cs_n_port;
+    uint16_t cs_n_pin;
 };
 
-extern int fpgacfg_check_id();
-extern int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern void fpgacfg_access_control(enum fpgacfg_access_ctrl access);
+extern int n25q128_check_id(struct spiflash_ctx *ctx);
+extern int n25q128_get_wip_flag(struct spiflash_ctx *ctx);
+extern int n25q128_read_page(struct spiflash_ctx *ctx, uint32_t page_offset, uint8_t *page_buffer);
+extern int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uint8_t *page_buffer);
+extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
 
-extern SPI_HandleTypeDef hspi_fpgacfg;
-
-#endif /* __STM32_FPGACFG_H */
+extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
+#endif /* __STM32_SPIFLASH_N25Q128_H */

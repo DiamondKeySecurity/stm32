@@ -54,6 +54,7 @@ export BOARD_OBJS = \
 	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
 	$(TOPLEVEL)/stm-rtc.o \
+	$(TOPLEVEL)/spiflash_n25q128.o \
 	$(TOPLEVEL)/stm-fpgacfg.o \
 	$(TOPLEVEL)/syscalls.o \
 	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx.o \
