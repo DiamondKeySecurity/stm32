@@ -16,7 +16,7 @@
 int
 main()
 {
-    uint8_t crlf[] = "\r\n";
+    char crlf[] = "\r\n";
     uint8_t tx = 'A';
     uint8_t rx = 0;
     uint8_t upper = 0;
