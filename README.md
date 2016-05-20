@@ -40,7 +40,7 @@ The following packages need to be installed (on Ubuntu 14.04):
 To build the source code, issue "make" from the top level directory
 (where this file is). The first time, this will build the complete STM
 CMSIS library. A subsequent "make clean" will *not* clean away the CMSIS
-library, but a "make really-clean" will.
+library, but a "make distclean" will.
 
 
 Installing
