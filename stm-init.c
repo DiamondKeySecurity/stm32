@@ -139,65 +139,50 @@ static void MX_USART2_UART_Init(void)
 #endif
 
 #ifdef HAL_GPIO_MODULE_ENABLED
-/** Configure pins as
-        * Analog
-        * Input
-        * Output
-        * EVENT_OUT
-        * EXTI
-*/
+
+#define gpio_output(output_port, output_pins, output_level)	\
+    /* Configure GPIO pin Output Level */			\
+    HAL_GPIO_WritePin(output_port, output_pins, output_level);	\
+    /* Configure pin as output */ 				\
+    GPIO_InitStruct.Pin = output_pins; 				\
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP; 		\
+    GPIO_InitStruct.Pull = GPIO_NOPULL; 			\
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW; 			\
+    HAL_GPIO_Init(output_port, &GPIO_InitStruct)
+
+#define gpio_input(input_port, input_pin, input_pull)	\
+    GPIO_InitStruct.Pin = input_pin;			\
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;		\
+    GPIO_InitStruct.Pull = input_pull;			\
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;		\
+    HAL_GPIO_Init(input_port, &GPIO_InitStruct)
+
+
+/* Configure General Purpose Input/Output pins */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
-  __GPIOK_CLK_ENABLE();
+  LED_CLK_ENABLE();
 
-  /* Configure LED GPIO pins PJ1==red, PJ2==yellow, PJ3==green, PJ4==blue */
-  GPIO_InitStruct.Pin = LED_RED | LED_YELLOW | LED_GREEN | LED_BLUE;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
-
-
-
+  /* Configure LED GPIO pins */
+  gpio_output(LED_PORT, LED_RED | LED_YELLOW | LED_GREEN | LED_BLUE, GPIO_PIN_RESET);
 
 #ifdef HAL_SPI_MODULE_ENABLED
-  /* Set up GPIOs to manage access to the FPGA config memory. */
-
+  /* Set up GPIOs to manage access to the FPGA config memory.
+   * FPGACFG_GPIO_INIT is defined in stm-fpgacfg.h.
+   */
   /* GPIO Ports Clock Enable */
-  __GPIOI_CLK_ENABLE();
-  __GPIOF_CLK_ENABLE();
-  __GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(PROM_FPGA_DIS_GPIO_Port, PROM_FPGA_DIS_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(PROM_ARM_ENA_GPIO_Port, PROM_ARM_ENA_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(PROM_CS_N_GPIO_Port, PROM_CS_N_Pin, GPIO_PIN_SET);	// active-low!!!
-
-  /*Configure GPIO pin : PROM_FPGA_DIS */
-  GPIO_InitStruct.Pin = PROM_FPGA_DIS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(PROM_FPGA_DIS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PROM_ARM_ENA */
-  GPIO_InitStruct.Pin = PROM_ARM_ENA_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(PROM_ARM_ENA_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PROM_CS_N */
-  GPIO_InitStruct.Pin = PROM_CS_N_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(PROM_CS_N_GPIO_Port, &GPIO_InitStruct);
+  FPGACFG_GPIO_INIT();
+  /*
+  __GPIOJ_CLK_ENABLE();
+  gpio_output(FPGA_INIT_Port, FPGA_INIT_Pin, GPIO_PIN_RESET);
+  gpio_output(FPGA_PROGRAM_Port, FPGA_PROGRAM_Pin, GPIO_PIN_SET);
+  */
 #endif /* HAL_SPI_MODULE_ENABLED */
 }
+#undef gpio_output
 #endif
 
 #ifdef HAL_I2C_MODULE_ENABLED

@@ -43,6 +43,8 @@
 #define LED_GREEN       GPIO_PIN_5
 #define LED_BLUE        GPIO_PIN_4
 
+#define LED_CLK_ENABLE  __GPIOK_CLK_ENABLE
+
 #define led_on(pin)     HAL_GPIO_WritePin(LED_PORT,pin,SET)
 #define led_off(pin)    HAL_GPIO_WritePin(LED_PORT,pin,RESET)
 #define led_toggle(pin) HAL_GPIO_TogglePin(LED_PORT,pin)

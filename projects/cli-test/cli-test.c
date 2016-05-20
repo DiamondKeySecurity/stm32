@@ -92,6 +92,12 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
     return CLI_OK;
 }
 
+int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
+    return CLI_OK;
+}
+
 /* The chunk size have to be a multiple of the SPI flash page size (256 bytes),
    and it has to match the chunk size in the program sending the bitstream over the UART.
 */
@@ -165,6 +171,51 @@ int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *ar
     return CLI_OK;
 }
 
+int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    fpgacfg_access_control(ALLOW_ARM);
+
+    cli_print(cli, "Checking if FPGA config memory is accessible");
+    if (fpgacfg_check_id() != 1) {
+	cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
+	return CLI_ERROR;
+    }
+
+    /* Erasing the whole config memory takes a while, we just need to erase the first sector.
+     * The bitstream has an EOF marker, so even if the next bitstream uploaded is shorter than
+     * the current one there should be no problem.
+     *
+     * This command could be made to accept an argument indicating the whole memory should be erased.
+     */
+    if (! fpgacfg_erase_sectors(1)) {
+	cli_print(cli, "Erasing first sector in FPGA config memory failed");
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Erased FPGA config memory");
+    fpgacfg_access_control(ALLOW_FPGA);
+
+    return CLI_OK;
+}
+
+int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    fpgacfg_access_control(ALLOW_FPGA);
+    fpgacfg_reset_fpga(RESET_FULL);
+    cli_print(cli, "FPGA has been reset");
+
+    return CLI_OK;
+}
+
+int cmd_fpga_reset_registers(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    fpgacfg_access_control(ALLOW_FPGA);
+    fpgacfg_reset_fpga(RESET_REGISTERS);
+    cli_print(cli, "FPGA registers have been reset");
+
+    return CLI_OK;
+}
+
 int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "\n\n\nRebooting\n\n\n");
@@ -189,15 +240,27 @@ main()
     struct cli_command cmd_show_cpuspeed_s = {(char *) "cpuspeed", cmd_show_cpuspeed, 0,
                                              (char *) "Show the speed at which the CPU currently operates",
                                              PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_show_fpga_s = {(char *) "fpga", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_show_fpga_status_s = {(char *) "status", cmd_show_fpga_status, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+
     struct cli_command cmd_filetransfer_s = {(char *) "filetransfer", cmd_filetransfer, 0,
                                              (char *) "Test file transfering",
                                              PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
 
     struct cli_command cmd_fpga_s = {(char *) "fpga", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_fpga_reset_s = {(char *) "reset", cmd_fpga_reset, 0,
+					   (char *) "Reset FPGA (config reset)",
+					   PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_fpga_reset_registerss = {(char *) "registers", cmd_fpga_reset_registers, 0,
+						    (char *) "Reset FPGA registers (soft reset)",
+						    PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
     struct cli_command cmd_fpga_bitstream_s = {(char *) "bitstream", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
     struct cli_command cmd_fpga_bitstream_upload_s = {(char *) "upload", cmd_fpga_bitstream_upload, 0,
 						      (char *) "Upload new FPGA bitstream",
 						      PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
+    struct cli_command cmd_fpga_bitstream_erase_s = {(char *) "erase", cmd_fpga_bitstream_erase, 0,
+						     (char *) "Erase FPGA config memory",
+						     PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
     struct cli_command cmd_reboot_s = {(char *) "reboot", cmd_reboot, 0,
 				       (char *) "Reboot the STM32",
 				       PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
@@ -212,12 +275,17 @@ main()
 
     cli_register_command2(&cli, &cmd_show_s, NULL);
     cli_register_command2(&cli, &cmd_show_cpuspeed_s, &cmd_show_s);
+    cli_register_command2(&cli, &cmd_show_fpga_s, &cmd_show_s);
+    cli_register_command2(&cli, &cmd_show_fpga_status_s, &cmd_show_fpga_s);
 
     cli_register_command2(&cli, &cmd_filetransfer_s, NULL);
 
     cli_register_command2(&cli, &cmd_fpga_s, NULL);
+    cli_register_command2(&cli, &cmd_fpga_reset_s, &cmd_fpga_s);
+    cli_register_command2(&cli, &cmd_fpga_reset_registerss, &cmd_fpga_reset_s);
     cli_register_command2(&cli, &cmd_fpga_bitstream_s, &cmd_fpga_s);
     cli_register_command2(&cli, &cmd_fpga_bitstream_upload_s, &cmd_fpga_bitstream_s);
+    cli_register_command2(&cli, &cmd_fpga_bitstream_erase_s, &cmd_fpga_bitstream_s);
 
     cli_register_command2(&cli, &cmd_reboot_s, NULL);
 

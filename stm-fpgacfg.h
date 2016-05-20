@@ -1,7 +1,8 @@
 /*
  * stm-fpgacfg.h
  * ---------
- * Functions and defines for accessing the FPGA config memory.
+ * Functions and defines for accessing the FPGA config memory and controlling
+ * the low-level status of the FPGA (reset registers/reboot etc.).
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -38,24 +39,60 @@
 #include "stm32f4xx_hal.h"
 #include "spiflash_n25q128.h"
 
+/* Pins connected to the FPGA config memory (SPI flash) */
 #define PROM_FPGA_DIS_Pin              GPIO_PIN_14
 #define PROM_FPGA_DIS_GPIO_Port        GPIOI
 #define PROM_ARM_ENA_Pin               GPIO_PIN_6
 #define PROM_ARM_ENA_GPIO_Port         GPIOF
 #define PROM_CS_N_Pin                  GPIO_PIN_12
 #define PROM_CS_N_GPIO_Port            GPIOB
+/* Pins for controlling the FPGA */
+#define FPGA_INIT_Port                 GPIOJ
+#define FPGA_INIT_Pin                  GPIO_PIN_7
+#define FPGA_PROGRAM_Port              GPIOJ
+#define FPGA_PROGRAM_Pin               GPIO_PIN_8
+/* FPGA status */
+#define FPGA_DONE_Port                 GPIOJ
+#define FPGA_DONE_Pin                  GPIO_PIN_15
+
+#define FPGACFG_GPIO_INIT()		\
+    __GPIOI_CLK_ENABLE();		\
+    __GPIOF_CLK_ENABLE();		\
+    __GPIOB_CLK_ENABLE();		\
+    __GPIOJ_CLK_ENABLE();		\
+    /* Configure GPIO pins for FPGA access control: PROM_FPGA_DIS, PROM_ARM_ENA */ \
+    gpio_output(PROM_FPGA_DIS_GPIO_Port, PROM_FPGA_DIS_Pin, GPIO_PIN_RESET);       \
+    gpio_output(PROM_ARM_ENA_GPIO_Port, PROM_ARM_ENA_Pin, GPIO_PIN_RESET);         \
+    /* Configure GPIO pin for FPGA config memory chip select : PROM_CS_N */        \
+    gpio_output(PROM_CS_N_GPIO_Port, PROM_CS_N_Pin, GPIO_PIN_SET);	           \
+    /* Configure GPIO pins FPGA_INIT and FPGA_PROGRAM to reset the FPGA */         \
+    gpio_output(FPGA_INIT_Port, FPGA_INIT_Pin, GPIO_PIN_RESET);			   \
+    gpio_output(FPGA_PROGRAM_Port, FPGA_PROGRAM_Pin, GPIO_PIN_SET);		   \
+    /* Configure FPGA_DONE input pin */   					   \
+    //gpio_input(FPGA_DONE_Port, FPGA_DONE_Pin, GPIO_PULLUP) \
+    1
 
 
 enum fpgacfg_access_ctrl {
-  ALLOW_NONE,
-  ALLOW_FPGA,
-  ALLOW_ARM,
+    ALLOW_NONE,
+    ALLOW_FPGA,
+    ALLOW_ARM,
 };
 
-extern int fpgacfg_check_id();
-extern int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern void fpgacfg_access_control(enum fpgacfg_access_ctrl access);
+enum fpgacfg_reset {
+    RESET_FULL,
+    RESET_REGISTERS,
+};
 
 extern SPI_HandleTypeDef hspi_fpgacfg;
+
+extern int fpgacfg_check_id(void);
+extern int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
+extern int fpgacfg_erase_sectors(int num);
+extern void fpgacfg_access_control(enum fpgacfg_access_ctrl access);
+/* Reset the FPGA */
+extern void fpgacfg_reset_fpga(enum fpgacfg_reset reset);
+/* Check status of FPGA bitstream loading */
+extern int fpgacfg_check_done(void);
 
 #endif /* __STM32_FPGACFG_H */

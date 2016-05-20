@@ -317,7 +317,6 @@ int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t 
     }
 
     for (page = 0; page < len / N25Q128_PAGE_SIZE; page++) {
-	/* Wait until the flash memory is done writing (wip = Write In Progress) */
 	if (! _wait_while_wip(ctx, 1000)) return -5;
 
 	if (! n25q128_write_page(ctx, offset / N25Q128_PAGE_SIZE, buf)) {
