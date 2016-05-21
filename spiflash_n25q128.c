@@ -333,3 +333,22 @@ int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t 
     return 1;
 }
 
+/* This function reads zero or more pages from the SPI flash. */
+int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len)
+{
+    uint32_t page;
+
+    /* Ensure alignment */
+    if ((offset % N25Q128_PAGE_SIZE) != 0) return -1;
+    if ((len % N25Q128_PAGE_SIZE) != 0) return -2;
+
+    for (page = 0; page < len / N25Q128_PAGE_SIZE; page++) {
+	if (! n25q128_read_page(ctx, offset / N25Q128_PAGE_SIZE, buf)) {
+	    return -3;
+	}
+	buf += N25Q128_PAGE_SIZE;
+	offset += N25Q128_PAGE_SIZE;
+    }
+
+    return 1;
+}

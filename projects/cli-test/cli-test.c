@@ -133,6 +133,54 @@ int cmd_show_keystore_status(struct cli_def *cli, const char *command, char *arg
     return CLI_OK;
 }
 
+int cmd_show_keystore_data(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    uint8_t buf[KEYSTORE_PAGE_SIZE];
+    uint32_t i;
+
+    if (keystore_check_id() != 1) {
+	cli_print(cli, "ERROR: The keystore memory is not accessible.");
+    }
+
+    memset(buf, 0, sizeof(buf));
+    if ((i = keystore_read_data(0, buf, sizeof(buf))) != 1) {
+	cli_print(cli, "Failed reading first page from keystore memory: %li", i);
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "First page from keystore memory:\r\n");
+    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\n");
+
+    for (i = 0; i < 8; i++) {
+	if (buf[i] == 0xff) break;  /* never written */
+	if (buf[i] != 0x55) break;  /* something other than a tombstone */
+    }
+    /* As a demo, tombstone byte after byte of the first 8 bytes in the keystore memory
+     * (as long as they do not appear to contain real data).
+     * If all of them are tombstones, erase the first sector to start over.
+     */
+    if (i < 8) {
+	if (buf[i] == 0xff) {
+	    cli_print(cli, "Tombstoning byte %li", i);
+	    buf[i] = 0x55;
+	    if ((i = keystore_write_data(0, buf, sizeof(buf))) != 1) {
+		cli_print(cli, "Failed writing data at offset 0: %li", i);
+		return CLI_ERROR;
+	    }
+	}
+    } else {
+	cli_print(cli, "Erasing first sector since all the first 8 bytes are tombstones");
+	if ((i = keystore_erase_sectors(1)) != 1) {
+	    cli_print(cli, "Failed erasing the first sector: %li", i);
+	    return CLI_ERROR;
+	}
+	cli_print(cli, "Erase result: %li", i);
+    }
+
+    return CLI_OK;
+}
+
 /* The chunk size have to be a multiple of the SPI flash page size (256 bytes),
    and it has to match the chunk size in the program sending the bitstream over the UART.
 */
@@ -282,6 +330,7 @@ void configure_cli_show(struct cli_def *cli)
     cli_command_branch(show, keystore);
     /* show keystore status*/
     cli_command_node(show_keystore, status, "Show status of the keystore memory");
+    cli_command_node(show_keystore, data, "Show the first page of the keystore memory");
 }
 
 void configure_cli_fpga(struct cli_def *cli)

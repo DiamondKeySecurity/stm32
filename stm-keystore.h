@@ -38,6 +38,9 @@
 #include "stm32f4xx_hal.h"
 #include "spiflash_n25q128.h"
 
+#define KEYSTORE_PAGE_SIZE		   N25Q128_PAGE_SIZE
+#define KEYSTORE_SECTOR_SIZE		   N25Q128_SECTOR_SIZE
+
 /* Pins connected to the FPGA config memory (SPI flash) */
 #define KSM_PROM_CS_N_Pin                  GPIO_PIN_0
 #define KSM_PROM_CS_N_GPIO_Port            GPIOB
@@ -51,6 +54,7 @@
 extern SPI_HandleTypeDef hspi_keystore;
 
 extern int keystore_check_id(void);
+extern int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len);
 extern int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
 extern int keystore_erase_sectors(int num);
 
