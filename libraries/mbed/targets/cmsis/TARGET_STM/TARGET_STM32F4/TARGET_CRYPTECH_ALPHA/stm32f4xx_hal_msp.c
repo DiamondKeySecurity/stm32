@@ -200,7 +200,6 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 	/* Peripheral clock enable */
 	__I2C2_CLK_ENABLE();
     }
-
 }
 
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
@@ -214,10 +213,25 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
 {
     GPIO_InitTypeDef GPIO_InitStruct;
-    if (hspi->Instance == SPI2) {
-	/* Peripheral clock enable */
-	__SPI2_CLK_ENABLE();
+    if (hspi->Instance == SPI1) {
+	/* SPI1 is the keystore memory.
+	 *
+	 * SPI1 GPIO Configuration
+	 * PA5     ------> SPI2_SCK
+	 * PA6     ------> SPI2_MISO
+	 * PA7     ------> SPI2_MOSI
+	*/
+	__GPIOA_CLK_ENABLE();
+	GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+	/* Peripheral clock enable */
+	__SPI1_CLK_ENABLE();
+    } else if (hspi->Instance == SPI2) {
 	/* SPI2 is the FPGA config memory.
 	 *
 	 * SPI2 GPIO Configuration
@@ -225,19 +239,26 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
 	 * PB14     ------> SPI2_MISO
 	 * PB15     ------> SPI2_MOSI
 	*/
+	__GPIOB_CLK_ENABLE();
 	GPIO_InitStruct.Pin = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	/* Peripheral clock enable */
+	__SPI2_CLK_ENABLE();
     }
 }
 
 void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
 {
-
-    if (hspi->Instance == SPI2) {
+    if (hspi->Instance == SPI1) {
+	/* Peripheral clock disable */
+	__HAL_RCC_SPI1_CLK_DISABLE();
+	HAL_GPIO_DeInit(GPIOB, GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7);
+    } else if (hspi->Instance == SPI2) {
 	/* Peripheral clock disable */
 	__HAL_RCC_SPI2_CLK_DISABLE();
 	HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);

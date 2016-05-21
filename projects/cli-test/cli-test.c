@@ -36,6 +36,7 @@
 #include "stm-led.h"
 #include "stm-uart.h"
 #include "stm-fpgacfg.h"
+#include "stm-keystore.h"
 #include "mgmt-cli.h"
 
 #include <string.h>
@@ -123,6 +124,12 @@ int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int
 int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
+    return CLI_OK;
+}
+
+int cmd_show_keystore_status(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "Keystore memory is %sonline", (keystore_check_id() != 1) ? "NOT ":"");
     return CLI_OK;
 }
 
@@ -271,6 +278,10 @@ void configure_cli_show(struct cli_def *cli)
     cli_command_branch(show, fpga);
     /* show fpga status*/
     cli_command_node(show_fpga, status, "Show status about the FPGA");
+
+    cli_command_branch(show, keystore);
+    /* show keystore status*/
+    cli_command_node(show_keystore, status, "Show status of the keystore memory");
 }
 
 void configure_cli_fpga(struct cli_def *cli)

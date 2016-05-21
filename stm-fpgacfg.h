@@ -69,8 +69,7 @@
     gpio_output(FPGA_INIT_Port, FPGA_INIT_Pin, GPIO_PIN_RESET);			   \
     gpio_output(FPGA_PROGRAM_Port, FPGA_PROGRAM_Pin, GPIO_PIN_SET);		   \
     /* Configure FPGA_DONE input pin */   					   \
-    //gpio_input(FPGA_DONE_Port, FPGA_DONE_Pin, GPIO_PULLUP) \
-    1
+    gpio_input(FPGA_DONE_Port, FPGA_DONE_Pin, GPIO_PULLUP)
 
 
 enum fpgacfg_access_ctrl {

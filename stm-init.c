@@ -49,6 +49,7 @@
 #endif
 #ifdef HAL_SPI_MODULE_ENABLED
 #include "stm-fpgacfg.h"
+#include "stm-keystore.h"
 #endif
 
 /* Private variables ---------------------------------------------------------*/
@@ -65,6 +66,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_I2C2_Init(void);
 #endif
 #ifdef HAL_SPI_MODULE_ENABLED
+static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 #endif
 
@@ -96,6 +98,7 @@ void stm_init(void)
   MX_I2C2_Init();
 #endif
 #ifdef HAL_SPI_MODULE_ENABLED
+  MX_SPI1_Init();
   MX_SPI2_Init();
 #endif
 }
@@ -173,13 +176,11 @@ static void MX_GPIO_Init(void)
   /* Set up GPIOs to manage access to the FPGA config memory.
    * FPGACFG_GPIO_INIT is defined in stm-fpgacfg.h.
    */
-  /* GPIO Ports Clock Enable */
   FPGACFG_GPIO_INIT();
-  /*
-  __GPIOJ_CLK_ENABLE();
-  gpio_output(FPGA_INIT_Port, FPGA_INIT_Pin, GPIO_PIN_RESET);
-  gpio_output(FPGA_PROGRAM_Port, FPGA_PROGRAM_Pin, GPIO_PIN_SET);
-  */
+  /* Set up GPIOs for the keystore memory.
+   * KEYSTORE_GPIO_INIT is defined in stm-keystore.h.
+   */
+  KEYSTORE_GPIO_INIT();
 #endif /* HAL_SPI_MODULE_ENABLED */
 }
 #undef gpio_output
@@ -206,6 +207,23 @@ void MX_I2C2_Init(void)
 #endif
 
 #ifdef HAL_SPI_MODULE_ENABLED
+/* SPI1 (keystore memory) init function */
+void MX_SPI1_Init(void)
+{
+    hspi_keystore.Instance = SPI1;
+    hspi_keystore.Init.Mode = SPI_MODE_MASTER;
+    hspi_keystore.Init.Direction = SPI_DIRECTION_2LINES;
+    hspi_keystore.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi_keystore.Init.CLKPolarity = SPI_POLARITY_LOW;
+    hspi_keystore.Init.CLKPhase = SPI_PHASE_1EDGE;
+    hspi_keystore.Init.NSS = SPI_NSS_SOFT;
+    hspi_keystore.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+    hspi_keystore.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    hspi_keystore.Init.TIMode = SPI_TIMODE_DISABLE;
+    hspi_keystore.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    hspi_keystore.Init.CRCPolynomial = 10;
+    HAL_SPI_Init(&hspi_keystore);
+}
 /* SPI2 (FPGA config memory) init function */
 void MX_SPI2_Init(void)
 {
