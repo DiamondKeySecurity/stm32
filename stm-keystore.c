@@ -57,19 +57,21 @@ int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 
 int keystore_erase_sectors(int num)
 {
-    if (num > N25Q128_NUM_SECTORS - 1 || num < 0) num = N25Q128_NUM_SECTORS - 1;
+    if (num > N25Q128_NUM_SECTORS || num < 0) num = N25Q128_NUM_SECTORS;
     while (num) {
-	int timeout = 1000;
+	int timeout = 200; /* times 10ms = 2 seconds timeout */
 	while (timeout--) {
 	    int i = n25q128_get_wip_flag(&keystore_ctx);
 	    if (i < 0) return 0;
 	    if (! i) break;
 	    HAL_Delay(10);
 	}
+	if (! timeout) return 0;
 
-	if (! n25q128_erase_sector(&keystore_ctx, num--)) {
-            return 0;
+	if (! n25q128_erase_sector(&keystore_ctx, num - 1)) {
+            return -1;
         }
+	num--;
     }
     return 1;
 }

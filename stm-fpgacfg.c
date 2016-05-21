@@ -94,19 +94,21 @@ int fpgacfg_check_done(void)
 
 int fpgacfg_erase_sectors(int num)
 {
-    if (num > N25Q128_NUM_SECTORS - 1 || num < 0) num = N25Q128_NUM_SECTORS - 1;
+    if (num > N25Q128_NUM_SECTORS || num < 0) num = N25Q128_NUM_SECTORS;
     while (num) {
-	int timeout = 1000;
+	int timeout = 200; /* times 10ms = 2 seconds timeout */
 	while (timeout--) {
 	    int i = n25q128_get_wip_flag(&fpgacfg_ctx);
 	    if (i < 0) return 0;
 	    if (! i) break;
 	    HAL_Delay(10);
 	}
+	if (! timeout) return 0;
 
-	if (! n25q128_erase_sector(&fpgacfg_ctx, num--)) {
-            return 0;
+	if (! n25q128_erase_sector(&fpgacfg_ctx, num - 1)) {
+            return -1;
         }
+	num--;
     }
     return 1;
 }
