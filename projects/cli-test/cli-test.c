@@ -40,6 +40,34 @@
 
 #include <string.h>
 
+/* A bunch of defines to make it easier to add/maintain the CLI commands.
+ *
+ */
+#define _cli_cmd_struct(name, fullname, func, help)		\
+    static struct cli_command cmd_##fullname##_s =		\
+	{(char *) #name, func, 0, help,				\
+	 PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL}
+
+/* ROOT is a top-level label with no command */
+#define cli_command_root(name)					\
+    _cli_cmd_struct(name, name, NULL, NULL);			\
+    cli_register_command2(cli, &cmd_##name##_s, NULL)
+
+/* BRANCH is a label with a parent, but no command */
+#define cli_command_branch(parent, name)				\
+    _cli_cmd_struct(name, parent##_##name, NULL, NULL);			\
+    cli_register_command2(cli, &cmd_##parent##_##name##_s, &cmd_##parent##_s)
+
+/* NODE is a label with a parent and with a command associated with it */
+#define cli_command_node(parent, name, help)				\
+    _cli_cmd_struct(name, parent##_##name, cmd_##parent##_##name, (char *) help); \
+    cli_register_command2(cli, &cmd_##parent##_##name##_s, &cmd_##parent##_s)
+
+/* ROOT NODE is a label without a parent, but with a command associated with it */
+#define cli_command_root_node(name, help)				\
+    _cli_cmd_struct(name, name, NULL, (char *) help);			\
+    cli_register_command2(cli, &cmd_##name##_s, NULL)
+
 
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
@@ -232,67 +260,65 @@ int check_auth(const char *username, const char *password)
     return CLI_OK;
 }
 
+void configure_cli_show(struct cli_def *cli)
+{
+    /* show */
+    cli_command_root(show);
+
+    /* show cpuspeed */
+    cli_command_node(show, cpuspeed, "Show the speed at which the CPU currently operates");
+
+    cli_command_branch(show, fpga);
+    /* show fpga status*/
+    cli_command_node(show_fpga, status, "Show status about the FPGA");
+}
+
+void configure_cli_fpga(struct cli_def *cli)
+{
+    /* fpga */
+    cli_command_root(fpga);
+    /* fpga reset */
+    cli_command_node(fpga, reset, "Reset FPGA (config reset)");
+    /* fpga reset registers */
+    cli_command_node(fpga_reset, registers, "Reset FPGA registers (soft reset)");
+
+    cli_command_branch(fpga, bitstream);
+    /* fpga bitstream upload */
+    cli_command_node(fpga_bitstream, upload, "Upload new FPGA bitstream");
+    /* fpga bitstream erase */
+    cli_command_node(fpga_bitstream, erase, "Erase FPGA config memory");
+}
+
+void configure_cli_misc(struct cli_def *cli)
+{
+    /* filetransfer */
+    cli_command_root_node(filetransfer, "Test file transfering");
+    /* reboot */
+    cli_command_root_node(reboot, "Reboot the STM32");
+}
+
 int
 main()
 {
     static struct cli_def cli;
-    struct cli_command cmd_show_s = {(char *) "show", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_show_cpuspeed_s = {(char *) "cpuspeed", cmd_show_cpuspeed, 0,
-                                             (char *) "Show the speed at which the CPU currently operates",
-                                             PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_show_fpga_s = {(char *) "fpga", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_show_fpga_status_s = {(char *) "status", cmd_show_fpga_status, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-
-    struct cli_command cmd_filetransfer_s = {(char *) "filetransfer", cmd_filetransfer, 0,
-                                             (char *) "Test file transfering",
-                                             PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-
-    struct cli_command cmd_fpga_s = {(char *) "fpga", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_fpga_reset_s = {(char *) "reset", cmd_fpga_reset, 0,
-					   (char *) "Reset FPGA (config reset)",
-					   PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_fpga_reset_registerss = {(char *) "registers", cmd_fpga_reset_registers, 0,
-						    (char *) "Reset FPGA registers (soft reset)",
-						    PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_fpga_bitstream_s = {(char *) "bitstream", NULL, 0, NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_fpga_bitstream_upload_s = {(char *) "upload", cmd_fpga_bitstream_upload, 0,
-						      (char *) "Upload new FPGA bitstream",
-						      PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_fpga_bitstream_erase_s = {(char *) "erase", cmd_fpga_bitstream_erase, 0,
-						     (char *) "Erase FPGA config memory",
-						     PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
-    struct cli_command cmd_reboot_s = {(char *) "reboot", cmd_reboot, 0,
-				       (char *) "Reboot the STM32",
-				       PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL};
 
     stm_init();
 
     led_on(LED_RED);
 
     mgmt_cli_init(&cli);
-    led_on(LED_YELLOW);
     cli_set_auth_callback(&cli, check_auth);
 
-    cli_register_command2(&cli, &cmd_show_s, NULL);
-    cli_register_command2(&cli, &cmd_show_cpuspeed_s, &cmd_show_s);
-    cli_register_command2(&cli, &cmd_show_fpga_s, &cmd_show_s);
-    cli_register_command2(&cli, &cmd_show_fpga_status_s, &cmd_show_fpga_s);
-
-    cli_register_command2(&cli, &cmd_filetransfer_s, NULL);
-
-    cli_register_command2(&cli, &cmd_fpga_s, NULL);
-    cli_register_command2(&cli, &cmd_fpga_reset_s, &cmd_fpga_s);
-    cli_register_command2(&cli, &cmd_fpga_reset_registerss, &cmd_fpga_reset_s);
-    cli_register_command2(&cli, &cmd_fpga_bitstream_s, &cmd_fpga_s);
-    cli_register_command2(&cli, &cmd_fpga_bitstream_upload_s, &cmd_fpga_bitstream_s);
-    cli_register_command2(&cli, &cmd_fpga_bitstream_erase_s, &cmd_fpga_bitstream_s);
-
-    cli_register_command2(&cli, &cmd_reboot_s, NULL);
+    configure_cli_show(&cli);
+    configure_cli_fpga(&cli);
+    configure_cli_misc(&cli);
 
     led_off(LED_RED);
     led_on(LED_GREEN);
 
     embedded_cli_loop(&cli);
+
+    /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
 
     cli_print(&cli, "Rebooting in 4 seconds");
     HAL_Delay(3000);
