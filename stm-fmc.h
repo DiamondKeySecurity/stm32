@@ -35,7 +35,15 @@
 #ifndef __STM_FMC_H
 #define __STM_FMC_H
 
-#include <stdint.h>
+#define FMC_FPGA_BASE_ADDR              0x60000000
+#define FMC_FPGA_ADDR_MASK              0x03FFFFFC  // there are 26 physical lines, but "only" 24 usable for now
+#define FMC_FPGA_NWAIT_MAX_POLL_TICKS   10
+
+#define FMC_GPIO_PORT_NWAIT             GPIOD
+#define FMC_GPIO_PIN_NWAIT              GPIO_PIN_6
+
+#define FMC_NWAIT_IDLE                  GPIO_PIN_SET
+
 
 extern void fmc_init(void);
 
