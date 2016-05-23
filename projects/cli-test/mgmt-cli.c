@@ -33,7 +33,6 @@
  */
 #include "stm32f4xx_hal.h"
 #include "stm-init.h"
-#include "stm-led.h"
 #include "stm-uart.h"
 #include "mgmt-cli.h"
 
@@ -79,11 +78,8 @@ int embedded_cli_loop(struct cli_def *cli)
 
     while (1) {
 	cli_loop_start_new_command(cli, &ctx);
-	HAL_GPIO_TogglePin(LED_PORT, LED_YELLOW);
 
 	while (1) {
-	    HAL_GPIO_TogglePin(LED_PORT, LED_BLUE);
-
 	    cli_loop_show_prompt(cli, &ctx);
 
 	    n = cli_loop_read_next_char(cli, &ctx, &c);

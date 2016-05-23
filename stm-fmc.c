@@ -32,23 +32,30 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "stm32f4xx_hal.h"
+#include "stm-init.h"
 #include "stm-fmc.h"
 
 
 static SRAM_HandleTypeDef _fmc_fpga_inst;
 
-static void _fmc_init_gpio(void);
-static void _fmc_init_params(void);
+static HAL_StatusTypeDef _fmc_init_params(void);
 static int _fmc_nwait_idle(void);
 
 
-void fmc_init(void)
+HAL_StatusTypeDef fmc_init(void)
 {
+    static int initialized = 0;
+
+    if (initialized) {
+	return HAL_OK;
+    }
+    initialized = 1;
+
     // configure fmc pins
-    _fmc_init_gpio();
+    fmc_init_gpio();
 
     // configure fmc registers
-    _fmc_init_params();
+    return _fmc_init_params();
 }
 
 
@@ -129,104 +136,45 @@ static int _fmc_nwait_idle()
     return 0;
 }
 
-static void _fmc_init_gpio(void)
+void fmc_init_gpio(void)
 {
-    // enable gpio clocks
-    __GPIOA_CLK_ENABLE();
-    __GPIOB_CLK_ENABLE();
-    __GPIOD_CLK_ENABLE();
-    __GPIOE_CLK_ENABLE();
-    __GPIOF_CLK_ENABLE();
-    __GPIOG_CLK_ENABLE();
-    __GPIOH_CLK_ENABLE();
-    __GPIOI_CLK_ENABLE();
-
-    // enable fmc clock
-    __FMC_CLK_ENABLE();
-
-    // structure
     GPIO_InitTypeDef GPIO_InitStruct;
 
-    // Port B
-    GPIO_InitStruct.Pin = GPIO_PIN_7;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    // enable fmc clock
+    __HAL_RCC_FMC_CLK_ENABLE();
 
-    // Port D
-    GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
-	|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15
-	|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_3|GPIO_PIN_4
-	|GPIO_PIN_5|GPIO_PIN_7;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    fmc_af_gpio(GPIOB, GPIO_PIN_7);
+    fmc_af_gpio(GPIOD, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_3 | GPIO_PIN_4
+		| GPIO_PIN_5 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9
+		| GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13
+		| GPIO_PIN_14 | GPIO_PIN_15);
 
     /*
-     * When FMC is working with fixed latency, NWAIT pin must not be
+     * When FMC is working with fixed latency, NWAIT pin (PD6) must not be
      * configured in AF mode, according to STM32F429 errata.
      */
-
-    // Port D (GPIO!)
     GPIO_InitStruct.Pin = GPIO_PIN_6;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-    // Port E
-    GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7
-	|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
-	|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-    // Port F
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-	|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_12|GPIO_PIN_13
-	|GPIO_PIN_14|GPIO_PIN_15;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
-
-    // Port G
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-	|GPIO_PIN_4|GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-
-    // Port H
-    GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
-	|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
-
-    // Port I
-    GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_0|GPIO_PIN_1
-	|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_6|GPIO_PIN_7;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-    HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
+    fmc_af_gpio(GPIOE, GPIO_PIN_2
+		| GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7
+		| GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11
+		| GPIO_PIN_12 | GPIO_PIN_13 |GPIO_PIN_14 | GPIO_PIN_15);
+    fmc_af_gpio(GPIOF, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
+		| GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_12 | GPIO_PIN_13
+		| GPIO_PIN_14 | GPIO_PIN_15);
+    fmc_af_gpio(GPIOG, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
+		| GPIO_PIN_4 | GPIO_PIN_5);
+    fmc_af_gpio(GPIOH, GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11
+		| GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
+    fmc_af_gpio(GPIOI, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
+		| GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_9 | GPIO_PIN_10);
 }
 
 
-static void _fmc_init_params(void)
+static HAL_StatusTypeDef _fmc_init_params(void)
 {
     /*
      * fill internal fields
@@ -309,5 +257,5 @@ static void _fmc_init_params(void)
     fmc_timing.AccessMode = FMC_ACCESS_MODE_A;
 
     // initialize fmc
-    HAL_SRAM_Init(&_fmc_fpga_inst, &fmc_timing, NULL);
+    return HAL_SRAM_Init(&_fmc_fpga_inst, &fmc_timing, NULL);
 }

@@ -107,6 +107,15 @@ void HAL_SRAM_MspDeInit(SRAM_HandleTypeDef* hsram)
 {
 }
 
+void HAL_SDRAM_MspInit(SDRAM_HandleTypeDef* hsdram)
+{
+}
+
+void HAL_SDRAM_MspDeInit(SDRAM_HandleTypeDef* hsdram)
+{
+}
+
+
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
   GPIO_InitTypeDef GPIO_InitStruct;

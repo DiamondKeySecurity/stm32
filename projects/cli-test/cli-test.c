@@ -37,37 +37,11 @@
 #include "stm-uart.h"
 #include "stm-fpgacfg.h"
 #include "stm-keystore.h"
+#include "stm-sdram.h"
 #include "mgmt-cli.h"
+#include "test_sdram.h"
 
 #include <string.h>
-
-/* A bunch of defines to make it easier to add/maintain the CLI commands.
- *
- */
-#define _cli_cmd_struct(name, fullname, func, help)		\
-    static struct cli_command cmd_##fullname##_s =		\
-	{(char *) #name, func, 0, help,				\
-	 PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL}
-
-/* ROOT is a top-level label with no command */
-#define cli_command_root(name)					\
-    _cli_cmd_struct(name, name, NULL, NULL);			\
-    cli_register_command2(cli, &cmd_##name##_s, NULL)
-
-/* BRANCH is a label with a parent, but no command */
-#define cli_command_branch(parent, name)				\
-    _cli_cmd_struct(name, parent##_##name, NULL, NULL);			\
-    cli_register_command2(cli, &cmd_##parent##_##name##_s, &cmd_##parent##_s)
-
-/* NODE is a label with a parent and with a command associated with it */
-#define cli_command_node(parent, name, help)				\
-    _cli_cmd_struct(name, parent##_##name, cmd_##parent##_##name, (char *) help); \
-    cli_register_command2(cli, &cmd_##parent##_##name##_s, &cmd_##parent##_s)
-
-/* ROOT NODE is a label without a parent, but with a command associated with it */
-#define cli_command_root_node(name, help)				\
-    _cli_cmd_struct(name, name, NULL, (char *) help);			\
-    cli_register_command2(cli, &cmd_##name##_s, NULL)
 
 
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
@@ -306,6 +280,64 @@ int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
     while (1) {};
 }
 
+int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    // run external memory initialization sequence
+    HAL_StatusTypeDef status;
+    int ok, n = 1, test_completed;
+
+    cli_print(cli, "Initializing SDRAM");
+    status = sdram_init();
+    if (status != HAL_OK) {
+	cli_print(cli, "Failed initializing SDRAM: %i", (int) status);
+	return CLI_OK;
+    }
+
+    /* XXX support number of iterations given as argument like 'test sdram 5' */
+    while (n--) {
+	cli_print(cli, "Starting SDRAM test (n = %i)", n);
+	test_completed = 0;
+	// set LFSRs to some initial value, LFSRs will produce
+	// pseudo-random 32-bit patterns to test our memories
+	lfsr1 = 0xCCAA5533;
+	lfsr2 = 0xCCAA5533;
+
+	cli_print(cli, "Run sequential write-then-read test for the first chip");
+	ok = test_sdram_sequential(SDRAM_BASEADDR_CHIP1);
+	if (!ok) break;
+
+	cli_print(cli, "Run random write-then-read test for the first chip");
+	ok = test_sdram_random(SDRAM_BASEADDR_CHIP1);
+	if (!ok) break;
+
+	cli_print(cli, "Run sequential write-then-read test for the second chip");
+	ok = test_sdram_sequential(SDRAM_BASEADDR_CHIP2);
+	if (!ok) break;
+
+	cli_print(cli, "Run random write-then-read test for the second chip");
+	ok = test_sdram_random(SDRAM_BASEADDR_CHIP2);
+	if (!ok) break;
+
+	// turn blue led on (testing two chips at the same time)
+	led_on(LED_BLUE);
+
+	cli_print(cli, "Run interleaved write-then-read test for both chips at once");
+	ok = test_sdrams_interleaved(SDRAM_BASEADDR_CHIP1, SDRAM_BASEADDR_CHIP2);
+
+	led_off(LED_BLUE);
+	test_completed = 1;
+	cli_print(cli, "SDRAM test (n = %i) completed", n);
+    }
+
+    if (! test_completed) {
+	cli_print(cli, "SDRAM test failed (n = %i)", n);
+    } else {
+	cli_print(cli, "SDRAM test completed successfully");
+    }
+
+    return CLI_OK;
+}
+
 int check_auth(const char *username, const char *password)
 {
     if (strcasecmp(username, "ct") != 0)
@@ -349,6 +381,15 @@ void configure_cli_fpga(struct cli_def *cli)
     cli_command_node(fpga_bitstream, erase, "Erase FPGA config memory");
 }
 
+void configure_cli_test(struct cli_def *cli)
+{
+    /* test */
+    cli_command_root(test);
+
+    /* test sdram */
+    cli_command_node(test, sdram, "Run SDRAM tests");
+}
+
 void configure_cli_misc(struct cli_def *cli)
 {
     /* filetransfer */
@@ -371,6 +412,7 @@ main()
 
     configure_cli_show(&cli);
     configure_cli_fpga(&cli);
+    configure_cli_test(&cli);
     configure_cli_misc(&cli);
 
     led_off(LED_RED);

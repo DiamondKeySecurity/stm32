@@ -38,9 +38,6 @@
 #ifdef HAL_GPIO_MODULE_ENABLED
 #include "stm-led.h"
 #endif
-#ifdef HAL_SRAM_MODULE_ENABLED
-#include "stm-fmc.h"
-#endif
 #ifdef HAL_UART_MODULE_ENABLED
 #include "stm-uart.h"
 #endif
@@ -142,24 +139,6 @@ static void MX_USART2_UART_Init(void)
 #endif
 
 #ifdef HAL_GPIO_MODULE_ENABLED
-
-#define gpio_output(output_port, output_pins, output_level)	\
-    /* Configure GPIO pin Output Level */			\
-    HAL_GPIO_WritePin(output_port, output_pins, output_level);	\
-    /* Configure pin as output */ 				\
-    GPIO_InitStruct.Pin = output_pins; 				\
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP; 		\
-    GPIO_InitStruct.Pull = GPIO_NOPULL; 			\
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW; 			\
-    HAL_GPIO_Init(output_port, &GPIO_InitStruct)
-
-#define gpio_input(input_port, input_pin, input_pull)	\
-    GPIO_InitStruct.Pin = input_pin;			\
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;		\
-    GPIO_InitStruct.Pull = input_pull;			\
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;		\
-    HAL_GPIO_Init(input_port, &GPIO_InitStruct)
-
 
 /* Configure General Purpose Input/Output pins */
 static void MX_GPIO_Init(void)
