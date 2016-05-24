@@ -1,9 +1,12 @@
 /* Linker script to configure memory regions. */
 MEMORY
 { 
-  FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 2048k
+  /* FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 2048k */
+  BOOTLOADER (rx) : ORIGIN = 0x08000000, LENGTH = 128K
+  FIRMWARE (rx)   : ORIGIN = 0x08100000, LENGTH = 2048K - 128K
+  FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 2048K
   CCM (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
-  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192k
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
 }
 
 /* Linker script to place sections and symbol values. Should be used together

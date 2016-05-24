@@ -40,6 +40,7 @@ import argparse
 from binascii import crc32
 
 CHUNK_SIZE = 256
+DFU_CHUNK_SIZE = 256
 FPGA_CHUNK_SIZE = 4096
 
 
@@ -56,6 +57,11 @@ def parse_args():
                         dest='fpga',
                         action='store_true', default=False,
                         help='Perform FPGA bitstream upload',
+                        )
+    parser.add_argument('--dfu',
+                        dest='dfu',
+                        action='store_true', default=False,
+                        help='Perform DFU application upload',
                         )
 
     parser.add_argument('--device',
@@ -117,6 +123,9 @@ def send_file(filename, args, dst):
         src.read(0x64)
         chunk_size = FPGA_CHUNK_SIZE
         response = _execute(dst, 'fpga bitstream upload')
+    elif args.dfu:
+        chunk_size = DFU_CHUNK_SIZE
+        response = _execute(dst, 'dfu upload')
     else:
         chunk_size = CHUNK_SIZE
         response = _execute(dst, 'filetransfer')

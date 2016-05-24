@@ -35,7 +35,7 @@
 #ifndef __STM32_MGMT_CLI_H
 #define __STM32_MGMT_CLI_H
 
-#include "stm32f4xx_hal.h"
+#include "stm-init.h"
 #include <libcli.h>
 
 

@@ -39,6 +39,7 @@
 #include "stm-keystore.h"
 #include "stm-sdram.h"
 #include "mgmt-cli.h"
+#include "mgmt-dfu.h"
 #include "test_sdram.h"
 
 #include <string.h>
@@ -420,6 +421,7 @@ main()
     configure_cli_fpga(&cli);
     configure_cli_test(&cli);
     configure_cli_misc(&cli);
+    configure_cli_dfu(&cli);
 
     led_off(LED_RED);
     led_on(LED_GREEN);
