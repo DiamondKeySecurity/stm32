@@ -107,7 +107,7 @@ $(MBED_DIR)/libstmf4.a:
 board-test: $(BOARD_OBJS) $(LIBS)
 	$(MAKE) -C projects/board-test
 
-cli-test: $(BOARD_OBJS) $(LIBS)
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
 	$(MAKE) -C projects/cli-test
 
 $(RTOS_DIR)/librtos.a:
@@ -132,9 +132,6 @@ libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/hsm
 
-cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
-	$(MAKE) -C projects/cli-test
-
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
@@ -143,6 +140,7 @@ cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
 clean:
 	rm -f $(BOARD_OBJS)
 	$(MAKE) -C projects/board-test clean
+	$(MAKE) -C projects/cli-test clean
 	$(MAKE) -C projects/rtos-test clean
 	$(MAKE) -C projects/libhal-test clean
 	$(MAKE) -C projects/hsm clean
