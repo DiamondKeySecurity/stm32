@@ -38,13 +38,40 @@
 #include "stm32f4xx_hal.h"
 #include <libcli.h>
 
+
+/* A bunch of defines to make it easier to add/maintain the CLI commands.
+ *
+ */
+#define _cli_cmd_struct(name, fullname, func, help)		\
+    static struct cli_command cmd_##fullname##_s =		\
+	{(char *) #name, func, 0, help,				\
+	 PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL, NULL, NULL}
+
+/* ROOT is a top-level label with no command */
+#define cli_command_root(name)					\
+    _cli_cmd_struct(name, name, NULL, NULL);			\
+    cli_register_command2(cli, &cmd_##name##_s, NULL)
+
+/* BRANCH is a label with a parent, but no command */
+#define cli_command_branch(parent, name)				\
+    _cli_cmd_struct(name, parent##_##name, NULL, NULL);			\
+    cli_register_command2(cli, &cmd_##parent##_##name##_s, &cmd_##parent##_s)
+
+/* NODE is a label with a parent and with a command associated with it */
+#define cli_command_node(parent, name, help)				\
+    _cli_cmd_struct(name, parent##_##name, cmd_##parent##_##name, (char *) help); \
+    cli_register_command2(cli, &cmd_##parent##_##name##_s, &cmd_##parent##_s)
+
+/* ROOT NODE is a label without a parent, but with a command associated with it */
+#define cli_command_root_node(name, help)				\
+    _cli_cmd_struct(name, name, NULL, (char *) help);			\
+    cli_register_command2(cli, &cmd_##name##_s, NULL)
+
+
 extern void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf);
 extern int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count);
 extern int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count);
 extern int embedded_cli_loop(struct cli_def *cli);
 extern void mgmt_cli_init(struct cli_def *cli);
-
-extern __IO ITStatus MgmtUartDataReceived;
-extern __IO ITStatus MgmtUartShouldCli;
 
 #endif /* __STM32_MGMT_CLI_H */

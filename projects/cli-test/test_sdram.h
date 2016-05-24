@@ -1,9 +1,9 @@
 /*
- * stm-fmc.h
- * ---------
- * Functions to set up and use the FMC bus.
+ * test_sdram.h
+ * ------------
+ * Prototypes and defines for testing the 2x512 MBit SDRAM working memory.
  *
- * Copyright (c) 2015, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,33 +31,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+extern uint32_t lfsr1;
+extern uint32_t lfsr2;
 
-#ifndef __STM_FMC_H
-#define __STM_FMC_H
+extern int test_sdram_sequential(uint32_t *base_addr);
+extern int test_sdram_random(uint32_t *base_addr);
+extern int test_sdrams_interleaved(uint32_t *base_addr1, uint32_t *base_addr2);
 
-#define FMC_FPGA_BASE_ADDR              0x60000000
-#define FMC_FPGA_ADDR_MASK              0x03FFFFFC  // there are 26 physical lines, but "only" 24 usable for now
-#define FMC_FPGA_NWAIT_MAX_POLL_TICKS   10
-
-#define FMC_GPIO_PORT_NWAIT             GPIOD
-#define FMC_GPIO_PIN_NWAIT              GPIO_PIN_6
-
-#define FMC_NWAIT_IDLE                  GPIO_PIN_SET
-
-#define fmc_af_gpio(port, pins)			       \
-    GPIO_InitStruct.Pin = pins;			       \
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;	       \
-    GPIO_InitStruct.Pull = GPIO_NOPULL;		       \
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH; \
-    GPIO_InitStruct.Alternate = GPIO_AF12_FMC;	       \
-    __HAL_RCC_##port##_CLK_ENABLE();		       \
-    HAL_GPIO_Init(port, &GPIO_InitStruct)
-
-
-extern HAL_StatusTypeDef fmc_init(void);
-extern void fmc_init_gpio(void);
-
-extern int fmc_write_32(uint32_t addr, uint32_t *data);
-extern int fmc_read_32(uint32_t addr, uint32_t *data);
-
-#endif /* __STM_FMC_H */
+extern uint32_t lfsr_next_32(uint32_t lfsr);
+extern uint32_t lfsr_next_24(uint32_t lfsr);
