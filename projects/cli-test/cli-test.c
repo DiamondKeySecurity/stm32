@@ -42,6 +42,7 @@
 #include "test_sdram.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
@@ -184,7 +185,7 @@ int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *ar
 	/* By initializing buf to the same value that erased flash has (0xff), we don't
 	 * have to try and be smart when writing the last page of data to the memory.
 	 */
-	memset(buf, 0xff, 4096);
+	memset(buf, 0xff, sizeof(buf));
 
 	if (filesize < n) {
 	    n = filesize;
@@ -284,7 +285,13 @@ int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int a
 {
     // run external memory initialization sequence
     HAL_StatusTypeDef status;
-    int ok, n = 1, test_completed;
+    int ok, num_cycles = 1, i, test_completed;
+
+    if (argc == 1) {
+	num_cycles = strtol(argv[0], NULL, 0);
+	if (num_cycles > 100) num_cycles = 100;
+	if (num_cycles < 1) num_cycles = 1;
+    }
 
     cli_print(cli, "Initializing SDRAM");
     status = sdram_init();
@@ -293,9 +300,8 @@ int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int a
 	return CLI_OK;
     }
 
-    /* XXX support number of iterations given as argument like 'test sdram 5' */
-    while (n--) {
-	cli_print(cli, "Starting SDRAM test (n = %i)", n);
+    for (i = 1; i <= num_cycles; i++) {
+	cli_print(cli, "Starting SDRAM test (%i/%i)", i, num_cycles);
 	test_completed = 0;
 	// set LFSRs to some initial value, LFSRs will produce
 	// pseudo-random 32-bit patterns to test our memories
@@ -326,11 +332,11 @@ int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int a
 
 	led_off(LED_BLUE);
 	test_completed = 1;
-	cli_print(cli, "SDRAM test (n = %i) completed", n);
+	cli_print(cli, "SDRAM test (%i/%i) completed\r\n", i, num_cycles);
     }
 
     if (! test_completed) {
-	cli_print(cli, "SDRAM test failed (n = %i)", n);
+	cli_print(cli, "SDRAM test failed (%i/%i)", i, num_cycles);
     } else {
 	cli_print(cli, "SDRAM test completed successfully");
     }
