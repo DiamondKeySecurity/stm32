@@ -35,6 +35,8 @@
 #ifndef __STM_FMC_H
 #define __STM_FMC_H
 
+#include "stm32f4xx_hal.h"
+
 #define FMC_FPGA_BASE_ADDR              0x60000000
 #define FMC_FPGA_ADDR_MASK              0x03FFFFFC  // there are 26 physical lines, but "only" 24 usable for now
 #define FMC_FPGA_NWAIT_MAX_POLL_TICKS   10
