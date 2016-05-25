@@ -100,7 +100,7 @@ export CFLAGS
 all: board-test cli-test libhal-test hsm
 
 init:
-	git submodule update --init --recursive
+	git submodule update --init --recursive --remote
 
 $(MBED_DIR)/libstmf4.a:
 	$(MAKE) -C $(MBED_DIR)
