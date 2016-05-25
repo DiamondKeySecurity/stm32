@@ -1,19 +1,18 @@
 /* Linker script to configure memory regions. */
 MEMORY
-{ 
+{
   /* FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 2048k */
   BOOTLOADER (rx) : ORIGIN = 0x08000000, LENGTH = 128K
-  FIRMWARE (rx)   : ORIGIN = 0x08100000, LENGTH = 2048K - 128K
+  FIRMWARE (rx)   : ORIGIN = 0x08000000 + 128K, LENGTH = 2048K - 128K
   FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 2048K
-  CCM (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
-  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192K - 4
 }
 
 /* Linker script to place sections and symbol values. Should be used together
  * with other linker script that defines memory regions FLASH and RAM.
  * It references following symbols, which must be defined in code:
  *   Reset_Handler : Entry of reset handler
- * 
+ *
  * It defines following symbols, which code can use without definition:
  *   __exidx_start
  *   __exidx_end
@@ -151,6 +150,17 @@ SECTIONS
     _estack = __StackTop;
     __StackLimit = __StackTop - SIZEOF(.stack_dummy);
     PROVIDE(__stack = __StackTop);
+
+    /* The DFU code needs to know where the firmware lives */
+    CRYPTECH_BOOTLOADER_START = ORIGIN(BOOTLOADER);
+    CRYPTECH_BOOTLOADER_END = ORIGIN(BOOTLOADER) + LENGTH(BOOTLOADER) - 1;
+    CRYPTECH_FIRMWARE_START = ORIGIN(FIRMWARE);
+    CRYPTECH_FIRMWARE_END = ORIGIN(FIRMWARE) + LENGTH(FIRMWARE) - 1;
+    /* The last 4 bytes of RAM is used to control the DFU reset+jumping.
+     * Have to be reserved in here to not get overwritten by the Reset_Handler
+     * that zeros memory. Maybe there is a better way?
+     */
+    CRYPTECH_DFU_CONTROL = ORIGIN(RAM) + LENGTH(RAM);
 
     /* Check if data + heap + stack exceeds RAM limit */
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")

@@ -38,7 +38,9 @@
 #include "stm-init.h"
 #include <libcli.h>
 
+#define DFU_UPLOAD_CHUNK_SIZE 256
 
 extern void configure_cli_dfu(struct cli_def *cli);
+extern void check_early_dfu_jump(void);
 
 #endif /* __STM32_CLI_MGMT_DFU_H */

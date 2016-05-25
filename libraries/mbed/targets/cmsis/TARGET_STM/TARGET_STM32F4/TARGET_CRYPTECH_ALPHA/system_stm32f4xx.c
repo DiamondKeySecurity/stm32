@@ -75,6 +75,8 @@
   #define HSI_VALUE    ((uint32_t)16000000) /*!< Value of the Internal oscillator in Hz*/
 #endif /* HSI_VALUE */
 
+extern uint32_t CRYPTECH_FIRMWARE_START;  /* defined in the linker script (STM32F429BI.ld) */
+
 /**
   * @}
   */
@@ -197,11 +199,14 @@ void SystemInit(void)
 #endif /* DATA_IN_ExtSRAM || DATA_IN_ExtSDRAM */
 
   /* Configure the Vector Table location add offset address ------------------*/
+  /* cryptech: Don't change VTOR if it is already set up by the bootloader */
+  if (SCB->VTOR != CRYPTECH_FIRMWARE_START) {
 #ifdef VECT_TAB_SRAM
-  SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM */
+      SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM */
 #else
-  SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
+      SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
 #endif
+  }
 
   /* Configure the Cube driver */
   SystemCoreClock = 16000000; // At this stage the HSI is used as system clock
