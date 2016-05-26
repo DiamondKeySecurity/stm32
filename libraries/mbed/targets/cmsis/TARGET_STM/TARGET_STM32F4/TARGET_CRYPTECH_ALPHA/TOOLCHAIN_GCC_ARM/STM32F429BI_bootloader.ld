@@ -1,7 +1,7 @@
 /* Linker script to configure memory regions.
  *
- * This is the script for the firmware (meaning any application except the bootloader).
- * It should be placed 128 KB from the start of the STM32 internal flash.
+ * This one is for the bootloader, so FLASH points at the real beginning of the
+ * STM32 internal flash memory (0x08000000).
  *
  */
 MEMORY
@@ -9,10 +9,9 @@ MEMORY
   /* FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 2048k */
   BOOTLOADER (rx) : ORIGIN = 0x08000000, LENGTH = 128K
   FIRMWARE (rx)   : ORIGIN = 0x08000000 + 128K, LENGTH = 2048K - 128K
-  FLASH (rx)      : ORIGIN = 0x08000000 + 128K, LENGTH = 2048K - 128K
+  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 2048K
   RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192K - 4
 }
-/* original:  FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 2048K */
 
 /* Linker script to place sections and symbol values. Should be used together
  * with other linker script that defines memory regions FLASH and RAM.

@@ -410,9 +410,6 @@ main()
 {
     static struct cli_def cli;
 
-    /* This is simulating the bootloader from the cli-test. */
-    check_early_dfu_jump();
-
     stm_init();
 
     led_on(LED_RED);

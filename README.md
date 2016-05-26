@@ -1,8 +1,11 @@
-STM32 software for dev-bridge board
-===================================
+STM32 software for dev-bridge/Alpha board
+=========================================
 
 The dev-bridge board is a daughterboard for the Novena, which talks to the
 Novena's FPGA through the high-speed expansion connector.
+
+The Alpha board is a stand-alone board with an Artix-7 FPGA, a STM32 Cortex-M4
+microcontroller, two USB interfaces etc.
 
 See user/ft/stm32-dev-bridge/hardware/rev01 for schematics of the bridge
 board. There will be more information on the wiki shortly.
@@ -50,33 +53,51 @@ Do "bin/flash-target" from the top level directory (where this file is)
 to flash a built image into the microcontroller. See the section ST-LINK
 below for information about the actual hardware programming device needed.
 
+Example loading the bootloader and the led-test firmware to get some LEDs
+flashing:
+
+  $ make bootloader board-test
+  $ ./bin/flash-target projects/board-test/led-test
+  $ ./bin/flash-target projects/bootloader/bootloader
+
+At this point, the STM32 will reset into the bootloader which flashes the
+blue LED five times in one second, and then execution of the LED test
+firmware will begin. The LED test firmware will flash the green, yellow,
+red and blue LEDs in order until the end of time.
+
 
 ST-LINK
 =======
 To program the MCU, an ST-LINK adapter is used. The cheapest way to get
 one is to buy an evaluation board with an ST-LINK integrated, and pinouts
 to program external chips. This should work with any evaluation board from
-STM; we have tested with STM32F4DISCOVERY (with ST-LINK v2.0) and 
+STM; we have tested with STM32F4DISCOVERY (with ST-LINK v2.0) and
 NUCLEO-F411RE (with ST-LINK v2.1).
 
-The ST-LINK programming pins are the 1+4 throughole pads above the ARM
-on the circuit board. See the schematics for details, but the pinout
-from left to right (1, space, 4) of rev01 is
+The ST-LINK programming pins is called J1 and is near the CrypTech logo
+printed on the circuit board. The pin-outs is shown on the circuit board
+(follow the thin white line from J1 to the white box with STM32_SWD
+written in it). From left to right, the pins are
 
-  NRST, space, CLK, IO, GND, VCC
+  3V3, CLK, GND, I/O, NRST and N/C
+
+This matches the pin-out on the DISCO and NUCLEO boards we have tried.
 
 First remove the pair of ST-LINK jumpers (CN4 on the DISCO, CN2 on the
 NUCLEO). Then find the 6-pin SWD header on the left of the STM board (CN2
-on the DISCO, CN4 on the NUCLEO), and connect them to the dev-bridge
-board:
+on the DISCO, CN4 on the NUCLEO), and connect them to the Alpha board:
 
-* 5 T_NRST <-> NRST
-* 2 T_JTCK <-> CLK
-* 4 T_JTMS <-> IO
-* 3 GND <-> GND
+    NUCLEO / DISCO        CRYPTECH ALPHA
+    --------------        --------------
+* 1 VDD_TARGET        <-> 3V3
+* 2 SWCLK / T_JTCK    <-> CLK
+* 3 GND               <-> GND
+* 4 SWDIO / T_JTMS    <-> IO
+* 5 T_NRST / NRST     <-> NRST
 
-The dev-bridge board should be connected to the Novena and powered on
-before attempting to flash it.
+N/C (pin 6) means Not Connected.
+
+The Alpha board should be powered on before attempting to flash it.
 
 
 Debugging the firmware
@@ -87,24 +108,13 @@ firmware in an STM32:
 
   http://fun-tech.se/stm32/OpenOCD/gdb.php
 
-I've only managed to get the most basic text line gdb to work,
-something along these lines:
+There is a shell script called 'bin/debug' that starts an OpenOCD server
+and GDB. Example:
 
-1) Start OpenOCD server (with a configuration file for your type of ST-LINK
-   adapter)
+  $ ./bin/debug projects/board-test/led-test
 
-   $ openocd -f /usr/share/openocd/scripts/board/stm32f4discovery.cfg
+Once in GDB, issue "monitor reset halt" to reset the STM32 before debugging.
 
-2) Connect to the OpenOCD server and re-flash already compiled firmware:
-
-   $ telnet localhost 4444
-   reset halt
-   flash probe 0
-   stm32f2x mass_erase 0
-   flash write_bank 0 /path/to/main.bin 0
-   reset halt
-
-3) Start GDB and have it connect to the OpenOCD server:
-
-   $ arm-none-eabi-gdb --eval-command="target remote localhost:3333" main.elf
-
+Remember that the first code to run will be the bootloader, but if you do
+e.g. "break main" and "continue" you will end up in led-test main() after
+the bootloader has jumped there.

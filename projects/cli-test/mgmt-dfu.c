@@ -54,7 +54,7 @@ extern uint32_t CRYPTECH_DFU_CONTROL;
 
 __IO uint32_t *dfu_control = &CRYPTECH_DFU_CONTROL;
 __IO uint32_t *dfu_new_msp = &CRYPTECH_FIRMWARE_START;
-__IO uint32_t *dfu_firmware = &CRYPTECH_FIRMWARE_START + 4;
+__IO uint32_t *dfu_firmware = &CRYPTECH_FIRMWARE_START + 1;
 
 /* Flash sector offsets from RM0090, Table 6. Flash module - 2 Mbyte dual bank organization */
 #define FLASH_NUM_SECTORS 24 + 1

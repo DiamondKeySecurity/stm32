@@ -47,6 +47,7 @@ export LIBS = $(MBED_DIR)/libstmf4.a $(RTOS_DIR)/librtos.a
 
 # linker script
 export LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
+export BOOTLOADER_LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI_bootloader.ld
 
 # board-specific objects, to link into every project
 export BOARD_OBJS = \
@@ -132,6 +133,9 @@ libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/hsm
+
+bootloader: $(BOARD_OBJS) $(LIBS)
+	$(MAKE) -C projects/bootloader
 
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
