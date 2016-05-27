@@ -1,4 +1,4 @@
-TEST = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa
+TEST = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa test-mkmif
 #TEST += test-rpc_hash test-rpc_pkey test-rpc_get_version test-rpc_get_random
 TEST += test-rpc_server
 
@@ -16,9 +16,7 @@ vpath %.c $(LIBHAL_DIR)/tests $(LIBHAL_DIR)/utils
 
 %.elf: %.mo main.o $(BOARD_OBJS) $(LIBC_OBJS) $(LIBS)
 	$(CC) $(CFLAGS) $^ -o $*.elf -T$(LDSCRIPT) -g -Wl,-Map=$*.map
-	$(OBJCOPY) -O ihex $*.elf $*.hex
 	$(OBJCOPY) -O binary $*.elf $*.bin
-	$(OBJDUMP) -St $*.elf >$*.lst
 	$(SIZE) $*.elf
 
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
@@ -27,7 +25,5 @@ vpath %.c $(LIBHAL_DIR)/tests $(LIBHAL_DIR)/utils
 clean:
 	rm -f *.o *.mo
 	rm -f *.elf
-	rm -f *.hex
 	rm -f *.bin
 	rm -f *.map
-	rm -f *.lst
