@@ -28,7 +28,13 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
-Utility to test file upload (or FPGA bitstream upload.
+Utility to transfer a new firmware to the bootloader.
+
+Example usage:
+
+   ./bin/dfu path/to/firmware.bin
+
+Then reset the Cryptech Alpha board.
 """
 import os
 import sys
@@ -39,29 +45,22 @@ import argparse
 
 from binascii import crc32
 
-CHUNK_SIZE = 256
-DFU_CHUNK_SIZE = 256
-FPGA_CHUNK_SIZE = 4096
+CHUNK_SIZE = 4096
 
 
 def parse_args():
     """
     Parse the command line arguments
     """
-    parser = argparse.ArgumentParser(description = "File uploader",
+    parser = argparse.ArgumentParser(description = "Device firmware upgrader",
                                      add_help = True,
                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                      )
 
-    parser.add_argument('--fpga',
-                        dest='fpga',
+    parser.add_argument('--verbose',
+                        dest='verbose',
                         action='store_true', default=False,
-                        help='Perform FPGA bitstream upload',
-                        )
-    parser.add_argument('--dfu',
-                        dest='dfu',
-                        action='store_true', default=False,
-                        help='Perform DFU application upload',
+                        help='Verbose operation',
                         )
 
     parser.add_argument('--device',
@@ -86,58 +85,45 @@ def _write(dst, data):
         print("Wrote {!r}".format(data))
 
 
-def _read(dst):
+def _read(dst, verbose=False):
     res = ''
     while True:
         x = dst.read(1)
         if not x:
             break
         res += x
-    print ("Read {!r}".format(res))
+    if res and verbose:
+        print ("Read {!r}".format(res))
     return res
 
 
-def _execute(dst, cmd):
-    _write(dst, '\r')
-    prompt = _read(dst)
-    if prompt.endswith('Username: '):
-        _write(dst, 'ct\r')
-        prompt = _read(dst)
-    if prompt.endswith('Password: '):
-        _write(dst, 'ct\r')
-        prompt = _read(dst)
-    if not prompt.endswith('> '):
-        sys.stderr.write('Device does not seem to be ready for a file transfer (got {!r})\n'.format(prompt))
-        return False
-    _write(dst, cmd + '\r')
-    response = _read(dst)
-    return response
-
-def send_file(filename, args, dst):
+def send_file(filename, args):
     s = os.stat(filename)
     size = s.st_size
     src = open(filename, 'rb')
-    if args.fpga:
-        # Skip header in FPGA bitstream file
-        size -= 0x64
-        src.read(0x64)
-        chunk_size = FPGA_CHUNK_SIZE
-        response = _execute(dst, 'fpga bitstream upload')
-    elif args.dfu:
-        chunk_size = DFU_CHUNK_SIZE
-        response = _execute(dst, 'dfu upload')
-    else:
-        chunk_size = CHUNK_SIZE
-        response = _execute(dst, 'filetransfer')
-    if 'OK' not in response:
-        sys.stderr.write('Device did not accept the upload command (got {!r})\n'.format(response))
-        return False
+    chunk_size = CHUNK_SIZE
+
+    print("Waiting for contact with the bootloader on device {!s}, reset the CrypTech Alpha...".format(args.device))
+
+    while True:
+        try:
+            dst = serial.Serial(args.device, 921600, timeout=0.1)
+        except serial.SerialException:
+            time.sleep(0.2)
+            continue
+        dst.write('\r')
+        response = _read(dst, args.verbose)
+        if 'OK' in response:
+            dst.timeout=2
+            break
+
+    print('\nUploading firmware\n')
 
     crc = 0
     counter = 0
     # 1. Write size of file (4 bytes)
     _write(dst, struct.pack('<I', size))
-    _read(dst)
+    _read(dst, args.verbose)
     # 2. Write file contents while calculating CRC-32
     while True:
         data = src.read(chunk_size)
@@ -162,20 +148,24 @@ def send_file(filename, args, dst):
 
         crc = crc32(data, crc) & 0xffffffff
 
-    _read(dst)
+    _read(dst, args.verbose)
 
     # 3. Write CRC-32 (4 bytes)
     _write(dst, struct.pack('<I', crc))
-    _read(dst)
+
+    if args.verbose:
+        print('\nFinished - this command might hang now depending on the firmware loaded')
+        _read(dst, args.verbose)
+    else:
+        print('\nFinished uploading firmware')
 
     src.close()
+    dst.close()
     return True
 
 
 def main(args):
-    dst = serial.Serial(args.device, 921600, timeout=2)
-    send_file(args.filename, args, dst)
-    dst.close()
+    send_file(args.filename, args)
     return True
 
 if __name__ == '__main__':

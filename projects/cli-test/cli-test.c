@@ -39,6 +39,7 @@
 #include "stm-keystore.h"
 #include "stm-sdram.h"
 #include "mgmt-cli.h"
+#include "mgmt-dfu.h"
 #include "test_sdram.h"
 
 #include <string.h>
@@ -396,7 +397,7 @@ void configure_cli_test(struct cli_def *cli)
     cli_command_node(test, sdram, "Run SDRAM tests");
 }
 
-void configure_cli_misc(struct cli_def *cli)
+static void configure_cli_misc(struct cli_def *cli)
 {
     /* filetransfer */
     cli_command_root_node(filetransfer, "Test file transfering");
@@ -404,10 +405,31 @@ void configure_cli_misc(struct cli_def *cli)
     cli_command_root_node(reboot, "Reboot the STM32");
 }
 
+typedef  void (*pFunction)(void);
+
+/* This is it's own function to make it more convenient to set a breakpoint at it in gdb */
+void do_early_dfu_jump(void)
+{
+    pFunction loaded_app = (pFunction) *dfu_code_ptr;
+    /* Set the stack pointer to the correct one for the firmware */
+    __set_MSP(*dfu_msp_ptr);
+    /* Set the Vector Table Offset Register */
+    SCB->VTOR = (uint32_t) dfu_firmware;
+    loaded_app();
+    while (1);
+}
+
+
 int
 main()
 {
     static struct cli_def cli;
+
+    /* Check if we've just rebooted in order to jump to the firmware. */
+    if (*dfu_control == HARDWARE_EARLY_DFU_JUMP) {
+	*dfu_control = 0;
+	do_early_dfu_jump();
+    }
 
     stm_init();
 
@@ -420,6 +442,7 @@ main()
     configure_cli_fpga(&cli);
     configure_cli_test(&cli);
     configure_cli_misc(&cli);
+    configure_cli_dfu(&cli);
 
     led_off(LED_RED);
     led_on(LED_GREEN);

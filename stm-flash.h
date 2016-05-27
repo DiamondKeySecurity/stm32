@@ -1,7 +1,7 @@
 /*
- * test_sdram.h
- * ------------
- * Prototypes and defines for testing the 2x512 MBit SDRAM working memory.
+ * stm-flash.h
+ * -----------
+ * Functions and defines for accessing the flash memory.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -31,17 +31,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __STM32_CLI_TEST_SDRAM_H
-#define __STM32_CLI_TEST_SDRAM_H
 
-extern uint32_t lfsr1;
-extern uint32_t lfsr2;
+#ifndef __STM32_FLASH_H
+#define __STM32_FLASH_H
 
-extern int test_sdram_sequential(uint32_t *base_addr);
-extern int test_sdram_random(uint32_t *base_addr);
-extern int test_sdrams_interleaved(uint32_t *base_addr1, uint32_t *base_addr2);
+extern int stm_flash_sector_num(const uint32_t offset);
+extern int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset);
+extern int stm_flash_write32(const uint32_t offset, const uint32_t *buf, const uint32_t elements);
 
-extern uint32_t lfsr_next_32(uint32_t lfsr);
-extern uint32_t lfsr_next_24(uint32_t lfsr);
-
-#endif /* __STM32_CLI_TEST_SDRAM_H */
+#endif /* __STM32_FLASH_H */

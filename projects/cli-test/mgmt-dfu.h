@@ -1,7 +1,7 @@
 /*
- * test_sdram.h
- * ------------
- * Prototypes and defines for testing the 2x512 MBit SDRAM working memory.
+ * mgmt-dfu.h
+ * ---------
+ * Management CLI Device Firmware Upgrade code.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -31,17 +31,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __STM32_CLI_TEST_SDRAM_H
-#define __STM32_CLI_TEST_SDRAM_H
 
-extern uint32_t lfsr1;
-extern uint32_t lfsr2;
+#ifndef __STM32_CLI_MGMT_DFU_H
+#define __STM32_CLI_MGMT_DFU_H
 
-extern int test_sdram_sequential(uint32_t *base_addr);
-extern int test_sdram_random(uint32_t *base_addr);
-extern int test_sdrams_interleaved(uint32_t *base_addr1, uint32_t *base_addr2);
+#include "stm-init.h"
+#include <libcli.h>
 
-extern uint32_t lfsr_next_32(uint32_t lfsr);
-extern uint32_t lfsr_next_24(uint32_t lfsr);
+/* symbols defined in the linker script (STM32F429BI.ld) */
+extern uint32_t CRYPTECH_FIRMWARE_START;
+extern uint32_t CRYPTECH_FIRMWARE_END;
+extern uint32_t CRYPTECH_DFU_CONTROL;
 
-#endif /* __STM32_CLI_TEST_SDRAM_H */
+#define DFU_FIRMWARE_ADDR         ((uint32_t) &CRYPTECH_FIRMWARE_START)
+#define DFU_FIRMWARE_END_ADDR     ((uint32_t) &CRYPTECH_FIRMWARE_END)
+#define DFU_UPLOAD_CHUNK_SIZE     256
+#define HARDWARE_EARLY_DFU_JUMP   0xBADABADA
+
+extern __IO uint32_t *dfu_control;
+extern __IO uint32_t *dfu_firmware;
+extern __IO uint32_t *dfu_msp_ptr;
+extern __IO uint32_t *dfu_code_ptr;
+
+
+extern void configure_cli_dfu(struct cli_def *cli);
+
+#endif /* __STM32_CLI_MGMT_DFU_H */

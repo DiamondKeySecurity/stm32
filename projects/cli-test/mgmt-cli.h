@@ -35,7 +35,7 @@
 #ifndef __STM32_MGMT_CLI_H
 #define __STM32_MGMT_CLI_H
 
-#include "stm32f4xx_hal.h"
+#include "stm-init.h"
 #include <libcli.h>
 
 
@@ -64,7 +64,7 @@
 
 /* ROOT NODE is a label without a parent, but with a command associated with it */
 #define cli_command_root_node(name, help)				\
-    _cli_cmd_struct(name, name, NULL, (char *) help);			\
+    _cli_cmd_struct(name, name, cmd_##name, (char *) help);		\
     cli_register_command2(cli, &cmd_##name##_s, NULL)
 
 
