@@ -94,13 +94,13 @@ First remove the pair of ST-LINK jumpers (CN4 on the DISCO, CN2 on the
 NUCLEO). Then find the 6-pin SWD header on the left of the STM board (CN2
 on the DISCO, CN4 on the NUCLEO), and connect them to the Alpha board:
 
-    NUCLEO / DISCO        CRYPTECH ALPHA
-    --------------        --------------
-* 1 VDD_TARGET        <-> 3V3
-* 2 SWCLK / T_JTCK    <-> CLK
-* 3 GND               <-> GND
-* 4 SWDIO / T_JTMS    <-> IO
-* 5 T_NRST / NRST     <-> NRST
+    NUCLEO / DISCO       CRYPTECH ALPHA
+    --------------       --------------
+* 1 VDD_TARGET      <->  3V3
+* 2 SWCLK / T_JTCK  <->  CLK
+* 3 GND             <->  GND
+* 4 SWDIO / T_JTMS  <->  IO
+* 5 NRST / T_NRST   <->  NRST
 
 N/C (pin 6) means Not Connected.
 
