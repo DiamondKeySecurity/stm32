@@ -65,6 +65,13 @@ blue LED five times in one second, and then execution of the LED test
 firmware will begin. The LED test firmware will flash the green, yellow,
 red and blue LEDs in order until the end of time.
 
+Once the bootloader is installed, regular firmware can be loaded without
+an ST-LINK cable like this:
+
+  $ ./bin/dfu projects/board-test/led-test.bin
+
+Then reboot the Alpha board.
+
 
 ST-LINK
 =======

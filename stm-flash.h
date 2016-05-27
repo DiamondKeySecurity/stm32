@@ -1,7 +1,7 @@
 /*
- * mgmt-dfu.h
- * ---------
- * Management CLI Device Firmware Upgrade code.
+ * stm-flash.h
+ * -----------
+ * Functions and defines for accessing the flash memory.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -32,28 +32,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_DFU_H
-#define __STM32_CLI_MGMT_DFU_H
+#ifndef __STM32_FLASH_H
+#define __STM32_FLASH_H
 
-#include "stm-init.h"
-#include <libcli.h>
+extern int stm_flash_sector_num(const uint32_t offset);
+extern int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset);
+extern int stm_flash_write32(const uint32_t offset, const uint32_t *buf, const uint32_t elements);
 
-/* symbols defined in the linker script (STM32F429BI.ld) */
-extern uint32_t CRYPTECH_FIRMWARE_START;
-extern uint32_t CRYPTECH_FIRMWARE_END;
-extern uint32_t CRYPTECH_DFU_CONTROL;
-
-#define DFU_FIRMWARE_ADDR         ((uint32_t) &CRYPTECH_FIRMWARE_START)
-#define DFU_FIRMWARE_END_ADDR     ((uint32_t) &CRYPTECH_FIRMWARE_END)
-#define DFU_UPLOAD_CHUNK_SIZE     256
-#define HARDWARE_EARLY_DFU_JUMP   0xBADABADA
-
-extern __IO uint32_t *dfu_control;
-extern __IO uint32_t *dfu_firmware;
-extern __IO uint32_t *dfu_msp_ptr;
-extern __IO uint32_t *dfu_code_ptr;
-
-
-extern void configure_cli_dfu(struct cli_def *cli);
-
-#endif /* __STM32_CLI_MGMT_DFU_H */
+#endif /* __STM32_FLASH_H */

@@ -1,7 +1,7 @@
 /*
- * mgmt-dfu.h
+ * dfu.h
  * ---------
- * Management CLI Device Firmware Upgrade code.
+ * Device Firmware Upgrade defines and prototypes.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -32,20 +32,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_DFU_H
-#define __STM32_CLI_MGMT_DFU_H
+#ifndef __STM32_BOOTLOADER_DFU_H
+#define __STM32_BOOTLOADER_DFU_H
 
 #include "stm-init.h"
-#include <libcli.h>
 
-/* symbols defined in the linker script (STM32F429BI.ld) */
+/* symbols defined in the linker script (STM32F429BI_bootloader.ld) */
 extern uint32_t CRYPTECH_FIRMWARE_START;
 extern uint32_t CRYPTECH_FIRMWARE_END;
 extern uint32_t CRYPTECH_DFU_CONTROL;
 
 #define DFU_FIRMWARE_ADDR         ((uint32_t) &CRYPTECH_FIRMWARE_START)
 #define DFU_FIRMWARE_END_ADDR     ((uint32_t) &CRYPTECH_FIRMWARE_END)
-#define DFU_UPLOAD_CHUNK_SIZE     256
+#define DFU_UPLOAD_CHUNK_SIZE     4096
+
+/* Magic bytes to signal the bootloader it should jump to the firmware
+ * instead of trying to receive a new firmware using the MGMT UART.
+ */
 #define HARDWARE_EARLY_DFU_JUMP   0xBADABADA
 
 extern __IO uint32_t *dfu_control;
@@ -53,7 +56,7 @@ extern __IO uint32_t *dfu_firmware;
 extern __IO uint32_t *dfu_msp_ptr;
 extern __IO uint32_t *dfu_code_ptr;
 
+extern int dfu_receive_firmware(void);
 
-extern void configure_cli_dfu(struct cli_def *cli);
 
-#endif /* __STM32_CLI_MGMT_DFU_H */
+#endif /* __STM32_BOOTLOADER_DFU_H */
