@@ -202,7 +202,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  */
 void USART2_IRQHandler(void)
 {
-    HAL_UART_IRQHandler(&huart2);
+    HAL_UART_IRQHandler(&huart_user);
 }
 
 /* The main thread. After the system setup, it waits for the RPC-request
@@ -252,7 +252,7 @@ int main()
         Error_Handler();
 
     /* Start the non-blocking receive */
-    HAL_UART_Receive_IT(&huart2, &c, 1);
+    HAL_UART_Receive_IT(&huart_user, &c, 1);
 
     while (1) {
         osSemaphoreWait(rpc_sem, osWaitForever);
