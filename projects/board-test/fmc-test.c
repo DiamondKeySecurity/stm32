@@ -86,13 +86,15 @@ int main(void)
   
   stm_init();
 
-  uart_send_string("Keep calm for Novena boot...\r\n");
+  uart_send_string("Keep calm for FPGA bitstream loading...\r\n");
 
-  // Blink blue LED for six seconds to not upset the Novena at boot.
+  // Blink blue LED until the FPGA reports it has loaded it's bitstream
   led_on(LED_BLUE);
-  for (i = 0; i < 4; i++) {
-    HAL_Delay(500);
-    led_toggle(LED_BLUE);
+  while (! fpgacfg_check_done()) {
+      for (i = 0; i < 4; i++) {
+	  HAL_Delay(500);
+	  led_toggle(LED_BLUE);
+      }
   }
 
   // initialize rng
