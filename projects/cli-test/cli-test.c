@@ -49,6 +49,9 @@
 
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
+/* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
+volatile uint8_t uart_rx;
+
 
 int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
@@ -286,6 +289,22 @@ void do_early_dfu_jump(void)
     while (1);
 }
 
+/* Callback for HAL_UART_Receive_IT(). */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == huart_mgmt.Instance) {
+	mgmt_cli_uart_isr((const uint8_t *) &uart_rx, 1);
+
+	/* Set things up to receive another byte. */
+	HAL_UART_Receive_IT(huart, (uint8_t *) &uart_rx, 1);
+    }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    led_on(LED_RED);
+    led_on(LED_YELLOW);
+}
 
 int
 main()
@@ -318,7 +337,7 @@ main()
 
     /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
 
-    cli_print(&cli, "Rebooting in 4 seconds");
+    cli_print(&cli, "Rebooting in 3 seconds");
     HAL_Delay(3000);
     HAL_NVIC_SystemReset();
 

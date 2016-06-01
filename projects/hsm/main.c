@@ -198,13 +198,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     HAL_UART_Receive_IT(huart, &c, 1);
 }
 
-/* UART interrupt handler. This eventually calls HAL_UART_RxCpltCallback.
- */
-void USART2_IRQHandler(void)
-{
-    HAL_UART_IRQHandler(&huart_user);
-}
-
 /* The main thread. After the system setup, it waits for the RPC-request
  * semaphore from HAL_UART_RxCpltCallback, and spawns a dispatch thread.
  */

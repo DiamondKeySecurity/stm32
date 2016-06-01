@@ -63,7 +63,8 @@ export BOARD_OBJS = \
 	$(TOPLEVEL)/syscalls.o \
 	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx.o \
 	$(BOARD_DIR)/system_stm32f4xx.o \
-	$(BOARD_DIR)/stm32f4xx_hal_msp.o
+	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
+	$(BOARD_DIR)/stm32f4xx_it.o
 
 # cross-building tools
 PREFIX=arm-none-eabi-
