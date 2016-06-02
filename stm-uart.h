@@ -48,6 +48,9 @@ enum stm_uart_port {
 extern UART_HandleTypeDef huart_mgmt;
 extern UART_HandleTypeDef huart_user;
 
+extern DMA_HandleTypeDef hdma_usart_mgmt_rx;
+extern DMA_HandleTypeDef hdma_usart_user_rx;
+
 extern HAL_StatusTypeDef uart_send_char(uint8_t ch);
 extern HAL_StatusTypeDef uart_recv_char(uint8_t *cp);
 

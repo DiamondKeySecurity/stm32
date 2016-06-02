@@ -68,10 +68,19 @@
     cli_register_command2(cli, &cmd_##name##_s, NULL)
 
 
+#define CLI_UART_RECVBUF_SIZE  256  /* This must be a power of 2 */
+#define CLI_UART_RECVBUF_MASK  (CLI_UART_RECVBUF_SIZE - 1)
+
+enum mgmt_cli_dma_state {
+    DMA_RX_STOP,
+    DMA_RX_START,
+};
+
 extern void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf);
 extern int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count);
 extern int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count);
 extern int embedded_cli_loop(struct cli_def *cli);
 extern void mgmt_cli_init(struct cli_def *cli);
+extern int control_mgmt_uart_dma_rx(enum mgmt_cli_dma_state state);
 
 #endif /* __STM32_MGMT_CLI_H */

@@ -37,8 +37,11 @@
 
 #include <string.h>
 
-UART_HandleTypeDef huart_mgmt;
-UART_HandleTypeDef huart_user;
+UART_HandleTypeDef huart_mgmt;  /* USART1 */
+UART_HandleTypeDef huart_user;  /* USART2 */
+
+DMA_HandleTypeDef hdma_usart_mgmt_rx;
+DMA_HandleTypeDef hdma_usart_user_rx;
 
 #define DEFAULT_UART STM_UART_USER
 
@@ -62,12 +65,7 @@ HAL_StatusTypeDef uart_send_char(uint8_t ch)
 
 HAL_StatusTypeDef uart_send_char2(enum stm_uart_port port, uint8_t ch)
 {
-    UART_HandleTypeDef *uart = _which_uart(port);
-
-    if (uart)
-        return HAL_UART_Transmit(uart, &ch, 1, 0x1);
-
-    return HAL_ERROR;
+    return uart_send_bytes(port, &ch, 1);
 }
 
 /* receive a single character */
@@ -96,21 +94,21 @@ HAL_StatusTypeDef uart_send_string(char *s)
 /* send a string */
 HAL_StatusTypeDef uart_send_string2(enum stm_uart_port port, const char *s)
 {
-    UART_HandleTypeDef *uart = _which_uart(port);
-
-    if (uart)
-	return HAL_UART_Transmit(uart, (uint8_t *) s, strlen(s), 0x1);
-
-    return HAL_ERROR;
+    return uart_send_bytes(port, (uint8_t *) s, strlen(s));
 }
 
 /* send raw bytes */
 HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t len)
 {
+    uint32_t timeout = 100;
     UART_HandleTypeDef *uart = _which_uart(port);
 
-    if (uart)
+    if (uart) {
+	while (HAL_UART_GetState(uart) != HAL_UART_STATE_READY && timeout--) { ; }
+	if (! timeout) return HAL_ERROR;
+
         return HAL_UART_Transmit(uart, (uint8_t *) buf, (uint32_t) len, 0x1);
+    }
 
     return HAL_ERROR;
 }
@@ -139,7 +137,6 @@ HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8
     #define BUFSIZE 32
     char buf[BUFSIZE];
     char *where = buf + BUFSIZE;
-    UART_HandleTypeDef *uart = _which_uart(port);
 
     /* initialize buf so we can add leading 0 by adjusting the pointer */
     memset(buf, '0', BUFSIZE);
@@ -163,7 +160,7 @@ HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8
 	/* number is larger than the specified number of digits */
 	digits = buf + BUFSIZE - where;
 
-    return HAL_UART_Transmit(uart, (uint8_t *) where, digits, 0x1);
+    return uart_send_bytes(port, (uint8_t *) where, digits);
 }
 
 HAL_StatusTypeDef uart_send_hexdump(enum stm_uart_port port, const uint8_t *buf,

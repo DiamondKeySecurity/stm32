@@ -33,9 +33,25 @@
  */
 #include "stm-init.h"
 #include "stm-uart.h"
+#include "stm-led.h"
 #include "mgmt-cli.h"
 
 #include <string.h>
+
+extern uint8_t uart_rx;
+
+struct uart_ringbuf_t {
+    uint32_t enabled, ridx;
+    enum mgmt_cli_dma_state rx_state;
+    uint8_t buf[CLI_UART_RECVBUF_SIZE];
+};
+
+volatile struct uart_ringbuf_t uart_ringbuf = {1, 0, DMA_RX_STOP, {0}};
+
+#define RINGBUF_RIDX(rb)       (rb.ridx & CLI_UART_RECVBUF_MASK)
+#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_mgmt.hdmarx))
+#define RINGBUF_COUNT(rb)      ((unsigned)(RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)))
+#define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.buf[RINGBUF_RIDX(rb)] = '.'; rb.ridx++;}
 
 void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
 {
@@ -46,9 +62,17 @@ void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *bu
 
 int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
-    if (uart_recv_char2(STM_UART_MGMT, buf, count) != HAL_OK) {
-	return -1;
+    uint32_t timeout = 0xffffff;
+    while (count && timeout) {
+	if (RINGBUF_COUNT(uart_ringbuf)) {
+	    RINGBUF_READ(uart_ringbuf, *(uint8_t *) buf);
+	    buf++;
+	    count--;
+	}
+	timeout--;
     }
+    if (! timeout) return 0;
+
     return 1;
 }
 
@@ -56,6 +80,26 @@ int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf
 {
     uart_send_bytes(STM_UART_MGMT, (uint8_t *) buf, count);
     return (int) count;
+}
+
+int control_mgmt_uart_dma_rx(enum mgmt_cli_dma_state state)
+{
+    if (state == DMA_RX_START) {
+	if (uart_ringbuf.rx_state != DMA_RX_START) {
+	    memset((void *) uart_ringbuf.buf, 0, sizeof(uart_ringbuf.buf));
+
+	    /* Start receiving data from the UART using DMA */
+	    HAL_UART_Receive_DMA(&huart_mgmt, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf));
+	    uart_ringbuf.ridx = 0;
+	    uart_ringbuf.rx_state = DMA_RX_START;
+	}
+	return 1;
+    } else if (state == DMA_RX_STOP) {
+	if (HAL_UART_DMAStop(&huart_mgmt) != HAL_OK) return 0;
+	uart_ringbuf.rx_state = DMA_RX_STOP;
+	return 1;
+    }
+    return 0;
 }
 
 int embedded_cli_loop(struct cli_def *cli)
@@ -78,12 +122,19 @@ int embedded_cli_loop(struct cli_def *cli)
     while (1) {
 	cli_loop_start_new_command(cli, &ctx);
 
+	control_mgmt_uart_dma_rx(DMA_RX_START);
+
 	while (1) {
 	    cli_loop_show_prompt(cli, &ctx);
 
 	    n = cli_loop_read_next_char(cli, &ctx, &c);
 
-	    //cli_print(cli, "Next char: '%c' (n == %i)", c, n);
+	    /*
+	    cli_print(cli, "Next char: '%c'/%i, ringbuf ridx %i, widx %i",
+		      c, (int) c,
+		      uart_ringbuf.ridx,
+		      RINGBUF_WIDX(uart_ringbuf)
+	    */
 	    if (n == CLI_LOOP_CTRL_BREAK)
 		break;
 	    if (n == CLI_LOOP_CTRL_CONTINUE)
@@ -98,7 +149,7 @@ int embedded_cli_loop(struct cli_def *cli)
 
 	if (ctx.l < 0) break;
 
-	//cli_print(cli, "Process command: '%s'", ctx.cmd);
+	/* cli_print(cli, "Process command: '%s'", ctx.cmd); */
 	n = cli_loop_process_cmd(cli, &ctx);
 	if (n == CLI_LOOP_CTRL_BREAK)
 	    break;

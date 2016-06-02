@@ -77,11 +77,9 @@ def parse_args():
 
 
 def _write(dst, data):
-    for i in range(len(data)):
-        dst.write(data[i])
-        time.sleep(0.1)
+    dst.write(data)
     if len(data) == 4:
-        print("Wrote 0x{:02x}{:02x}{:02x}{:02x}".format(ord(data[0]), ord(data[1]), ord(data[2]), ord(data[3])))
+        print("Wrote 0x{!s}".format(data.encode('hex')))
     else:
         print("Wrote {!r}".format(data))
 
