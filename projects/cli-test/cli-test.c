@@ -71,23 +71,6 @@ void do_early_dfu_jump(void)
     while (1);
 }
 
-/* Callback for HAL_UART_Receive_IT(). */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == huart_mgmt.Instance) {
-	mgmt_cli_uart_isr((const uint8_t *) &uart_rx, 1);
-
-	/* Set things up to receive another byte. */
-	HAL_UART_Receive_IT(huart, (uint8_t *) &uart_rx, 1);
-    }
-}
-
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
-{
-    led_on(LED_RED);
-    led_on(LED_YELLOW);
-}
-
 int
 main()
 {

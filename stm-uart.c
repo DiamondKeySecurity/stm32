@@ -37,8 +37,11 @@
 
 #include <string.h>
 
-UART_HandleTypeDef huart_mgmt;
-UART_HandleTypeDef huart_user;
+UART_HandleTypeDef huart_mgmt;  /* USART1 */
+UART_HandleTypeDef huart_user;  /* USART2 */
+
+DMA_HandleTypeDef hdma_usart_mgmt_rx;
+DMA_HandleTypeDef hdma_usart_user_rx;
 
 #define DEFAULT_UART STM_UART_USER
 

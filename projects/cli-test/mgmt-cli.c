@@ -41,18 +41,17 @@
 extern uint8_t uart_rx;
 
 struct uart_ringbuf_t {
-    uint32_t enabled, ridx, widx, overflow;
+    uint32_t enabled, ridx;
+    enum mgmt_cli_dma_state rx_state;
     uint8_t buf[CLI_UART_RECVBUF_SIZE];
 };
 
-volatile struct uart_ringbuf_t uart_ringbuf = {1, 0, 0, 0, {0}};
+volatile struct uart_ringbuf_t uart_ringbuf = {1, 0, DMA_RX_STOP, {0}};
 
 #define RINGBUF_RIDX(rb)       (rb.ridx & CLI_UART_RECVBUF_MASK)
-#define RINGBUF_WIDX(rb)       (rb.widx & CLI_UART_RECVBUF_MASK)
-#define RINGBUF_COUNT(rb)      ((unsigned)(rb.widx - rb.ridx))
-#define RINGBUF_FULL(rb)       (RINGBUF_RIDX(rb) == ((rb.widx + 1) & CLI_UART_RECVBUF_MASK))
+#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_mgmt.hdmarx))
+#define RINGBUF_COUNT(rb)      ((unsigned)(RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)))
 #define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.buf[RINGBUF_RIDX(rb)] = '.'; rb.ridx++;}
-#define RINGBUF_WRITE(rb, src) {rb.buf[RINGBUF_WIDX(rb)] = src; rb.widx++;}
 
 void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
 {
@@ -64,23 +63,16 @@ void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *bu
 int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
     uint32_t timeout = 0xffffff;
-
-    /* Always explicitly enable the RX interrupt when we get here.
-     * Prevents us getting stuck waiting for an interrupt that will never come.
-     */
-    __HAL_UART_FLUSH_DRREGISTER(&huart_mgmt);
-    HAL_UART_Receive_IT(&huart_mgmt, (uint8_t *) &uart_rx, 1);
-
-    while (count && timeout--) {
+    while (count && timeout) {
 	if (RINGBUF_COUNT(uart_ringbuf)) {
 	    RINGBUF_READ(uart_ringbuf, *(uint8_t *) buf);
 	    buf++;
 	    count--;
-	} else {
-	    led_toggle(LED_GREEN);
-	    HAL_Delay(10);
 	}
+	timeout--;
     }
+    if (! timeout) return 0;
+
     return 1;
 }
 
@@ -88,6 +80,26 @@ int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf
 {
     uart_send_bytes(STM_UART_MGMT, (uint8_t *) buf, count);
     return (int) count;
+}
+
+int control_mgmt_uart_dma_rx(enum mgmt_cli_dma_state state)
+{
+    if (state == DMA_RX_START) {
+	if (uart_ringbuf.rx_state != DMA_RX_START) {
+	    memset((void *) uart_ringbuf.buf, 0, sizeof(uart_ringbuf.buf));
+
+	    /* Start receiving data from the UART using DMA */
+	    HAL_UART_Receive_DMA(&huart_mgmt, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf));
+	    uart_ringbuf.ridx = 0;
+	    uart_ringbuf.rx_state = DMA_RX_START;
+	}
+	return 1;
+    } else if (state == DMA_RX_STOP) {
+	if (HAL_UART_DMAStop(&huart_mgmt) != HAL_OK) return 0;
+	uart_ringbuf.rx_state = DMA_RX_STOP;
+	return 1;
+    }
+    return 0;
 }
 
 int embedded_cli_loop(struct cli_def *cli)
@@ -110,15 +122,18 @@ int embedded_cli_loop(struct cli_def *cli)
     while (1) {
 	cli_loop_start_new_command(cli, &ctx);
 
+	control_mgmt_uart_dma_rx(DMA_RX_START);
+
 	while (1) {
 	    cli_loop_show_prompt(cli, &ctx);
 
 	    n = cli_loop_read_next_char(cli, &ctx, &c);
 
 	    /*
-	    cli_print(cli, "Next char: '%c'/%i, ringbuf ridx %i, widx %i (%i/%i) - count %i",
-		      c, (int) c, uart_ringbuf.ridx, uart_ringbuf.widx, RINGBUF_RIDX(uart_ringbuf),
-		      RINGBUF_WIDX(uart_ringbuf), RINGBUF_COUNT(uart_ringbuf));
+	    cli_print(cli, "Next char: '%c'/%i, ringbuf ridx %i, widx %i",
+		      c, (int) c,
+		      uart_ringbuf.ridx,
+		      RINGBUF_WIDX(uart_ringbuf)
 	    */
 	    if (n == CLI_LOOP_CTRL_BREAK)
 		break;
@@ -141,22 +156,6 @@ int embedded_cli_loop(struct cli_def *cli)
     }
 
     return CLI_OK;
-}
-
-/* Interrupt service routine to be called when data has been received on the MGMT UART. */
-void mgmt_cli_uart_isr(const uint8_t *buf, size_t count)
-{
-    if (! uart_ringbuf.enabled) return;
-
-    while (count) {
-	if (RINGBUF_FULL(uart_ringbuf)) {
-	    uart_ringbuf.overflow++;
-	    return;
-	}
-	RINGBUF_WRITE(uart_ringbuf, *buf);
-	buf++;
-	count--;
-    }
 }
 
 void mgmt_cli_init(struct cli_def *cli)

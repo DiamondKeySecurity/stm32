@@ -33,10 +33,8 @@
 */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include "stm-uart.h"
 
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 
 /**
  * Initializes the Global MSP.
@@ -121,6 +119,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
   GPIO_InitTypeDef GPIO_InitStruct;
 
   if (huart->Instance == USART1) {
+    /* This is huart_mgmt (USER_MGMT) */
+
     /* Peripheral clock enable */
     __USART1_CLK_ENABLE();
     __GPIOA_CLK_ENABLE();
@@ -138,7 +138,32 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     HAL_NVIC_SetPriority(USART1_IRQn, 0, 1);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+    /* Peripheral DMA init*/
+    hdma_usart_mgmt_rx.Instance = DMA2_Stream2;
+    hdma_usart_mgmt_rx.Init.Channel = DMA_CHANNEL_4;
+    hdma_usart_mgmt_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_usart_mgmt_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart_mgmt_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart_mgmt_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart_mgmt_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart_mgmt_rx.Init.Mode = DMA_CIRCULAR;
+    hdma_usart_mgmt_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart_mgmt_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    /*
+    hdma_usart_mgmt_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
+    hdma_usart_mgmt_rx.Init.MemBurst = DMA_MBURST_SINGLE;
+    hdma_usart_mgmt_rx.Init.PeriphBurst = DMA_PBURST_SINGLE;
+    */
+    if (HAL_DMA_Init(&hdma_usart_mgmt_rx) != HAL_OK) {
+	Error_Handler();
+    }
+
+    __HAL_LINKDMA(huart, hdmarx, hdma_usart_mgmt_rx);
+
   } else if (huart->Instance == USART2) {
+    /* This is huart_user (USER UART) */
+
     /* Peripheral clock enable */
     __USART2_CLK_ENABLE();
     __GPIOA_CLK_ENABLE();
@@ -156,6 +181,28 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     HAL_NVIC_SetPriority(USART2_IRQn, 0, 1);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
+
+    /* Peripheral DMA init*/
+    hdma_usart_user_rx.Instance = DMA1_Stream5;
+    hdma_usart_user_rx.Init.Channel = DMA_CHANNEL_4;
+    hdma_usart_user_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_usart_user_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart_user_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart_user_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart_user_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart_user_rx.Init.Mode = DMA_CIRCULAR;
+    hdma_usart_user_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart_user_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    /*
+    hdma_usart_user_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
+    hdma_usart_user_rx.Init.MemBurst = DMA_MBURST_SINGLE;
+    hdma_usart_user_rx.Init.PeriphBurst = DMA_PBURST_SINGLE;
+    */
+    if (HAL_DMA_Init(&hdma_usart_user_rx) != HAL_OK) {
+	Error_Handler();
+    }
+
+    __HAL_LINKDMA(huart, hdmarx, hdma_usart_user_rx);
   }
 }
 
@@ -172,6 +219,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2 | GPIO_PIN_3);
 
     HAL_NVIC_DisableIRQ(USART1_IRQn);
+
+    /* Peripheral DMA DeInit*/
+    HAL_DMA_DeInit(huart->hdmarx);
   } else if (huart->Instance == USART2) {
     /* Peripheral clock disable */
     __USART2_CLK_DISABLE();
@@ -183,6 +233,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9 | GPIO_PIN_10);
 
     HAL_NVIC_DisableIRQ(USART2_IRQn);
+
+    /* Peripheral DMA DeInit*/
+    HAL_DMA_DeInit(huart->hdmarx);
   }
 }
 

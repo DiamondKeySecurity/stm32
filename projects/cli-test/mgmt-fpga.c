@@ -35,20 +35,28 @@
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-fpgacfg.h"
+
 #include "mgmt-cli.h"
 #include "mgmt-fpga.h"
+#include "mgmt-misc.h"
 
 #include <string.h>
 
 
-extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
+volatile uint32_t dfu_offset = 0;
 
+
+int _flash_write_callback(uint8_t *buf, size_t len) {
+    int res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE) == 1;
+    dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
+    return res;
+}
 
 int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0, i;
-    uint32_t offset = 0, n = BITSTREAM_UPLOAD_CHUNK_SIZE;
     uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
+
+    dfu_offset = 0;
 
     fpgacfg_access_control(ALLOW_ARM);
 
@@ -58,57 +66,11 @@ int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *ar
 	return CLI_ERROR;
     }
 
-    cli_print(cli, "OK, write FPGA bitstream file size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)");
-
-    /* Read file size (4 bytes) */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
-    cli_print(cli, "File size %li", filesize);
-
-    while (filesize) {
-	/* By initializing buf to the same value that erased flash has (0xff), we don't
-	 * have to try and be smart when writing the last page of data to the memory.
-	 */
-	memset(buf, 0xff, sizeof(buf));
-
-	if (filesize < n) {
-	    n = filesize;
-	}
-
-	if (uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000) != HAL_OK) {
-	    cli_print(cli, "Receive timed out");
-	    return CLI_ERROR;
-	}
-	filesize -= n;
-
-	/* After reception of 4 KB but before ACKing we have "all" the time in the world to
-	 * calculate CRC and write it to flash.
-	 */
-	my_crc = update_crc(my_crc, buf, n);
-
-	if ((i = fpgacfg_write_data(offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE)) != 1) {
-	    cli_print(cli, "Failed writing data at offset %li (counter = %li): %li", offset, counter, i);
-	    return CLI_ERROR;
-	}
-
-	offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
-
-	/* ACK this chunk by sending the current chunk counter (4 bytes) */
-	counter++;
-	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
-    }
-
-    /* The sending side will now send it's calculated CRC-32 */
-    cli_print(cli, "Send CRC-32");
-    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
-    cli_print(cli, "CRC-32 %li", crc);
-    if (crc == my_crc) {
-	cli_print(cli, "CRC checksum MATCHED");
-    } else {
-	cli_print(cli, "CRC checksum did NOT match");
-    }
+    cli_receive_data(cli, &buf[0], sizeof(buf), _flash_write_callback);
 
     fpgacfg_access_control(ALLOW_FPGA);
 
+    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / BITSTREAM_UPLOAD_CHUNK_SIZE);
     return CLI_OK;
 }
 

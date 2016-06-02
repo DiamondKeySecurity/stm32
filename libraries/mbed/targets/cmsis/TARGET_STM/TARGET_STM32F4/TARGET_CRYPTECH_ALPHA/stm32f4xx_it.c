@@ -166,4 +166,21 @@ void USART2_IRQHandler(void)
     HAL_UART_IRQHandler(&huart_user);
 }
 
+/**
+* @brief This function handles DMA1 stream5 global interrupt.
+*/
+void DMA1_Stream5_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&hdma_usart_user_rx);
+}
+
+/**
+* @brief This function handles DMA2 stream2 global interrupt.
+*/
+void DMA2_Stream2_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&hdma_usart_mgmt_rx);
+}
+
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

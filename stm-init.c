@@ -59,6 +59,9 @@ static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 #endif
+#ifdef HAL_DMA_MODULE_ENABLED
+static void MX_DMA_Init(void);
+#endif
 #ifdef HAL_I2C_MODULE_ENABLED
 static void MX_I2C2_Init(void);
 #endif
@@ -86,6 +89,9 @@ void stm_init(void)
    */
   fpgacfg_access_control(ALLOW_FPGA);
   #endif
+#endif
+#ifdef HAL_DMA_MODULE_ENABLED
+  MX_DMA_Init();
 #endif
 #ifdef HAL_UART_MODULE_ENABLED
   MX_USART1_UART_Init();
@@ -164,6 +170,29 @@ static void MX_GPIO_Init(void)
 }
 #undef gpio_output
 #endif
+
+
+#ifdef HAL_DMA_MODULE_ENABLED
+/**
+ * Enable DMA controller clock
+ */
+static void MX_DMA_Init(void)
+{
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA2_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+    /* DMA interrupt init */
+
+    /* USER UART RX */
+    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+    /* MGMT UART RX */
+    HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+}
+#endif /* HAL_DMA_MODULE_ENABLED */
+
 
 #ifdef HAL_I2C_MODULE_ENABLED
 /* I2C2 init function (external RTC chip) */

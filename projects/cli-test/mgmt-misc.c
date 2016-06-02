@@ -43,40 +43,80 @@
 
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
-int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
+
+volatile uint32_t demo_crc = 0;
+
+
+int _count_bytes_callback(uint8_t *buf, size_t len) {
+    demo_crc = update_crc(demo_crc, buf, len);
+    return 1;
+}
+
+int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_callback data_callback)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 256, counter = 0;
-    uint8_t buf[256];
+    uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0;
+    size_t n = len;
 
-    cli_print(cli, "OK, write file size (4 bytes), data in %li byte chunks, CRC-32 (4 bytes)", n);
+    if (! control_mgmt_uart_dma_rx(DMA_RX_STOP)) {
+	cli_print(cli, "Failed stopping DMA");
+	return CLI_OK;
+    }
 
-    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
-    cli_print(cli, "File size %li", filesize);
+    cli_print(cli, "OK, write size (4 bytes), data in %li byte chunks, CRC-32 (4 bytes)", (uint32_t) n);
+
+    if (uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000) != HAL_OK) {
+	cli_print(cli, "Receive timed out");
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Send %li bytes of data", filesize);
 
     while (filesize) {
-	if (filesize < n) {
-	    n = filesize;
-	}
+	/* By initializing buf to the same value that erased flash has (0xff), we don't
+	 * have to try and be smart when writing the last page of data to a flash memory.
+	 */
+	memset(buf, 0xff, len);
 
-	if (uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000) != HAL_OK) {
+	if (filesize < n) n = filesize;
+
+	if (uart_receive_bytes(STM_UART_MGMT, (void *) buf, n, 1000) != HAL_OK) {
 	    cli_print(cli, "Receive timed out");
 	    return CLI_ERROR;
 	}
 	filesize -= n;
 	my_crc = update_crc(my_crc, buf, n);
+
+	/* After reception of a chunk but before ACKing we have "all" the time in the world to
+	 * calculate CRC and invoke the data_callback.
+	 */
+	if (data_callback != NULL && ! data_callback(buf, (size_t) n)) {
+	    cli_print(cli, "Data processing failed");
+	    return CLI_OK;
+	}
+
 	counter++;
 	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
     }
 
     cli_print(cli, "Send CRC-32");
     uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
-    cli_print(cli, "CRC-32 %li", crc);
+    cli_print(cli, "CRC-32 0x%x, calculated CRC 0x%x", (unsigned int) crc, (unsigned int) my_crc);
     if (crc == my_crc) {
 	cli_print(cli, "CRC checksum MATCHED");
     } else {
 	cli_print(cli, "CRC checksum did NOT match");
     }
 
+    return CLI_OK;
+}
+
+int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    uint8_t buf[FILETRANSFER_UPLOAD_CHUNK_SIZE];
+
+    demo_crc = 0;
+    cli_receive_data(cli, &buf[0], sizeof(buf), _count_bytes_callback);
+    cli_print(cli, "Demo CRC is: %li/0x%x", demo_crc, (unsigned int) demo_crc);
     return CLI_OK;
 }
 
