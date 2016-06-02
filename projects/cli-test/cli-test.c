@@ -31,205 +31,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
-#include "stm-uart.h"
-#include "stm-fpgacfg.h"
-#include "stm-keystore.h"
-#include "stm-sdram.h"
+
 #include "mgmt-cli.h"
 #include "mgmt-dfu.h"
 #include "mgmt-fpga.h"
-#include "test_sdram.h"
+#include "mgmt-misc.h"
+#include "mgmt-show.h"
+#include "mgmt-test.h"
 
 #include <string.h>
-#include <stdlib.h>
 
-
-extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
 /* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
 volatile uint8_t uart_rx;
 
-
-int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    volatile uint32_t hclk;
-
-    hclk = HAL_RCC_GetHCLKFreq();
-    cli_print(cli, "HSE_VALUE:       %li", HSE_VALUE);
-    cli_print(cli, "HCLK:            %li (%i MHz)", hclk, (int) hclk / 1000 / 1000);
-    cli_print(cli, "SystemCoreClock: %li (%i MHz)", SystemCoreClock, (int) SystemCoreClock / 1000 / 1000);
-    return CLI_OK;
-}
-
-int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    uint32_t filesize = 0, crc = 0, my_crc = 0, n = 256, counter = 0;
-    uint8_t buf[256];
-
-    cli_print(cli, "OK, write file size (4 bytes), data in %li byte chunks, CRC-32 (4 bytes)", n);
-
-    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
-    cli_print(cli, "File size %li", filesize);
-
-    while (filesize) {
-	if (filesize < n) {
-	    n = filesize;
-	}
-
-	if (uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000) != HAL_OK) {
-	    cli_print(cli, "Receive timed out");
-	    return CLI_ERROR;
-	}
-	filesize -= n;
-	my_crc = update_crc(my_crc, buf, n);
-	counter++;
-	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
-    }
-
-    cli_print(cli, "Send CRC-32");
-    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
-    cli_print(cli, "CRC-32 %li", crc);
-    if (crc == my_crc) {
-	cli_print(cli, "CRC checksum MATCHED");
-    } else {
-	cli_print(cli, "CRC checksum did NOT match");
-    }
-
-    return CLI_OK;
-}
-
-int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
-    return CLI_OK;
-}
-
-int cmd_show_keystore_status(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    cli_print(cli, "Keystore memory is %sonline", (keystore_check_id() != 1) ? "NOT ":"");
-    return CLI_OK;
-}
-
-int cmd_show_keystore_data(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    uint8_t buf[KEYSTORE_PAGE_SIZE];
-    uint32_t i;
-
-    if (keystore_check_id() != 1) {
-	cli_print(cli, "ERROR: The keystore memory is not accessible.");
-    }
-
-    memset(buf, 0, sizeof(buf));
-    if ((i = keystore_read_data(0, buf, sizeof(buf))) != 1) {
-	cli_print(cli, "Failed reading first page from keystore memory: %li", i);
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "First page from keystore memory:\r\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\n");
-
-    for (i = 0; i < 8; i++) {
-	if (buf[i] == 0xff) break;  /* never written */
-	if (buf[i] != 0x55) break;  /* something other than a tombstone */
-    }
-    /* As a demo, tombstone byte after byte of the first 8 bytes in the keystore memory
-     * (as long as they do not appear to contain real data).
-     * If all of them are tombstones, erase the first sector to start over.
-     */
-    if (i < 8) {
-	if (buf[i] == 0xff) {
-	    cli_print(cli, "Tombstoning byte %li", i);
-	    buf[i] = 0x55;
-	    if ((i = keystore_write_data(0, buf, sizeof(buf))) != 1) {
-		cli_print(cli, "Failed writing data at offset 0: %li", i);
-		return CLI_ERROR;
-	    }
-	}
-    } else {
-	cli_print(cli, "Erasing first sector since all the first 8 bytes are tombstones");
-	if ((i = keystore_erase_sectors(1)) != 1) {
-	    cli_print(cli, "Failed erasing the first sector: %li", i);
-	    return CLI_ERROR;
-	}
-	cli_print(cli, "Erase result: %li", i);
-    }
-
-    return CLI_OK;
-}
-
-int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    cli_print(cli, "\n\n\nRebooting\n\n\n");
-    HAL_NVIC_SystemReset();
-    while (1) {};
-}
-
-int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    // run external memory initialization sequence
-    HAL_StatusTypeDef status;
-    int ok, num_cycles = 1, i, test_completed;
-
-    if (argc == 1) {
-	num_cycles = strtol(argv[0], NULL, 0);
-	if (num_cycles > 100) num_cycles = 100;
-	if (num_cycles < 1) num_cycles = 1;
-    }
-
-    cli_print(cli, "Initializing SDRAM");
-    status = sdram_init();
-    if (status != HAL_OK) {
-	cli_print(cli, "Failed initializing SDRAM: %i", (int) status);
-	return CLI_OK;
-    }
-
-    for (i = 1; i <= num_cycles; i++) {
-	cli_print(cli, "Starting SDRAM test (%i/%i)", i, num_cycles);
-	test_completed = 0;
-	// set LFSRs to some initial value, LFSRs will produce
-	// pseudo-random 32-bit patterns to test our memories
-	lfsr1 = 0xCCAA5533;
-	lfsr2 = 0xCCAA5533;
-
-	cli_print(cli, "Run sequential write-then-read test for the first chip");
-	ok = test_sdram_sequential(SDRAM_BASEADDR_CHIP1);
-	if (!ok) break;
-
-	cli_print(cli, "Run random write-then-read test for the first chip");
-	ok = test_sdram_random(SDRAM_BASEADDR_CHIP1);
-	if (!ok) break;
-
-	cli_print(cli, "Run sequential write-then-read test for the second chip");
-	ok = test_sdram_sequential(SDRAM_BASEADDR_CHIP2);
-	if (!ok) break;
-
-	cli_print(cli, "Run random write-then-read test for the second chip");
-	ok = test_sdram_random(SDRAM_BASEADDR_CHIP2);
-	if (!ok) break;
-
-	// turn blue led on (testing two chips at the same time)
-	led_on(LED_BLUE);
-
-	cli_print(cli, "Run interleaved write-then-read test for both chips at once");
-	ok = test_sdrams_interleaved(SDRAM_BASEADDR_CHIP1, SDRAM_BASEADDR_CHIP2);
-
-	led_off(LED_BLUE);
-	test_completed = 1;
-	cli_print(cli, "SDRAM test (%i/%i) completed\r\n", i, num_cycles);
-    }
-
-    if (! test_completed) {
-	cli_print(cli, "SDRAM test failed (%i/%i)", i, num_cycles);
-    } else {
-	cli_print(cli, "SDRAM test completed successfully");
-    }
-
-    return CLI_OK;
-}
 
 int check_auth(const char *username, const char *password)
 {
@@ -238,41 +55,6 @@ int check_auth(const char *username, const char *password)
     if (strcasecmp(password, "ct") != 0)
 	return CLI_ERROR;
     return CLI_OK;
-}
-
-void configure_cli_show(struct cli_def *cli)
-{
-    /* show */
-    cli_command_root(show);
-
-    /* show cpuspeed */
-    cli_command_node(show, cpuspeed, "Show the speed at which the CPU currently operates");
-
-    cli_command_branch(show, fpga);
-    /* show fpga status*/
-    cli_command_node(show_fpga, status, "Show status about the FPGA");
-
-    cli_command_branch(show, keystore);
-    /* show keystore status*/
-    cli_command_node(show_keystore, status, "Show status of the keystore memory");
-    cli_command_node(show_keystore, data, "Show the first page of the keystore memory");
-}
-
-void configure_cli_test(struct cli_def *cli)
-{
-    /* test */
-    cli_command_root(test);
-
-    /* test sdram */
-    cli_command_node(test, sdram, "Run SDRAM tests");
-}
-
-static void configure_cli_misc(struct cli_def *cli)
-{
-    /* filetransfer */
-    cli_command_root_node(filetransfer, "Test file transfering");
-    /* reboot */
-    cli_command_root_node(reboot, "Reboot the STM32");
 }
 
 typedef  void (*pFunction)(void);
