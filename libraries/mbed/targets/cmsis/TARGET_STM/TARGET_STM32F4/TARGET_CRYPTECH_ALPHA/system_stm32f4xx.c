@@ -584,7 +584,7 @@ void mbed_die(void)
 {
 #ifdef HAL_GPIO_MODULE_ENABLED
   //HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_1, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOK, GPIO_PIN_7, GPIO_PIN_SET);
 #endif
   while (1) { ; }
 }
