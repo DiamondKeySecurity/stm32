@@ -44,6 +44,11 @@
 /*            Cortex-M4 Processor Exceptions Handlers                         */
 /******************************************************************************/
 
+/*
+ * We define these to make debugging easier, because otherwise gdb reports
+ * HardFault_Handler as WWDG_IRQHandler.
+ */
+
 /**
  * @brief   This function handles NMI exception.
  * @param  None
@@ -145,28 +150,6 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
- * @brief  This function handles UART interrupt request.
- * @param  None
- * @retval None
- * @Note   HAL_UART_IRQHandler will call HAL_UART_TxCpltCallback in main.c.
- */
-void USART1_IRQHandler(void)
-{
-    HAL_UART_IRQHandler(&huart_mgmt);
-}
-
-/**
- * @brief  This function handles UART interrupt request.
- * @param  None
- * @retval None
- * @Note   HAL_UART_IRQHandler will call HAL_UART_TxCpltCallback in main.c.
- */
-void USART2_IRQHandler(void)
-{
-    HAL_UART_IRQHandler(&huart_user);
-}
-
-/**
 * @brief This function handles DMA1 stream5 global interrupt.
 */
 void DMA1_Stream5_IRQHandler(void)
@@ -182,5 +165,58 @@ void DMA2_Stream2_IRQHandler(void)
     HAL_DMA_IRQHandler(&hdma_usart_mgmt_rx);
 }
 
+/**
+ * @brief  This function handles UART interrupt request.
+ * @param  None
+ * @retval None
+ * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback in main.c.
+ */
+void USART1_IRQHandler(void)
+{
+    HAL_UART_IRQHandler(&huart_mgmt);
+}
+
+/**
+ * @brief  This function handles UART interrupt request.
+ * @param  None
+ * @retval None
+ * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback in main.c.
+ */
+void USART2_IRQHandler(void)
+{
+    HAL_UART_IRQHandler(&huart_user);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    extern void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart);
+    extern void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart);
+
+    if (huart->Instance == USART1)
+        HAL_UART1_RxCpltCallback(huart);
+
+    else if (huart->Instance == USART2)
+        HAL_UART2_RxCpltCallback(huart);
+}
+
+/**
+  * @brief  Rx Transfer completed callbacks.
+  * @param  huart: pointer to a UART_HandleTypeDef structure that contains
+  *                the configuration information for the specified UART module.
+  * @retval None
+  */
+__weak void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_UART_TxCpltCallback could be implemented in the user file
+   */
+}
+
+__weak void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_UART_TxCpltCallback could be implemented in the user file
+   */
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
