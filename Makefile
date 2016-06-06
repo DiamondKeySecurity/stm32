@@ -50,21 +50,25 @@ export LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
 export BOOTLOADER_LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI_bootloader.ld
 
 # board-specific objects, to link into every project
-export BOARD_OBJS = \
+BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
 	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
-	$(TOPLEVEL)/stm-rtc.o \
-	$(TOPLEVEL)/spiflash_n25q128.o \
-	$(TOPLEVEL)/stm-fpgacfg.o \
-	$(TOPLEVEL)/stm-keystore.o \
-	$(TOPLEVEL)/stm-sdram.o \
-	$(TOPLEVEL)/stm-flash.o \
 	$(TOPLEVEL)/syscalls.o \
 	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx.o \
 	$(BOARD_DIR)/system_stm32f4xx.o \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
 	$(BOARD_DIR)/stm32f4xx_it.o
+ifeq (${BOARD},TARGET_CRYPTECH_ALPHA)
+BOARD_OBJS += \
+	$(TOPLEVEL)/stm-rtc.o \
+	$(TOPLEVEL)/spiflash_n25q128.o \
+	$(TOPLEVEL)/stm-fpgacfg.o \
+	$(TOPLEVEL)/stm-keystore.o \
+	$(TOPLEVEL)/stm-sdram.o \
+	$(TOPLEVEL)/stm-flash.o
+endif
+export BOARD_OBJS
 
 # cross-building tools
 PREFIX=arm-none-eabi-
@@ -124,7 +128,6 @@ $(LIBTFM_DIR)/libtfm.a:
 	$(MAKE) -C $(LIBTFM_DIR) PREFIX=$(PREFIX)
 
 $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
-#	$(MAKE) -C $(LIBHAL_DIR) RPC_CLIENT=local IO_BUS=fmc KS=volatile libhal.a
 	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=volatile libhal.a
 
 $(LIBCLI_DIR)/libcli.a:
