@@ -37,13 +37,21 @@
 
 #include "stm32f4xx_hal.h"
 
+#ifdef TARGET_CRYPTECH_DEV_BRIDGE
+#define LED_PORT        GPIOJ
+#define LED_RED         GPIO_PIN_1
+#define LED_YELLOW      GPIO_PIN_2
+#define LED_GREEN       GPIO_PIN_3
+#define LED_BLUE        GPIO_PIN_4
+#define LED_CLK_ENABLE  __GPIOJ_CLK_ENABLE
+#else
 #define LED_PORT        GPIOK
 #define LED_RED         GPIO_PIN_7
 #define LED_YELLOW      GPIO_PIN_6
 #define LED_GREEN       GPIO_PIN_5
 #define LED_BLUE        GPIO_PIN_4
-
 #define LED_CLK_ENABLE  __GPIOK_CLK_ENABLE
+#endif
 
 #define led_on(pin)     HAL_GPIO_WritePin(LED_PORT,pin,SET)
 #define led_off(pin)    HAL_GPIO_WritePin(LED_PORT,pin,RESET)
