@@ -33,7 +33,6 @@
 */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
-#include "stm-uart.h"
 
 
 /**
@@ -113,10 +112,11 @@ void HAL_SDRAM_MspDeInit(SDRAM_HandleTypeDef* hsdram)
 {
 }
 
-
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
   GPIO_InitTypeDef GPIO_InitStruct;
+  IRQn_Type IRQn;
+  DMA_Stream_TypeDef *hdma_instance;
 
   if (huart->Instance == USART1) {
     /* This is huart_mgmt (USER_MGMT) */
@@ -130,38 +130,15 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
        PA10    ------> USART1_RX
     */
     GPIO_InitStruct.Pin = GPIO_PIN_9 | GPIO_PIN_10;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    HAL_NVIC_SetPriority(USART1_IRQn, 0, 1);
-    HAL_NVIC_EnableIRQ(USART1_IRQn);
+    IRQn = USART1_IRQn;
 
     /* Peripheral DMA init*/
-    hdma_usart_mgmt_rx.Instance = DMA2_Stream2;
-    hdma_usart_mgmt_rx.Init.Channel = DMA_CHANNEL_4;
-    hdma_usart_mgmt_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_usart_mgmt_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_usart_mgmt_rx.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_usart_mgmt_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    hdma_usart_mgmt_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_usart_mgmt_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_usart_mgmt_rx.Init.Priority = DMA_PRIORITY_LOW;
-    hdma_usart_mgmt_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    /*
-    hdma_usart_mgmt_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
-    hdma_usart_mgmt_rx.Init.MemBurst = DMA_MBURST_SINGLE;
-    hdma_usart_mgmt_rx.Init.PeriphBurst = DMA_PBURST_SINGLE;
-    */
-    if (HAL_DMA_Init(&hdma_usart_mgmt_rx) != HAL_OK) {
-	Error_Handler();
-    }
-
-    __HAL_LINKDMA(huart, hdmarx, hdma_usart_mgmt_rx);
-
-  } else if (huart->Instance == USART2) {
+    hdma_instance = DMA2_Stream2;
+  }
+    
+  else if (huart->Instance == USART2) {
     /* This is huart_user (USER UART) */
 
     /* Peripheral clock enable */
@@ -173,36 +150,48 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
        PA3     ------> USART2_RX
     */
     GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    HAL_NVIC_SetPriority(USART2_IRQn, 0, 1);
-    HAL_NVIC_EnableIRQ(USART2_IRQn);
+    IRQn = USART2_IRQn;
 
     /* Peripheral DMA init*/
-    hdma_usart_user_rx.Instance = DMA1_Stream5;
-    hdma_usart_user_rx.Init.Channel = DMA_CHANNEL_4;
-    hdma_usart_user_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_usart_user_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_usart_user_rx.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_usart_user_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    hdma_usart_user_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_usart_user_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_usart_user_rx.Init.Priority = DMA_PRIORITY_LOW;
-    hdma_usart_user_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    /*
-    hdma_usart_user_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
-    hdma_usart_user_rx.Init.MemBurst = DMA_MBURST_SINGLE;
-    hdma_usart_user_rx.Init.PeriphBurst = DMA_PBURST_SINGLE;
-    */
-    if (HAL_DMA_Init(&hdma_usart_user_rx) != HAL_OK) {
-	Error_Handler();
-    }
+    hdma_instance = DMA1_Stream5;
+  }
 
-    __HAL_LINKDMA(huart, hdmarx, hdma_usart_user_rx);
+  else {
+    return;
+  }
+
+  /* common setup */
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  HAL_NVIC_SetPriority(IRQn, 0, 1);
+  HAL_NVIC_EnableIRQ(IRQn);
+
+  /* Peripheral DMA init*/
+  DMA_HandleTypeDef *hdma = huart->hdmarx;
+  if (hdma != NULL) {
+    hdma->Instance = hdma_instance;
+    hdma->Init.Channel = DMA_CHANNEL_4;
+    hdma->Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma->Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma->Init.MemInc = DMA_MINC_ENABLE;
+    hdma->Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma->Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma->Init.Mode = DMA_CIRCULAR;
+    hdma->Init.Priority = DMA_PRIORITY_LOW;
+    hdma->Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    /*
+      hdma->Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
+      hdma->Init.MemBurst = DMA_MBURST_SINGLE;
+      hdma->Init.PeriphBurst = DMA_PBURST_SINGLE;
+    */
+    if (HAL_DMA_Init(hdma) != HAL_OK) {
+      mbed_die();
+    }
   }
 }
 
