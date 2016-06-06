@@ -1,6 +1,4 @@
 TEST = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa test-mkmif
-#TEST += test-rpc_hash test-rpc_pkey test-rpc_get_version test-rpc_get_random
-TEST += test-rpc_server
 
 CFLAGS += -I $(LIBHAL_DIR)
 LIBC_OBJS = printf.o gettimeofday.o
