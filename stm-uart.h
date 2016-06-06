@@ -40,10 +40,10 @@
 #define USART_MGMT_BAUD_RATE	921600
 #define USART_USER_BAUD_RATE	921600
 
-enum stm_uart_port {
+typedef enum {
   STM_UART_USER,
   STM_UART_MGMT
-};
+} stm_uart_port_t;
 
 extern UART_HandleTypeDef huart_mgmt;
 extern UART_HandleTypeDef huart_user;
@@ -57,16 +57,16 @@ extern HAL_StatusTypeDef uart_recv_char(uint8_t *cp);
 extern HAL_StatusTypeDef uart_send_string(char *s);
 extern HAL_StatusTypeDef uart_send_number(uint32_t num, uint8_t digits, uint8_t radix);
 
-extern HAL_StatusTypeDef uart_send_char2(enum stm_uart_port port, uint8_t ch);
-extern HAL_StatusTypeDef uart_recv_char2(enum stm_uart_port port, uint8_t *cp, uint32_t timeout);
+extern HAL_StatusTypeDef uart_send_char2(stm_uart_port_t port, uint8_t ch);
+extern HAL_StatusTypeDef uart_recv_char2(stm_uart_port_t port, uint8_t *cp, uint32_t timeout);
 
-extern HAL_StatusTypeDef uart_send_string2(enum stm_uart_port port, const char *s);
-extern HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8_t digits, uint8_t radix);
+extern HAL_StatusTypeDef uart_send_string2(stm_uart_port_t port, const char *s);
+extern HAL_StatusTypeDef uart_send_number2(stm_uart_port_t port, uint32_t num, uint8_t digits, uint8_t radix);
 
-extern HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t len);
-extern HAL_StatusTypeDef uart_receive_bytes(enum stm_uart_port port, uint8_t *buf, size_t len, uint32_t timeout);
+extern HAL_StatusTypeDef uart_send_bytes(stm_uart_port_t port, uint8_t *buf, size_t len);
+extern HAL_StatusTypeDef uart_receive_bytes(stm_uart_port_t port, uint8_t *buf, size_t len, uint32_t timeout);
 
-extern HAL_StatusTypeDef uart_send_hexdump(enum stm_uart_port port, const uint8_t *buf,
+extern HAL_StatusTypeDef uart_send_hexdump(stm_uart_port_t port, const uint8_t *buf,
 					   const uint8_t start_offset, const uint8_t end_offset);
 
 #define uart_send_binary(num, bits)    uart_send_number(num, bits, 2)

@@ -46,7 +46,7 @@ DMA_HandleTypeDef hdma_usart_user_rx;
 #define DEFAULT_UART STM_UART_USER
 
 
-inline UART_HandleTypeDef *_which_uart(enum stm_uart_port port)
+inline UART_HandleTypeDef *_which_uart(stm_uart_port_t port)
 {
     if (port == STM_UART_USER) {
         return &huart_user;
@@ -63,7 +63,7 @@ HAL_StatusTypeDef uart_send_char(uint8_t ch)
     return uart_send_char2(DEFAULT_UART, ch);
 }
 
-HAL_StatusTypeDef uart_send_char2(enum stm_uart_port port, uint8_t ch)
+HAL_StatusTypeDef uart_send_char2(stm_uart_port_t port, uint8_t ch)
 {
     return uart_send_bytes(port, &ch, 1);
 }
@@ -75,7 +75,7 @@ HAL_StatusTypeDef uart_recv_char(uint8_t *cp)
 }
 
 /* receive a single character */
-HAL_StatusTypeDef uart_recv_char2(enum stm_uart_port port, uint8_t *cp, uint32_t timeout)
+HAL_StatusTypeDef uart_recv_char2(stm_uart_port_t port, uint8_t *cp, uint32_t timeout)
 {
     UART_HandleTypeDef *uart = _which_uart(port);
 
@@ -92,13 +92,13 @@ HAL_StatusTypeDef uart_send_string(char *s)
 }
 
 /* send a string */
-HAL_StatusTypeDef uart_send_string2(enum stm_uart_port port, const char *s)
+HAL_StatusTypeDef uart_send_string2(stm_uart_port_t port, const char *s)
 {
     return uart_send_bytes(port, (uint8_t *) s, strlen(s));
 }
 
 /* send raw bytes */
-HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t len)
+HAL_StatusTypeDef uart_send_bytes(stm_uart_port_t port, uint8_t *buf, size_t len)
 {
     uint32_t timeout = 100;
     UART_HandleTypeDef *uart = _which_uart(port);
@@ -114,7 +114,7 @@ HAL_StatusTypeDef uart_send_bytes(enum stm_uart_port port, uint8_t *buf, size_t 
 }
 
 /* receive raw bytes */
-HAL_StatusTypeDef uart_receive_bytes(enum stm_uart_port port, uint8_t *buf, size_t len, uint32_t timeout)
+HAL_StatusTypeDef uart_receive_bytes(stm_uart_port_t port, uint8_t *buf, size_t len, uint32_t timeout)
 {
     UART_HandleTypeDef *uart = _which_uart(port);
 
@@ -132,7 +132,7 @@ HAL_StatusTypeDef uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
     return uart_send_number2(DEFAULT_UART, num, digits, radix);
 }
 
-HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8_t digits, uint8_t radix)
+HAL_StatusTypeDef uart_send_number2(stm_uart_port_t port, uint32_t num, uint8_t digits, uint8_t radix)
 {
     #define BUFSIZE 32
     char buf[BUFSIZE];
@@ -163,7 +163,7 @@ HAL_StatusTypeDef uart_send_number2(enum stm_uart_port port, uint32_t num, uint8
     return uart_send_bytes(port, (uint8_t *) where, digits);
 }
 
-HAL_StatusTypeDef uart_send_hexdump(enum stm_uart_port port, const uint8_t *buf,
+HAL_StatusTypeDef uart_send_hexdump(stm_uart_port_t port, const uint8_t *buf,
 				    const uint8_t start_offset, const uint8_t end_offset)
 {
     uint32_t i;
