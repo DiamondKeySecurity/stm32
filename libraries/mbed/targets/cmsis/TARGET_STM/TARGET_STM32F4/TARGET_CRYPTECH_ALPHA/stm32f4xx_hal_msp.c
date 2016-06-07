@@ -119,7 +119,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
   DMA_Stream_TypeDef *hdma_instance;
 
   if (huart->Instance == USART1) {
-    /* This is huart_mgmt (USER_MGMT) */
+    /* This is huart_mgmt (MGMT UART) */
 
     /* Peripheral clock enable */
     __USART1_CLK_ENABLE();
@@ -137,7 +137,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     /* Peripheral DMA init*/
     hdma_instance = DMA2_Stream2;
   }
-    
+
   else if (huart->Instance == USART2) {
     /* This is huart_user (USER UART) */
 

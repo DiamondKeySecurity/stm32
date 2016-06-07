@@ -180,7 +180,7 @@ void USART1_IRQHandler(void)
  * @brief  This function handles UART interrupt request.
  * @param  None
  * @retval None
- * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback in main.c.
+ * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback below.
  */
 void USART2_IRQHandler(void)
 {
@@ -208,7 +208,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 __weak void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_UART_TxCpltCallback could be implemented in the user file
+           the HAL_UART_RxCpltCallback could be implemented in the user file
    */
 }
 
