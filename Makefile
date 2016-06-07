@@ -34,11 +34,11 @@ export TOPLEVEL = $(shell pwd)
 BOARD = TARGET_CRYPTECH_ALPHA
 
 # Location of the Libraries folder from the STM32F4 Standard Peripheral Library
-LIBS_DIR = $(TOPLEVEL)/libraries
-MBED_DIR = $(LIBS_DIR)/mbed
-CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
-BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
-RTOS_DIR = $(MBED_DIR)/rtos
+export LIBS_DIR = $(TOPLEVEL)/libraries
+export MBED_DIR = $(LIBS_DIR)/mbed
+export CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
+export BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
+export RTOS_DIR = $(MBED_DIR)/rtos
 export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
 export LIBHAL_DIR = $(LIBS_DIR)/libhal
 export LIBCLI_DIR = $(LIBS_DIR)/libcli

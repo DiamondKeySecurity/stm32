@@ -37,6 +37,8 @@
 #include "stm-uart.h"
 #include "dfu.h"
 
+#undef HAL_Delay
+
 /* Linker symbols are strange in C. Make regular pointers for sanity. */
 __IO uint32_t *dfu_control = &CRYPTECH_DFU_CONTROL;
 __IO uint32_t *dfu_firmware = &CRYPTECH_FIRMWARE_START;
@@ -49,16 +51,20 @@ __IO uint32_t *dfu_code_ptr = &CRYPTECH_FIRMWARE_START + 1;
 
 typedef  void (*pFunction)(void);
 
-/* This is it's own function to make it more convenient to set a breakpoint at it in gdb */
-void do_early_dfu_jump(void)
+/* called from Reset_Handler */
+void check_early_dfu_jump(void)
 {
-    pFunction loaded_app = (pFunction) *dfu_code_ptr;
-    /* Set the stack pointer to the correct one for the firmware */
-    __set_MSP(*dfu_msp_ptr);
-    /* Set the Vector Table Offset Register */
-    SCB->VTOR = (uint32_t) dfu_firmware;
-    loaded_app();
-    while (1);
+    /* Check if we've just rebooted in order to jump to the firmware. */
+    if (*dfu_control == HARDWARE_EARLY_DFU_JUMP) {
+	*dfu_control = 0;
+        pFunction loaded_app = (pFunction) *dfu_code_ptr;
+        /* Set the stack pointer to the correct one for the firmware */
+        __set_MSP(*dfu_msp_ptr);
+        /* Set the Vector Table Offset Register */
+        SCB->VTOR = (uint32_t) dfu_firmware;
+        loaded_app();
+        while (1);
+    }
 }
 
 int should_dfu()
@@ -85,12 +91,6 @@ int
 main()
 {
     int status;
-
-    /* Check if we've just rebooted in order to jump to the firmware. */
-    if (*dfu_control == HARDWARE_EARLY_DFU_JUMP) {
-	*dfu_control = 0;
-	do_early_dfu_jump();
-    }
 
     stm_init();
 
