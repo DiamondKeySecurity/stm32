@@ -98,13 +98,11 @@ main()
     led_off(LED_RED);
     led_on(LED_GREEN);
 
-    embedded_cli_loop(&cli);
-
-    /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
-
-    cli_print(&cli, "Rebooting in 3 seconds");
-    HAL_Delay(3000);
-    HAL_NVIC_SystemReset();
+    while (1) {
+        embedded_cli_loop(&cli);
+        /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
+        cli_print(&cli, "\nLogging out...\n");
+    }
 
     /* NOT REACHED */
     Error_Handler();
