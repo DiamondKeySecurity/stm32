@@ -147,7 +147,8 @@ int embedded_cli_loop(struct cli_def *cli)
 		continue;
 	}
 
-	if (ctx.l < 0) break;
+	if (ctx.l < 0)
+            continue;
 
 	/* cli_print(cli, "Process command: '%s'", ctx.cmd); */
 	n = cli_loop_process_cmd(cli, &ctx);
