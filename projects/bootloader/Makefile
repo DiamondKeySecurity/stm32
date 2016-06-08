@@ -4,7 +4,6 @@ OBJS = crc32.o dfu.o
 
 BOARD_OBJS = \
 	./stm-init.o \
-	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
 	$(TOPLEVEL)/stm-flash.o \
 	$(TOPLEVEL)/syscalls.o \
