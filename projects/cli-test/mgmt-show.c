@@ -32,6 +32,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define HAL_OK CMSIS_HAL_OK
+
 #include "stm-init.h"
 #include "stm-keystore.h"
 #include "stm-fpgacfg.h"
@@ -39,6 +41,15 @@
 
 #include "mgmt-cli.h"
 #include "mgmt-show.h"
+
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#undef HAL_OK
+#define LIBHAL_OK HAL_OK
+#include "hal.h"
+
+#define HAL_STATIC_PKEY_STATE_BLOCKS 6
+#include "hal_internal.h"
+#undef HAL_OK
 
 #include <string.h>
 
@@ -104,11 +115,33 @@ int cmd_show_keystore_data(struct cli_def *cli, const char *command, char *argv[
 	}
     } else {
 	cli_print(cli, "Erasing first sector since all the first 8 bytes are tombstones");
-	if ((i = keystore_erase_sectors(1)) != 1) {
+	if ((i = keystore_erase_sectors(1, 1)) != 1) {
 	    cli_print(cli, "Failed erasing the first sector: %li", i);
 	    return CLI_ERROR;
 	}
 	cli_print(cli, "Erase result: %li", i);
+    }
+
+    return CLI_OK;
+}
+
+int cmd_show_keystore_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    const hal_ks_keydb_t *db;
+
+    cli_print(cli, "Get keydb");
+    db = hal_ks_get_keydb();
+
+    if (db == NULL) {
+	cli_print(cli, "Could not get a keydb from libhal");
+	return CLI_OK;
+    }
+    cli_print(cli, "Got keydb");
+
+    cli_print(cli, "Sizeof db->keys is %i, sizeof one key is %i", sizeof(db->keys), sizeof(*db->keys));
+
+    for (int i = 0; i < sizeof(db->keys)/sizeof(*db->keys); i++) {
+	cli_print(cli, "key %i, in use 0x%x, ks_internal %i", i, db->keys[i].in_use, db->keys[i].ks_internal);
     }
 
     return CLI_OK;
@@ -130,4 +163,5 @@ void configure_cli_show(struct cli_def *cli)
     /* show keystore status*/
     cli_command_node(show_keystore, status, "Show status of the keystore memory");
     cli_command_node(show_keystore, data, "Show the first page of the keystore memory");
+    cli_command_node(show_keystore, keys, "List the keys in the keystore database");
 }

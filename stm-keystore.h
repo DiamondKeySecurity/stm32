@@ -40,6 +40,7 @@
 
 #define KEYSTORE_PAGE_SIZE		   N25Q128_PAGE_SIZE
 #define KEYSTORE_SECTOR_SIZE		   N25Q128_SECTOR_SIZE
+#define KEYSTORE_NUM_SECTORS		   N25Q128_NUM_SECTORS
 
 /* Pins connected to the FPGA config memory (SPI flash) */
 #define KSM_PROM_CS_N_Pin                  GPIO_PIN_0
@@ -56,6 +57,6 @@ extern SPI_HandleTypeDef hspi_keystore;
 extern int keystore_check_id(void);
 extern int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len);
 extern int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int keystore_erase_sectors(int num);
+extern int keystore_erase_sectors(uint32_t start, uint32_t stop);
 
 #endif /* __STM32_KEYSTORE_H */

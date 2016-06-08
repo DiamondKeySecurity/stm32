@@ -115,7 +115,7 @@ $(MBED_DIR)/libstmf4.a:
 board-test: $(BOARD_OBJS) $(LIBS)
 	$(MAKE) -C projects/board-test
 
-cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/cli-test
 
 $(RTOS_DIR)/librtos.a:
@@ -128,7 +128,7 @@ $(LIBTFM_DIR)/libtfm.a:
 	$(MAKE) -C $(LIBTFM_DIR) PREFIX=$(PREFIX)
 
 $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
-	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=volatile libhal.a
+	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=flash libhal.a
 
 $(LIBCLI_DIR)/libcli.a:
 	$(MAKE) -C $(LIBCLI_DIR)

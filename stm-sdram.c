@@ -51,7 +51,7 @@ HAL_StatusTypeDef sdram_init(void)
     static int initialized = 0;
 
     if (initialized) {
-	return;
+	return HAL_OK;
     }
     initialized = 1;
 

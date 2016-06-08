@@ -55,10 +55,14 @@ int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
     return n25q128_write_data(&keystore_ctx, offset, buf, len);
 }
 
-int keystore_erase_sectors(int num)
+int keystore_erase_sectors(uint32_t start, uint32_t stop)
 {
-    if (num > N25Q128_NUM_SECTORS || num < 0) num = N25Q128_NUM_SECTORS;
-    while (num) {
+    uint32_t sector;
+
+    if (start > N25Q128_NUM_SECTORS || start < 0) return -2;
+    if (stop > N25Q128_NUM_SECTORS || stop < 0 || stop > start) return -3;
+
+    for (sector = start; sector <= stop; sector++) {
 	int timeout = 200; /* times 10ms = 2 seconds timeout */
 	while (timeout--) {
 	    int i = n25q128_get_wip_flag(&keystore_ctx);
@@ -68,10 +72,9 @@ int keystore_erase_sectors(int num)
 	}
 	if (! timeout) return 0;
 
-	if (! n25q128_erase_sector(&keystore_ctx, num - 1)) {
+	if (! n25q128_erase_sector(&keystore_ctx, sector)) {
             return -1;
         }
-	num--;
     }
     return 1;
 }
