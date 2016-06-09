@@ -53,6 +53,7 @@
 #include "stm-led.h"
 #include "stm-fmc.h"
 #include "stm-uart.h"
+#include "stm-sdram.h"
 
 /* stm32f4xx_hal_def.h and hal.h both define HAL_OK as an enum value */
 #define HAL_OK HAL_OKAY
@@ -65,12 +66,23 @@
 /* RPC buffers. For each active RPC, there will be two - input and output.
  */
 
-#ifndef NUM_RPC_BUFFER
+#ifndef NUM_RPC_TASK
 /* An arbitrary number, but we don't expect to have more than 8 concurrent
  * RPC requests.
  */
-#define NUM_RPC_BUFFER 16
+#define NUM_RPC_TASK 8
 #endif
+
+#ifndef TASK_STACK_SIZE
+/* Define an absurdly large task stack, because some pkey operation use a
+ * lot of stack variables.
+ */
+#define TASK_STACK_SIZE 64*1024
+#endif
+
+/* Put the task stack buffers in SDRAM, because ARM RAM is too small.
+ */
+__attribute__((section(".sdram1"))) uint8_t stack[NUM_RPC_TASK][TASK_STACK_SIZE];
 
 #ifndef MAX_PKT_SIZE
 /* Another arbitrary number, more or less driven by the 4096-bit RSA
@@ -87,65 +99,30 @@ typedef struct {
     uint8_t buf[MAX_PKT_SIZE];
 } rpc_buffer_t;
 
-osPoolDef(rpc_buffer_pool, NUM_RPC_BUFFER, rpc_buffer_t);
-osPoolId  rpc_buffer_pool;
-
-static rpc_buffer_t *rpc_buffer_alloc(void)
-{
-    return (rpc_buffer_t *)osPoolCAlloc(rpc_buffer_pool);
-}
-
 /* A mutex to arbitrate concurrent UART transmits, from RPC responses.
  */
 osMutexId  uart_mutex;
 osMutexDef(uart_mutex);
 
-/* Thread entry point for the RPC request handler.
+/* A mutex so only one dispatch thread can receive requests.
  */
-static void dispatch_thread(void const *args)
-{
-    rpc_buffer_t *ibuf = (rpc_buffer_t *)args;
-    rpc_buffer_t *obuf = rpc_buffer_alloc();
-    if (obuf == NULL) {
-        uint8_t buf[8];
-        uint8_t * bufptr = &buf[4];
-        const uint8_t * const limit = buf + sizeof(buf);
-        memcpy(buf, ibuf->buf, 4);
-        hal_xdr_encode_int(&bufptr, limit, HAL_ERROR_ALLOCATION_FAILURE);
-        osMutexWait(uart_mutex, osWaitForever);
-        hal_rpc_sendto(ibuf->buf, sizeof(buf), NULL);
-        osMutexRelease(uart_mutex);
-        osPoolFree(rpc_buffer_pool, ibuf);
-        Error_Handler();
-    }
-    /* copy client ID from request to response */
-    memcpy(obuf->buf, ibuf->buf, 4);
-    obuf->len = sizeof(obuf->buf) - 4;
-    hal_rpc_server_dispatch(ibuf->buf + 4, ibuf->len - 4, obuf->buf + 4, &obuf->len);
-    osPoolFree(rpc_buffer_pool, ibuf);
-    osMutexWait(uart_mutex, osWaitForever);
-    hal_error_t ret = hal_rpc_sendto(obuf->buf, obuf->len + 4, NULL);
-    osMutexRelease(uart_mutex);
-    osPoolFree(rpc_buffer_pool, obuf);
-    if (ret != HAL_OK)
-        Error_Handler();
-}
-osThreadDef(dispatch_thread, osPriorityNormal, DEFAULT_STACK_SIZE);
+osMutexId  dispatch_mutex;
+osMutexDef(dispatch_mutex);
 
-/* Semaphore to inform the main thread that there's a new RPC request.
+/* Semaphore to inform the dispatch thread that there's a new RPC request.
  */
-osSemaphoreId rpc_sem;
+osSemaphoreId  rpc_sem;
 osSemaphoreDef(rpc_sem);
 
-static uint8_t c;		/* current character received from UART */
-static rpc_buffer_t *ibuf;	/* current RPC input buffer */
+static uint8_t c;			/* current character received from UART */
+static rpc_buffer_t * volatile rbuf;	/* current RPC input buffer */
 
 /* Callback for HAL_UART_Receive_IT().
  */
 void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     int complete;
-    hal_slip_recv_char(ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete);
+    hal_slip_recv_char(rbuf->buf, &rbuf->len, sizeof(rbuf->buf), &complete);
     if (complete)
 	osSemaphoreRelease(rpc_sem);
 
@@ -164,8 +141,47 @@ hal_error_t hal_serial_recv_char(uint8_t *cp)
     return HAL_OK;
 }
 
-/* The main thread. After the system setup, it waits for the RPC-request
- * semaphore from HAL_UART_RxCpltCallback, and spawns a dispatch thread.
+/* Thread entry point for the RPC request handler.
+ */
+static void dispatch_thread(void const *args)
+{
+    rpc_buffer_t ibuf, obuf;
+
+    while (1) {
+        memset(&ibuf, 0, sizeof(ibuf));
+        memset(&obuf, 0, sizeof(obuf));
+
+        /* Wait for access to the uart */
+        osMutexWait(dispatch_mutex, osWaitForever);
+
+        /* Wait for the complete rpc request */
+        rbuf = &ibuf;
+        osSemaphoreWait(rpc_sem, osWaitForever);
+
+        /* Let the next thread handle the next request */
+        osMutexRelease(dispatch_mutex);
+        /* Let the next thread take the mutex */
+        osThreadYield();
+
+        /* Copy client ID from request to response */
+        memcpy(obuf.buf, ibuf.buf, 4);
+        obuf.len = sizeof(obuf.buf) - 4;
+
+        /* Process the request */
+        hal_rpc_server_dispatch(ibuf.buf + 4, ibuf.len - 4, obuf.buf + 4, &obuf.len);
+
+        /* Send the response */
+        osMutexWait(uart_mutex, osWaitForever);
+        hal_error_t ret = hal_rpc_sendto(obuf.buf, obuf.len + 4, NULL);
+        osMutexRelease(uart_mutex);
+        if (ret != HAL_OK)
+            Error_Handler();
+    }
+}
+osThreadDef_t thread_def[NUM_RPC_TASK];
+
+/* The main thread. This does all the setup, and the worker threads handle
+ * the rest.
  */
 int main()
 {
@@ -183,6 +199,7 @@ int main()
     led_on(LED_GREEN);
     /* Prepare FMC interface. */
     fmc_init();
+    sdram_init();
 
     /* Haaaack. probe_cores() calls malloc(), which works from the main
      * thread, but not from a spawned thread. It would be better to
@@ -191,8 +208,8 @@ int main()
      */
     hal_core_iterate(NULL);
 
-    rpc_buffer_pool = osPoolCreate(osPool(rpc_buffer_pool));
     uart_mutex = osMutexCreate(osMutex(uart_mutex));
+    dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex));
     rpc_sem = osSemaphoreCreate(osSemaphore(rpc_sem), 0);
 
 #ifdef TARGET_CRYPTECH_ALPHA
@@ -205,22 +222,19 @@ int main()
     if (hal_rpc_server_init() != HAL_OK)
 	Error_Handler();
 
-    ibuf = rpc_buffer_alloc();
-    if (ibuf == NULL)
-        /* Something is badly wrong. */
-        Error_Handler();
+    /* Create the rpc dispatch threads */
+    for (int i = 0; i < NUM_RPC_TASK; ++i) {
+        osThreadDef_t *ot = &thread_def[i];
+        ot->pthread = dispatch_thread;
+        ot->tpriority = osPriorityNormal;
+        ot->stacksize = TASK_STACK_SIZE;
+        ot->stack_pointer = (uint32_t *)stack[i];
+        if (osThreadCreate(ot, (void *)i) == NULL)
+            Error_Handler();
+    }
 
     /* Start the non-blocking receive */
     HAL_UART_Receive_IT(&huart_user, &c, 1);
 
-    while (1) {
-        osSemaphoreWait(rpc_sem, osWaitForever);
-        if (osThreadCreate(osThread(dispatch_thread), (void *)ibuf) == NULL)
-            Error_Handler();
-        while ((ibuf = rpc_buffer_alloc()) == NULL);
-        /* XXX There's a potential race condition, where another request
-         * could write into the old ibuf, or into the null pointer if
-         * we're out of ibufs.
-         */
-    }
+    while (1) { ; }
 }
