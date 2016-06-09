@@ -129,20 +129,29 @@ int cmd_show_keystore_keys(struct cli_def *cli, const char *command, char *argv[
 {
     const hal_ks_keydb_t *db;
 
-    cli_print(cli, "Get keydb");
     db = hal_ks_get_keydb();
 
     if (db == NULL) {
 	cli_print(cli, "Could not get a keydb from libhal");
 	return CLI_OK;
     }
-    cli_print(cli, "Got keydb");
 
-    cli_print(cli, "Sizeof db->keys is %i, sizeof one key is %i", sizeof(db->keys), sizeof(*db->keys));
+    cli_print(cli, "Sizeof db->keys is %i, sizeof one key is %i\n", sizeof(db->keys), sizeof(*db->keys));
 
     for (int i = 0; i < sizeof(db->keys)/sizeof(*db->keys); i++) {
-	cli_print(cli, "key %i, in use 0x%x, ks_internal %i", i, db->keys[i].in_use, db->keys[i].ks_internal);
+	if (! db->keys[i].in_use) {
+	    cli_print(cli, "Key %i, not in use", i);
+	} else {
+	    cli_print(cli, "Key %i, in use 0x%x, name '%s' der '%s'",
+		      i, db->keys[i].in_use, db->keys[i].name, db->keys[i].der);
+	}
     }
+
+    cli_print(cli, "\nPins:");
+    cli_print(cli, "Wheel iterations: 0x%lx", db->wheel_pin.iterations);
+    cli_print(cli, "SO    iterations: 0x%lx", db->so_pin.iterations);
+    cli_print(cli, "User  iterations: 0x%lx", db->user_pin.iterations);
+    cli_print(cli, "\n");
 
     return CLI_OK;
 }

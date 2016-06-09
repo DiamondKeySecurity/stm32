@@ -1,7 +1,7 @@
 /*
- * mgmt-show.h
- * -----------
- * Management CLI 'show' functions.
+ * mgmt-set.h
+ * ----------
+ * Management CLI 'set' functions.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -32,12 +32,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_SHOW_H
-#define __STM32_CLI_MGMT_SHOW_H
+#ifndef __STM32_CLI_MGMT_SET_H
+#define __STM32_CLI_MGMT_SET_H
 
 #include "stm-init.h"
 #include <libcli.h>
 
-extern void configure_cli_show(struct cli_def *cli);
+extern void configure_cli_set(struct cli_def *cli);
 
-#endif /* __STM32_CLI_MGMT_SHOW_H */
+#endif /* __STM32_CLI_MGMT_SET_H */

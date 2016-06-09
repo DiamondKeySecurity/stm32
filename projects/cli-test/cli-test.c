@@ -40,6 +40,7 @@
 #include "mgmt-misc.h"
 #include "mgmt-show.h"
 #include "mgmt-test.h"
+#include "mgmt-set.h"
 
 #include <string.h>
 
@@ -94,6 +95,7 @@ main()
     configure_cli_test(&cli);
     configure_cli_misc(&cli);
     configure_cli_dfu(&cli);
+    configure_cli_set(&cli);
 
     led_off(LED_RED);
     led_on(LED_GREEN);
