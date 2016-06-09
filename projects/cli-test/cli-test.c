@@ -42,6 +42,7 @@
 #include "mgmt-test.h"
 
 #include <string.h>
+#include <strings.h>
 
 
 /* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
