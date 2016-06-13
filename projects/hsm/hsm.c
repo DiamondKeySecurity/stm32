@@ -77,12 +77,8 @@
 /* Define an absurdly large task stack, because some pkey operation use a
  * lot of stack variables.
  */
-#define TASK_STACK_SIZE 64*1024
+#define TASK_STACK_SIZE 200*1024
 #endif
-
-/* Put the task stack buffers in SDRAM, because ARM RAM is too small.
- */
-__attribute__((section(".sdram1"))) uint8_t stack[NUM_RPC_TASK][TASK_STACK_SIZE];
 
 #ifndef MAX_PKT_SIZE
 /* Another arbitrary number, more or less driven by the 4096-bit RSA
@@ -180,6 +176,28 @@ static void dispatch_thread(void const *args)
 }
 osThreadDef_t thread_def[NUM_RPC_TASK];
 
+/* Allocate memory from SDRAM1. There is only malloc, no free, so we don't
+ * worry about fragmentation. */
+static uint8_t *sdram_malloc(size_t size)
+{
+    /* end of variables declared with __attribute__((section(".sdram1"))) */
+    extern uint8_t _esdram1 __asm ("_esdram1");
+    /* end of SDRAM1 section */
+    extern uint8_t __end_sdram1 __asm ("__end_sdram1");
+
+    static uint8_t *sdram_heap = &_esdram1;
+    uint8_t *p = sdram_heap;
+
+#define pad(n) (((n) + 3) & ~3)
+    size = pad(size);
+
+    if (p + size > &__end_sdram1)
+        return NULL;
+
+    sdram_heap += size;
+    return p;
+}
+
 /* The main thread. This does all the setup, and the worker threads handle
  * the rest.
  */
@@ -228,7 +246,9 @@ int main()
         ot->pthread = dispatch_thread;
         ot->tpriority = osPriorityNormal;
         ot->stacksize = TASK_STACK_SIZE;
-        ot->stack_pointer = (uint32_t *)stack[i];
+        ot->stack_pointer = (uint32_t *)(sdram_malloc(TASK_STACK_SIZE));
+        if (ot->stack_pointer == NULL)
+            Error_Handler();
         if (osThreadCreate(ot, (void *)i) == NULL)
             Error_Handler();
     }
@@ -236,5 +256,5 @@ int main()
     /* Start the non-blocking receive */
     HAL_UART_Receive_IT(&huart_user, &c, 1);
 
-    while (1) { ; }
+    return 0;
 }
