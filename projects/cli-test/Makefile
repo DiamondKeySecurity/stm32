@@ -2,8 +2,26 @@ TEST = cli-test
 
 OBJS = crc32.o test_sdram.o mgmt-cli.o mgmt-dfu.c mgmt-fpga.c mgmt-misc.c mgmt-show.c mgmt-test.c
 
+BOARD_OBJS = \
+	$(TOPLEVEL)/stm-init.o \
+	$(TOPLEVEL)/stm-fmc.o \
+	$(TOPLEVEL)/stm-uart.o \
+	$(TOPLEVEL)/syscalls.o \
+	$(TOPLEVEL)/stm-rtc.o \
+	$(TOPLEVEL)/spiflash_n25q128.o \
+	$(TOPLEVEL)/stm-fpgacfg.o \
+	$(TOPLEVEL)/stm-keystore.o \
+	$(TOPLEVEL)/stm-sdram.o \
+	$(TOPLEVEL)/stm-flash.o \
+	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx_rtos.o \
+	$(BOARD_DIR)/system_stm32f4xx.o \
+	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
+	$(BOARD_DIR)/stm32f4xx_it_rtos.o
+
 CFLAGS += -I$(LIBCLI_DIR)
-LIBS += $(LIBCLI_DIR)/libcli.a
+CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
+
+LIBS += $(LIBCLI_DIR)/libcli.a $(RTOS_DIR)/librtos.a
 
 all: $(TEST:=.elf)
 

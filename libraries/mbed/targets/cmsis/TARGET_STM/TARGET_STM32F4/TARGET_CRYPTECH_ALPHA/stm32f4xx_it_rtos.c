@@ -37,6 +37,8 @@
 ******************************************************************************
 */
 
+#include "cmsis_os.h"
+
 #include "stm-init.h"
 #include "stm-uart.h"
 
@@ -65,6 +67,10 @@ void NMI_Handler(void)
  */
 void HardFault_Handler(void)
 {
+#ifdef HAL_GPIO_MODULE_ENABLED
+    //HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOK, GPIO_PIN_7, GPIO_PIN_SET);
+#endif
     /* Go to infinite loop when Hard Fault exception occurs */
     while (1) { ; }
 }
@@ -103,6 +109,7 @@ void UsageFault_Handler(void)
 }
 
 
+#if 0  /* already defined in libraries/mbed/rtos/ */
 /**
  * @brief  This function handles SVCall exception.
  * @param  None
@@ -139,6 +146,7 @@ void SysTick_Handler(void)
 {
     HAL_IncTick();
 }
+#endif
 
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */
@@ -178,7 +186,7 @@ void USART1_IRQHandler(void)
  * @brief  This function handles UART interrupt request.
  * @param  None
  * @retval None
- * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback in main.c.
+ * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback below.
  */
 void USART2_IRQHandler(void)
 {
@@ -206,7 +214,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 __weak void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_UART_TxCpltCallback could be implemented in the user file
+           the HAL_UART_RxCpltCallback could be implemented in the user file
    */
 }
 
@@ -215,6 +223,11 @@ __weak void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART_TxCpltCallback could be implemented in the user file
    */
+}
+
+void HAL_Delay(__IO uint32_t Delay)
+{
+    osDelay(Delay);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

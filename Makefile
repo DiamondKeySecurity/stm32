@@ -32,6 +32,7 @@ export TOPLEVEL = $(shell pwd)
 
 # define board: dev-bridge or alpha
 BOARD = TARGET_CRYPTECH_ALPHA
+#BOARD = TARGET_CRYPTECH_DEV_BRIDGE
 
 # Location of the Libraries folder from the STM32F4 Standard Peripheral Library
 export LIBS_DIR = $(TOPLEVEL)/libraries
@@ -43,7 +44,7 @@ export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
 export LIBHAL_DIR = $(LIBS_DIR)/libhal
 export LIBCLI_DIR = $(LIBS_DIR)/libcli
 
-export LIBS = $(MBED_DIR)/libstmf4.a $(RTOS_DIR)/librtos.a
+export LIBS = $(MBED_DIR)/libstmf4.a
 
 # linker script
 export LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
@@ -87,15 +88,14 @@ CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
 CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOOLCHAIN_GCC -D__FPU_PRESENT=1 -D$(BOARD)
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=c99
-CFLAGS += -I $(TOPLEVEL)
-CFLAGS += -I $(MBED_DIR)/api
-CFLAGS += -I $(MBED_DIR)/rtos/rtos
-CFLAGS += -I $(MBED_DIR)/rtos/rtx/TARGET_CORTEX_M
-CFLAGS += -I $(MBED_DIR)/targets/cmsis
-CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
-CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
-CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
-CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
+CFLAGS += -I$(TOPLEVEL)
+CFLAGS += -I$(MBED_DIR)/api
+CFLAGS += -I$(MBED_DIR)/targets/cmsis
+CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
+CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
+CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
+CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
+CFLAGS += -DHAL_RSA_USE_MODEXP=0
 export CFLAGS
 
 %.o : %.c
@@ -121,7 +121,7 @@ cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
 $(RTOS_DIR)/librtos.a:
 	$(MAKE) -C $(RTOS_DIR)
 
-rtos-test: $(RTOS_OBJS) $(LIBS)
+rtos-test: $(RTOS_OBJS) $(LIBS) $(RTOS_DIR)/librtos.a
 	$(MAKE) -C projects/rtos-test
 
 $(LIBTFM_DIR)/libtfm.a:
@@ -136,7 +136,7 @@ $(LIBCLI_DIR)/libcli.a:
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/libhal-test
 
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a $(RTOS_DIR)/librtos.a
 	$(MAKE) -C projects/hsm
 
 bootloader: $(BOARD_OBJS) $(LIBS)

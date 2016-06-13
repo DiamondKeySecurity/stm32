@@ -35,7 +35,6 @@
 #ifndef __STM_INIT_H
 #define __STM_INIT_H
 
-#include "cmsis_os.h"
 #include "stm32f4xx_hal.h"
 
 /* Macros used to make GPIO pin setup (in stm-init.c) easier */
@@ -59,7 +58,5 @@
 
 extern void stm_init(void);
 extern void Error_Handler(void);
-
-#define HAL_Delay osDelay
 
 #endif /* __STM_INIT_H */

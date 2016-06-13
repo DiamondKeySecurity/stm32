@@ -65,6 +65,10 @@ void NMI_Handler(void)
  */
 void HardFault_Handler(void)
 {
+#ifdef HAL_GPIO_MODULE_ENABLED
+    //HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOK, GPIO_PIN_7, GPIO_PIN_SET);
+#endif
     /* Go to infinite loop when Hard Fault exception occurs */
     while (1) { ; }
 }
@@ -103,7 +107,6 @@ void UsageFault_Handler(void)
 }
 
 
-#if 0  /* already defined in libraries/mbed/rtos/ */
 /**
  * @brief  This function handles SVCall exception.
  * @param  None
@@ -140,7 +143,6 @@ void SysTick_Handler(void)
 {
     HAL_IncTick();
 }
-#endif
 
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */
