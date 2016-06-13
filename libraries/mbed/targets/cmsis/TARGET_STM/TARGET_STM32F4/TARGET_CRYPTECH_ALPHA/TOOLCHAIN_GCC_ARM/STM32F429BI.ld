@@ -138,9 +138,6 @@ SECTIONS
       _eccmram = .;
     } >CCMRAM AT> FLASH
 
-    /* If initialized variables are placed in this section, 
-     * the startup code needs to be modified to copy the init-values.  
-     */
     .sdram1 :
     {
       . = ALIGN(4);
@@ -150,11 +147,8 @@ SECTIONS
 
       . = ALIGN(4);
       _esdram1 = .;
-    } >SDRAM1 AT> FLASH
+    } >SDRAM1
 
-    /* If initialized variables are placed in this section, 
-     * the startup code needs to be modified to copy the init-values.  
-     */
     .sdram2 :
     {
       . = ALIGN(4);
@@ -164,7 +158,7 @@ SECTIONS
 
       . = ALIGN(4);
       _esdram2 = .;
-    } >SDRAM2 AT> FLASH
+    } >SDRAM2
 
     .bss :
     {
