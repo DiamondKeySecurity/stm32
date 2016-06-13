@@ -37,12 +37,29 @@
 #include "stm-fmc.h"
 #include "stm-led.h"
 
+/* Mode Register Bits */
+#define SDRAM_MODEREG_BURST_LENGTH_1             ((uint16_t)0x0000)
+#define SDRAM_MODEREG_BURST_LENGTH_2             ((uint16_t)0x0001)
+#define SDRAM_MODEREG_BURST_LENGTH_4             ((uint16_t)0x0002)
+#define SDRAM_MODEREG_BURST_LENGTH_8             ((uint16_t)0x0004)
+
+#define SDRAM_MODEREG_BURST_TYPE_SEQUENTIAL      ((uint16_t)0x0000)
+#define SDRAM_MODEREG_BURST_TYPE_INTERLEAVED     ((uint16_t)0x0008)
+
+#define SDRAM_MODEREG_CAS_LATENCY_2              ((uint16_t)0x0020)
+#define SDRAM_MODEREG_CAS_LATENCY_3              ((uint16_t)0x0030)
+
+#define SDRAM_MODEREG_OPERATING_MODE_STANDARD    ((uint16_t)0x0000)
+
+#define SDRAM_MODEREG_WRITEBURST_MODE_PROGRAMMED ((uint16_t)0x0000)
+#define SDRAM_MODEREG_WRITEBURST_MODE_SINGLE     ((uint16_t)0x0200)
+
 SDRAM_HandleTypeDef hsdram1;
 SDRAM_HandleTypeDef hsdram2;
 
-void _sdram_init_gpio(void);
-HAL_StatusTypeDef _sdram_init_fmc(void);
-HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTypeDef *sdram2);
+static void _sdram_init_gpio(void);
+static HAL_StatusTypeDef _sdram_init_fmc(void);
+static HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTypeDef *sdram2);
 
 
 HAL_StatusTypeDef sdram_init(void)
@@ -74,7 +91,7 @@ HAL_StatusTypeDef sdram_init(void)
     return HAL_OK;
 }
 
-void _sdram_init_gpio(void)
+static void _sdram_init_gpio(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -90,7 +107,7 @@ void _sdram_init_gpio(void)
     fmc_af_gpio(GPIOI, GPIO_PIN_4 | GPIO_PIN_5);
 }
 
-HAL_StatusTypeDef _sdram_init_fmc()
+static HAL_StatusTypeDef _sdram_init_fmc()
 {
     HAL_StatusTypeDef status;
     FMC_SDRAM_TimingTypeDef SdramTiming;
@@ -179,7 +196,7 @@ HAL_StatusTypeDef _sdram_init_fmc()
     return HAL_SDRAM_Init(&hsdram2, &SdramTiming);
 }
 
-HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTypeDef *sdram2)
+static HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTypeDef *sdram2)
 {
     HAL_StatusTypeDef ok;			// status
     FMC_SDRAM_CommandTypeDef cmd;		// command
