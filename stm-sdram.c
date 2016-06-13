@@ -51,7 +51,7 @@ HAL_StatusTypeDef sdram_init(void)
     static int initialized = 0;
 
     if (initialized) {
-	return;
+	return HAL_OK;
     }
     initialized = 1;
 
@@ -183,6 +183,8 @@ HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTy
 {
     HAL_StatusTypeDef ok;			// status
     FMC_SDRAM_CommandTypeDef cmd;		// command
+
+#define HAL_Delay(n) for (int i = 0; i < 1000 * n; ++i)
 
     /*
      * enable clocking
