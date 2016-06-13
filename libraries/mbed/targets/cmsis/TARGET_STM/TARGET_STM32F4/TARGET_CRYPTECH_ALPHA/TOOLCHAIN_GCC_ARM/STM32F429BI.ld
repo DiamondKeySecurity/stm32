@@ -138,6 +138,8 @@ SECTIONS
       _eccmram = .;
     } >CCMRAM AT> FLASH
 
+     __end_ccmram = ORIGIN(CCMRAM) + LENGTH(CCMRAM);
+
     .sdram1 :
     {
       . = ALIGN(4);
@@ -149,6 +151,8 @@ SECTIONS
       _esdram1 = .;
     } >SDRAM1
 
+    __end_sdram1 = ORIGIN(SDRAM1) + LENGTH(SDRAM1);
+
     .sdram2 :
     {
       . = ALIGN(4);
@@ -159,6 +163,8 @@ SECTIONS
       . = ALIGN(4);
       _esdram2 = .;
     } >SDRAM2
+
+    __end_sdram2 = ORIGIN(SDRAM2) + LENGTH(SDRAM2);
 
     .bss :
     {
