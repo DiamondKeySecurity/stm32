@@ -1,7 +1,7 @@
 PROJ = hsm
 
 # objs in addition to $(PROJ).o
-OBJS = 
+OBJS = crc32.o mgmt-cli.o mgmt-dfu.c mgmt-fpga.c mgmt-misc.c mgmt-show.c
 
 BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
@@ -20,9 +20,12 @@ BOARD_OBJS = \
 	$(BOARD_DIR)/stm32f4xx_it_rtos.o
 
 CFLAGS += -I$(LIBHAL_DIR)
+CFLAGS += -I$(LIBCLI_DIR)
 CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
 
-LIBS += $(LIBHAL_DIR)/libhal.a $(LIBTFM_DIR)/libtfm.a $(RTOS_DIR)/librtos.a
+LIBS += $(LIBHAL_DIR)/libhal.a $(LIBTFM_DIR)/libtfm.a
+LIBS += $(RTOS_DIR)/librtos.a
+LIBS += $(LIBCLI_DIR)/libcli.a
 
 all: $(PROJ:=.elf)
 

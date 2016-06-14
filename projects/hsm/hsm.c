@@ -55,6 +55,8 @@
 #include "stm-uart.h"
 #include "stm-sdram.h"
 
+#include "mgmt-cli.h"
+
 /* stm32f4xx_hal_def.h and hal.h both define HAL_OK as an enum value */
 #define HAL_OK HAL_OKAY
 
@@ -110,7 +112,7 @@ osMutexDef(dispatch_mutex);
 osSemaphoreId  rpc_sem;
 osSemaphoreDef(rpc_sem);
 
-static uint8_t c;			/* current character received from UART */
+static volatile uint8_t uart_rx;	/* current character received from UART */
 static rpc_buffer_t * volatile rbuf;	/* current RPC input buffer */
 
 /* Callback for HAL_UART_Receive_IT().
@@ -122,7 +124,7 @@ void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
     if (complete)
 	osSemaphoreRelease(rpc_sem);
 
-    HAL_UART_Receive_IT(huart, &c, 1);
+    HAL_UART_Receive_IT(huart, (uint8_t *)&uart_rx, 1);
 }
 
 hal_error_t hal_serial_send_char(uint8_t c)
@@ -133,7 +135,7 @@ hal_error_t hal_serial_send_char(uint8_t c)
 hal_error_t hal_serial_recv_char(uint8_t *cp)
 {
     /* return the character from HAL_UART_Receive_IT */
-    *cp = c;
+    *cp = uart_rx;
     return HAL_OK;
 }
 
@@ -254,7 +256,7 @@ int main()
     }
 
     /* Start the non-blocking receive */
-    HAL_UART_Receive_IT(&huart_user, &c, 1);
+    HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1);
 
-    return 0;
+    return cli_main();
 }
