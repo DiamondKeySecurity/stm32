@@ -157,8 +157,6 @@ static void MX_USART2_UART_Init(void)
 /* Configure General Purpose Input/Output pins */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct;
-
   /* GPIO Ports Clock Enable */
   LED_CLK_ENABLE();
 
@@ -217,7 +215,7 @@ void MX_I2C2_Init(void)
     hi2c_rtc.Init.NoStretchMode = I2C_NOSTRETCH_DISABLED;
 
     if (HAL_I2C_Init(&hi2c_rtc) != HAL_OK) {
-	Error_Handler();
+        Error_Handler();
     }
 }
 #endif

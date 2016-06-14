@@ -37,24 +37,33 @@
 
 #include "stm32f4xx_hal.h"
 
-/* Macros used to make GPIO pin setup (in stm-init.c) easier */
-#define gpio_output(output_port, output_pins, output_level)	\
-    /* Configure GPIO pin Output Level */			\
-    HAL_GPIO_WritePin(output_port, output_pins, output_level);	\
-    /* Configure pin as output */ 				\
-    GPIO_InitStruct.Pin = output_pins; 				\
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP; 		\
-    GPIO_InitStruct.Pull = GPIO_NOPULL; 			\
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW; 			\
-    HAL_GPIO_Init(output_port, &GPIO_InitStruct)
+/* Functions used to make GPIO pin setup (in stm-init.c) easier */
 
-#define gpio_input(input_port, input_pin, input_pull)	\
-    GPIO_InitStruct.Pin = input_pin;			\
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;		\
-    GPIO_InitStruct.Pull = input_pull;			\
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;		\
-    HAL_GPIO_Init(input_port, &GPIO_InitStruct)
+inline void gpio_output(GPIO_TypeDef* output_port, uint16_t output_pins, GPIO_PinState output_level)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
 
+    /* Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(output_port, output_pins, output_level);
+
+    /* Configure pin as output */
+    GPIO_InitStruct.Pin = output_pins;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(output_port, &GPIO_InitStruct);
+}
+
+inline void gpio_input(GPIO_TypeDef* input_port, uint16_t input_pin, GPIO_PinState input_pull)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    GPIO_InitStruct.Pin = input_pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = input_pull;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(input_port, &GPIO_InitStruct);
+}
 
 extern void stm_init(void);
 extern void Error_Handler(void);
