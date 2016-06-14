@@ -104,7 +104,7 @@ export CFLAGS
 %.o : %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-all: board-test cli-test libhal-test hsm
+all: board-test cli-test libhal-test hsm bootloader
 
 init:
 	git submodule update --init --recursive --remote
@@ -128,7 +128,7 @@ $(LIBTFM_DIR)/libtfm.a:
 	$(MAKE) -C $(LIBTFM_DIR) PREFIX=$(PREFIX)
 
 $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
-	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=volatile libhal.a
+	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_MODE=server RPC_TRANSPORT=serial KS=volatile libhal.a
 
 $(LIBCLI_DIR)/libcli.a:
 	$(MAKE) -C $(LIBCLI_DIR)
@@ -145,7 +145,7 @@ bootloader: $(BOARD_OBJS) $(LIBS)
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
-.PHONY: board-test rtos-test libhal-test cli-test
+.PHONY: board-test rtos-test libhal-test cli-test hsm bootloader
 
 clean:
 	rm -f $(BOARD_OBJS)
