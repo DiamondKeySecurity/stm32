@@ -136,7 +136,7 @@ $(LIBCLI_DIR)/libcli.a:
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/libhal-test
 
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a $(RTOS_DIR)/librtos.a
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_DIR)/libcli.a
 	$(MAKE) -C projects/hsm
 
 bootloader: $(BOARD_OBJS) $(LIBS)
