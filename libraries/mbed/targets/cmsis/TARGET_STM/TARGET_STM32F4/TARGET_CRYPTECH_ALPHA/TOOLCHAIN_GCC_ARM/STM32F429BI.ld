@@ -10,9 +10,11 @@ MEMORY
   BOOTLOADER (rx) : ORIGIN = 0x08000000, LENGTH = 128K
   FIRMWARE (rx)   : ORIGIN = 0x08000000 + 128K, LENGTH = 2048K - 128K
   FLASH (rx)      : ORIGIN = 0x08000000 + 128K, LENGTH = 2048K - 128K
-  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192K - 4
+  CCMRAM (rwx)    : ORIGIN = 0x10000000, LENGTH = 64K
+  RAM (rwx)       : ORIGIN = 0x20000000, LENGTH = 192K - 4
+  SDRAM1 (rwx)    : ORIGIN = 0xC0000000, LENGTH = 64M
+  SDRAM2 (rwx)    : ORIGIN = 0xD0000000, LENGTH = 64M
 }
-/* original:  FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 2048K */
 
 /* Linker script to place sections and symbol values. Should be used together
  * with other linker script that defines memory regions FLASH and RAM.
@@ -86,7 +88,7 @@ SECTIONS
     __etext = .;
     _sidata = .;
 
-    .data : AT (__etext)
+    .data :
     {
         __data_start__ = .;
         _sdata = .;
@@ -120,7 +122,49 @@ SECTIONS
         __data_end__ = .;
         _edata = .;
 
-    } > RAM
+    } > RAM AT> FLASH
+
+    /* If initialized variables are placed in this section, 
+     * the startup code needs to be modified to copy the init-values.  
+     */
+    .ccmram :
+    {
+      . = ALIGN(4);
+      _sccmram = .;
+      *(.ccmram)
+      *(.ccmram*)
+
+      . = ALIGN(4);
+      _eccmram = .;
+    } >CCMRAM AT> FLASH
+
+     __end_ccmram = ORIGIN(CCMRAM) + LENGTH(CCMRAM);
+
+    .sdram1 :
+    {
+      . = ALIGN(4);
+      _ssdram1 = .;
+      *(.sdram1)
+      *(.sdram1*)
+
+      . = ALIGN(4);
+      _esdram1 = .;
+    } >SDRAM1
+
+    __end_sdram1 = ORIGIN(SDRAM1) + LENGTH(SDRAM1);
+
+    .sdram2 :
+    {
+      . = ALIGN(4);
+      _ssdram2 = .;
+      *(.sdram2)
+      *(.sdram2*)
+
+      . = ALIGN(4);
+      _esdram2 = .;
+    } >SDRAM2
+
+    __end_sdram2 = ORIGIN(SDRAM2) + LENGTH(SDRAM2);
 
     .bss :
     {

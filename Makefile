@@ -43,7 +43,7 @@ export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
 export LIBHAL_DIR = $(LIBS_DIR)/libhal
 export LIBCLI_DIR = $(LIBS_DIR)/libcli
 
-export LIBS = $(MBED_DIR)/libstmf4.a $(RTOS_DIR)/librtos.a
+export LIBS = $(MBED_DIR)/libstmf4.a
 
 # linker script
 export LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
@@ -87,15 +87,14 @@ CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
 CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOOLCHAIN_GCC -D__FPU_PRESENT=1 -D$(BOARD)
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=c99
-CFLAGS += -I $(TOPLEVEL)
-CFLAGS += -I $(MBED_DIR)/api
-CFLAGS += -I $(MBED_DIR)/rtos/rtos
-CFLAGS += -I $(MBED_DIR)/rtos/rtx/TARGET_CORTEX_M
-CFLAGS += -I $(MBED_DIR)/targets/cmsis
-CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
-CFLAGS += -I $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
-CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
-CFLAGS += -I $(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
+CFLAGS += -I$(TOPLEVEL)
+CFLAGS += -I$(MBED_DIR)/api
+CFLAGS += -I$(MBED_DIR)/targets/cmsis
+CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
+CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
+CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
+CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
+CFLAGS += -DHAL_RSA_USE_MODEXP=0
 export CFLAGS
 
 %.o : %.c
@@ -104,7 +103,7 @@ export CFLAGS
 %.o : %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-all: board-test cli-test libhal-test hsm
+all: board-test cli-test libhal-test hsm bootloader
 
 init:
 	git submodule update --init --recursive --remote
@@ -115,20 +114,20 @@ $(MBED_DIR)/libstmf4.a:
 board-test: $(BOARD_OBJS) $(LIBS)
 	$(MAKE) -C projects/board-test
 
-cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a $(LIBHAL_DIR)/libhal.a
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
 	$(MAKE) -C projects/cli-test
 
 $(RTOS_DIR)/librtos.a:
 	$(MAKE) -C $(RTOS_DIR)
 
-rtos-test: $(RTOS_OBJS) $(LIBS)
+rtos-test: $(RTOS_OBJS) $(LIBS) $(RTOS_DIR)/librtos.a
 	$(MAKE) -C projects/rtos-test
 
 $(LIBTFM_DIR)/libtfm.a:
 	$(MAKE) -C $(LIBTFM_DIR) PREFIX=$(PREFIX)
 
 $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
-	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_SERVER=yes RPC_TRANSPORT=serial KS=flash libhal.a
+	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_MODE=server RPC_TRANSPORT=serial KS=flash libhal.a
 
 $(LIBCLI_DIR)/libcli.a:
 	$(MAKE) -C $(LIBCLI_DIR)
@@ -136,7 +135,7 @@ $(LIBCLI_DIR)/libcli.a:
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/libhal-test
 
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_DIR)/libcli.a
 	$(MAKE) -C projects/hsm
 
 bootloader: $(BOARD_OBJS) $(LIBS)
@@ -145,7 +144,7 @@ bootloader: $(BOARD_OBJS) $(LIBS)
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
-.PHONY: board-test rtos-test libhal-test cli-test
+.PHONY: board-test rtos-test libhal-test cli-test hsm bootloader
 
 clean:
 	rm -f $(BOARD_OBJS)

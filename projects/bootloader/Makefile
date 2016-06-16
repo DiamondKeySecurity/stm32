@@ -10,9 +10,7 @@ BOARD_OBJS = \
 	$(BOARD_DIR)/system_stm32f4xx.o \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
 	./startup_stm32f429xx.o \
-	./stm32f4xx_it.o
-
-LIBS = $(MBED_DIR)/libstmf4.a
+	$(BOARD_DIR)/stm32f4xx_it.o
 
 all: $(PROG:=.elf)
 

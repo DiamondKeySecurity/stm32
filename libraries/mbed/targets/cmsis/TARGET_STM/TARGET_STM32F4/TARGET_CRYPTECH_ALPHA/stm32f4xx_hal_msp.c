@@ -190,6 +190,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
       hdma->Init.PeriphBurst = DMA_PBURST_SINGLE;
     */
     if (HAL_DMA_Init(hdma) != HAL_OK) {
+      extern void mbed_die(void);
       mbed_die();
     }
   }

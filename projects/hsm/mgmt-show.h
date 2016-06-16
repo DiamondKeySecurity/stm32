@@ -1,9 +1,9 @@
 /*
- * stm-init.h
- * ----------
- * Functions to set up the stm32 peripherals.
+ * mgmt-misc.h
+ * -----------
+ * Management CLI 'show' functions.
  *
- * Copyright (c) 2015, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -32,40 +32,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM_INIT_H
-#define __STM_INIT_H
+#ifndef __STM32_CLI_MGMT_SHOW_H
+#define __STM32_CLI_MGMT_SHOW_H
 
-#include "stm32f4xx_hal.h"
+#include "stm-init.h"
+#include <libcli.h>
 
-/* Functions used to make GPIO pin setup (in stm-init.c) easier */
+extern void configure_cli_show(struct cli_def *cli);
 
-inline void gpio_output(GPIO_TypeDef* output_port, uint16_t output_pins, GPIO_PinState output_level)
-{
-    GPIO_InitTypeDef GPIO_InitStruct;
-
-    /* Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(output_port, output_pins, output_level);
-
-    /* Configure pin as output */
-    GPIO_InitStruct.Pin = output_pins;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    HAL_GPIO_Init(output_port, &GPIO_InitStruct);
-}
-
-inline void gpio_input(GPIO_TypeDef* input_port, uint16_t input_pin, GPIO_PinState input_pull)
-{
-    GPIO_InitTypeDef GPIO_InitStruct;
-
-    GPIO_InitStruct.Pin = input_pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = input_pull;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    HAL_GPIO_Init(input_port, &GPIO_InitStruct);
-}
-
-extern void stm_init(void);
-extern void Error_Handler(void);
-
-#endif /* __STM_INIT_H */
+#endif /* __STM32_CLI_MGMT_SHOW_H */
