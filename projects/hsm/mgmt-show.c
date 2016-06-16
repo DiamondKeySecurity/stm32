@@ -104,7 +104,7 @@ static int cmd_show_keystore_data(struct cli_def *cli, const char *command, char
 	}
     } else {
 	cli_print(cli, "Erasing first sector since all the first 8 bytes are tombstones");
-	if ((i = keystore_erase_sectors(1)) != 1) {
+	if ((i = keystore_erase_sectors(1, 1)) != 1) {
 	    cli_print(cli, "Failed erasing the first sector: %li", i);
 	    return CLI_ERROR;
 	}
