@@ -55,26 +55,7 @@
 #undef SUCCESS
 
 #include "stm-uart.h"
-#include "ringbuf.h"
 #include "stm-kermit.h"
-
-static ringbuf_t uart_ringbuf;
-
-/* current character received from UART */
-static uint8_t uart_rx;
-
-/* Callback for HAL_UART_Receive_IT(). Must be public. */
-void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    ringbuf_write_char(&uart_ringbuf, uart_rx);
-    HAL_UART_Receive_IT(huart, &uart_rx, 1);
-}
-
-static void uart_init(void)
-{
-    ringbuf_init(&uart_ringbuf);
-    HAL_UART_Receive_IT(&huart_mgmt, &uart_rx, 1);
-}
 
 #ifdef DEBUG
 /* This is public because it's prototyped in debug.h */
@@ -181,11 +162,10 @@ readpkt(struct k_data * k, UCHAR *p, int len)
     p2 = p;
 #endif
 
-    uart_init();
-
     while (1) {
         /* wait for the next character */
-        while (ringbuf_read_char(&uart_ringbuf, &x) == 0) { ; }
+        extern int uart1_read_char(uint8_t *c);
+        while (uart1_read_char(&x) == 0) { ; }
 
         c = (k->parity) ? x & 0x7f : x & 0xff; /* Strip parity */
 

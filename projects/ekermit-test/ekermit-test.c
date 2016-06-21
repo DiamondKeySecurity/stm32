@@ -44,6 +44,8 @@
 #include "stm-sdram.h"
 #include "sdram-malloc.h"
 #include "stm-kermit.h"
+#include "stm-uart.h"
+#include "ringbuf.h"
 
 /* alignment for file allocations */
 #define ALIGN 16
@@ -61,6 +63,29 @@ typedef struct {
 } filetab_t;
 filetab_t filetab[NFILE], *curfile;
 int nfile;
+
+static ringbuf_t uart_ringbuf;
+
+/* current character received from UART */
+static uint8_t uart_rx;
+
+/* Callback for HAL_UART_Receive_IT(). Must be public. */
+void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    ringbuf_write_char(&uart_ringbuf, uart_rx);
+    HAL_UART_Receive_IT(huart, &uart_rx, 1);
+}
+
+void uart1_init(void)
+{
+    ringbuf_init(&uart_ringbuf);
+    HAL_UART_Receive_IT(&huart_mgmt, &uart_rx, 1);
+}
+
+int uart1_read_char(uint8_t *c)
+{
+    return ringbuf_read_char(&uart_ringbuf, c);
+}
 
 #ifdef DUMP
 static void hexdump(uint8_t *buf, int len)
@@ -149,6 +174,7 @@ int main(void)
 {
     stm_init();
     sdram_init();
+    uart1_init();
 
     while (1) {
         memset((void *)filetab, 0, sizeof(filetab));
