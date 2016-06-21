@@ -43,6 +43,7 @@ export RTOS_DIR = $(MBED_DIR)/rtos
 export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
 export LIBHAL_DIR = $(LIBS_DIR)/libhal
 export LIBCLI_DIR = $(LIBS_DIR)/libcli
+export EKERMIT_DIR = $(LIBS_DIR)/thirdparty/ekermit
 
 export LIBS = $(MBED_DIR)/libstmf4.a
 
@@ -133,6 +134,12 @@ $(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
 $(LIBCLI_DIR)/libcli.a:
 	$(MAKE) -C $(LIBCLI_DIR)
 
+$(EKERMIT_DIR)/libekermit.a:
+	$(MAKE) -C $(EKERMIT_DIR)
+
+ekermit-test: $(BOARD_OBJS) $(LIBS) $(EKERMIT_DIR)/libekermit.a
+	$(MAKE) -C projects/ekermit-test
+
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
 	$(MAKE) -C projects/libhal-test
 
@@ -160,3 +167,4 @@ distclean: clean
 	$(MAKE) -C $(RTOS_DIR) clean
 	$(MAKE) -C $(LIBHAL_DIR) clean
 	$(MAKE) -C $(LIBTFM_DIR) clean
+	$(MAKE) -C $(EKERMIT_DIR) clean
