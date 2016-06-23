@@ -43,6 +43,8 @@
 #include "mgmt-fpga.h"
 #include "mgmt-misc.h"
 #include "mgmt-show.h"
+#include "mgmt-keystore.h"
+#include "mgmt-masterkey.h"
 
 /* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
 volatile uint8_t uart_rx;
@@ -202,6 +204,8 @@ int cli_main(void)
     configure_cli_fpga(&cli);
     configure_cli_misc(&cli);
     configure_cli_dfu(&cli);
+    configure_cli_keystore(&cli);
+    configure_cli_masterkey(&cli);
 
     while (1) {
         embedded_cli_loop(&cli);
