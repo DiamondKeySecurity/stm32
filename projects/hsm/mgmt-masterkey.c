@@ -32,22 +32,31 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define HAL_OK CMSIS_HAL_OK
+
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "mgmt-cli.h"
 #include "mgmt-masterkey.h"
-#include "masterkey.h"
+
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#undef HAL_OK
+#define LIBHAL_OK HAL_OK
+#include <hal.h>
+#include <masterkey.h>
+#undef HAL_OK
 
 #include <stdlib.h>
 
 #define KEK_LENGTH (256 / 8)
 
-static char * _status2str(masterkey_status_t status)
+
+static char * _status2str(const hal_error_t status)
 {
     switch (status) {
-    case HSM_MASTERKEY_SET:
+    case LIBHAL_OK:
 	return (char *) "Set";
-    case HSM_MASTERKEY_NOT_SET:
+    case HAL_ERROR_MASTERKEY_NOT_SET:
 	return (char *) "Not set";
     default:
 	return (char *) "Unknown";
@@ -74,37 +83,37 @@ static int _parse_hex_groups(uint8_t *buf, size_t len, char *argv[], int argc)
 
 static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    masterkey_status_t status;
+    hal_error_t status;
     uint8_t buf[KEK_LENGTH] = {0};
 
     cli_print(cli, "Status of master key:\n");
 
     status = masterkey_volatile_read(NULL, 0);
-    cli_print(cli, "  volatile: %s", _status2str(status));
+    cli_print(cli, "  volatile: %s / %s", _status2str(status), hal_error_string(status));
 
     status = masterkey_flash_read(NULL, 0);
-    cli_print(cli, "     flash: %s", _status2str(status));
+    cli_print(cli, "     flash: %s / %s", _status2str(status), hal_error_string(status));
 
     /* XXX Temporary gaping security hole while developing the master key functionality.
      * REMOVE READ-OUT OF MASTER KEY.
      */
 
     status = masterkey_volatile_read(&buf[0], sizeof(buf));
-    if (status != HSM_MASTERKEY_FAIL) {
+    if (status == LIBHAL_OK || status == HAL_ERROR_MASTERKEY_NOT_SET) {
 	cli_print(cli, "\nVolatile read-out:\n");
 	uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
 	cli_print(cli, "\n");
     } else {
-	cli_print(cli, "Failed reading from flash");
+	cli_print(cli, "Failed reading from volatile memory: %s", hal_error_string(status));
     }
 
     status = masterkey_flash_read(&buf[0], sizeof(buf));
-    if (status != HSM_MASTERKEY_FAIL) {
+    if (status == LIBHAL_OK || status == HAL_ERROR_MASTERKEY_NOT_SET) {
 	cli_print(cli, "\nFlash read-out:\n");
 	uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
 	cli_print(cli, "\n");
     } else {
-	cli_print(cli, "Failed reading from flash");
+	cli_print(cli, "Failed reading from flash: %s", hal_error_string(status));
     }
 
     return CLI_OK;
@@ -113,6 +122,7 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
 static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     uint8_t buf[KEK_LENGTH] = {0};
+    hal_error_t err;
     int i;
 
     if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
@@ -124,20 +134,22 @@ static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *arg
     uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
     cli_print(cli, "\n");
 
-    if (masterkey_volatile_write(buf, sizeof(buf)) == HSM_MASTERKEY_OK) {
+    if ((err = masterkey_volatile_write(buf, sizeof(buf))) == LIBHAL_OK) {
 	cli_print(cli, "Master key set in volatile memory");
     } else {
-	cli_print(cli, "Failed writing key to volatile memory");
+	cli_print(cli, "Failed writing key to volatile memory: %s", hal_error_string(err));
     }
     return CLI_OK;
 }
 
 static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    if (masterkey_volatile_erase(KEK_LENGTH) == HSM_MASTERKEY_OK) {
+    hal_error_t err;
+
+    if ((err = masterkey_volatile_erase(KEK_LENGTH)) == LIBHAL_OK) {
 	cli_print(cli, "Erased master key from volatile memory");
     } else {
-	cli_print(cli, "Failed erasing master key from volatile memory");
+	cli_print(cli, "Failed erasing master key from volatile memory: %s", hal_error_string(err));
     }
     return CLI_OK;
 }
@@ -145,6 +157,7 @@ static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *a
 static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     uint8_t buf[KEK_LENGTH] = {0};
+    hal_error_t err;
     int i;
 
     if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
@@ -156,20 +169,22 @@ static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, 
     uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
     cli_print(cli, "\n");
 
-    if (masterkey_flash_write(buf, sizeof(buf)) == HSM_MASTERKEY_OK) {
+    if ((err = masterkey_flash_write(buf, sizeof(buf))) == LIBHAL_OK) {
 	cli_print(cli, "Master key set in unsecure flash memory");
     } else {
-	cli_print(cli, "Failed writing key to unsecure flash memory");
+	cli_print(cli, "Failed writing key to unsecure flash memory: %s", hal_error_string(err));
     }
     return CLI_OK;
 }
 
 static int cmd_masterkey_unsecure_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    if (masterkey_flash_erase(KEK_LENGTH) == HSM_MASTERKEY_OK) {
+    hal_error_t err;
+
+    if ((err = masterkey_flash_erase(KEK_LENGTH)) == LIBHAL_OK) {
 	cli_print(cli, "Erased unsecure master key from flash");
     } else {
-	cli_print(cli, "Failed erasing unsecure master key from flash");
+	cli_print(cli, "Failed erasing unsecure master key from flash: %s", hal_error_string(err));
     }
     return CLI_OK;
 }
