@@ -1,7 +1,14 @@
 PROJ = hsm
 
 # objs in addition to $(PROJ).o
-OBJS = crc32.o mgmt-cli.o mgmt-dfu.c mgmt-fpga.c mgmt-misc.c mgmt-show.c
+OBJS = crc32.o \
+	mgmt-cli.o \
+	mgmt-dfu.c \
+	mgmt-fpga.c \
+	mgmt-keystore.c \
+	mgmt-masterkey.c \
+	mgmt-misc.c \
+	mgmt-show.c
 
 BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
