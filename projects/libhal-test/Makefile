@@ -1,12 +1,12 @@
 TEST = cores test-bus test-trng test-hash test-aes-key-wrap test-pbkdf2 test-ecdsa test-rsa test-mkmif
 
-CFLAGS += -I $(LIBHAL_DIR)
+CFLAGS += -I $(LIBHAL_SRC)
 LIBC_OBJS = printf.o gettimeofday.o
-LIBS += $(LIBHAL_DIR)/libhal.a $(LIBTFM_DIR)/libtfm.a
+LIBS += $(LIBHAL_BLD)/libhal.a $(LIBTFM_BLD)/libtfm.a
 
 all: $(TEST:=.elf)
 
-vpath %.c $(LIBHAL_DIR)/tests $(LIBHAL_DIR)/utils
+vpath %.c $(LIBHAL_SRC)/tests $(LIBHAL_SRC)/utils
 
 # .mo extension for files with main() that need to be wrapped as __main()
 %.mo: %.c

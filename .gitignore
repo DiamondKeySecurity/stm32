@@ -7,5 +7,4 @@
 *.mo
 *.o
 *~
-libraries/libcli/libcli.h
 libraries/libtfm/tfm.h

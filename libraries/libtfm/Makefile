@@ -1,5 +1,5 @@
 
-# This duplicates more of sw/thirdparty/libtfm/GNUmakefile than I
+# This duplicates more of sw/thirdparty/libtfm/Makefile than I
 # would like, but it does the job.  Prettier makefiles can wait for another day.
 
 ifndef CRYPTECH_ROOT

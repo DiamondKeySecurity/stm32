@@ -30,13 +30,13 @@ ifndef CRYPTECH_ROOT
   CRYPTECH_ROOT := $(abspath ../../../..)
 endif
 
-CFLAGS += -I$(CRYPTECH_ROOT)/sw/libhal
-CFLAGS += -I$(LIBCLI_DIR)
+CFLAGS += -I$(LIBHAL_SRC)
+CFLAGS += -I$(LIBCLI_SRC)
 CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
 
-LIBS += $(LIBHAL_DIR)/libhal.a $(LIBTFM_DIR)/libtfm.a
+LIBS += $(LIBHAL_BLD)/libhal.a $(LIBTFM_BLD)/libtfm.a
+LIBS += $(LIBCLI_BLD)/libcli.a
 LIBS += $(RTOS_DIR)/librtos.a
-LIBS += $(LIBCLI_DIR)/libcli.a
 
 all: $(PROJ:=.elf)
 

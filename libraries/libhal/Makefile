@@ -2,7 +2,7 @@ ifndef CRYPTECH_ROOT
   CRYPTECH_ROOT := $(abspath ../../../..)
 endif
 
-REPO := ${CRYPTECH_ROOT}/user/ft/libcli
+REPO := ${CRYPTECH_ROOT}/sw/libhal
 
 vpath %.c ${REPO}
 vpath %.h ${REPO}

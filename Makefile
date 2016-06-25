@@ -29,19 +29,25 @@
 
 # absolute path, because we're going to be passing things to sub-makes
 export TOPLEVEL = $(abspath .)
+export CRYPTECH_ROOT = $(abspath ../..)
 
 # define board: dev-bridge or alpha
 BOARD = TARGET_CRYPTECH_ALPHA
 
-# Location of the Libraries folder from the STM32F4 Standard Peripheral Library
 export LIBS_DIR = $(TOPLEVEL)/libraries
 export MBED_DIR = $(LIBS_DIR)/mbed
 export CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
 export BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
 export RTOS_DIR = $(MBED_DIR)/rtos
-export LIBTFM_DIR = $(LIBS_DIR)/libtfm
-export LIBHAL_DIR = $(LIBS_DIR)/libhal
-export LIBCLI_DIR = $(LIBS_DIR)/libcli
+
+export LIBHAL_SRC = $(CRYPTECH_ROOT)/sw/libhal
+export LIBHAL_BLD = $(LIBS_DIR)/libhal
+
+export LIBCLI_SRC = $(CRYPTECH_ROOT)/user/ft/libcli
+export LIBCLI_BLD = $(LIBS_DIR)/libcli
+
+export LIBTFM_SRC = $(CRYPTECH_ROOT)/sw/thirdparty/libtfm
+export LIBTFM_BLD = $(LIBS_DIR)/libtfm
 
 export LIBS = $(MBED_DIR)/libstmf4.a
 
@@ -104,16 +110,13 @@ export CFLAGS
 
 all: board-test cli-test libhal-test hsm bootloader
 
-init:
-	git submodule update --init --recursive --remote
-
 $(MBED_DIR)/libstmf4.a:
 	$(MAKE) -C $(MBED_DIR)
 
 board-test: $(BOARD_OBJS) $(LIBS)
 	$(MAKE) -C projects/board-test
 
-cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_DIR)/libcli.a
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a
 	$(MAKE) -C projects/cli-test
 
 $(RTOS_DIR)/librtos.a:
@@ -122,19 +125,19 @@ $(RTOS_DIR)/librtos.a:
 rtos-test: $(RTOS_OBJS) $(LIBS) $(RTOS_DIR)/librtos.a
 	$(MAKE) -C projects/rtos-test
 
-$(LIBTFM_DIR)/libtfm.a:
-	$(MAKE) -C $(LIBTFM_DIR) PREFIX=$(PREFIX)
+$(LIBTFM_BLD)/libtfm.a:
+	$(MAKE) -C $(LIBTFM_BLD) PREFIX=$(PREFIX)
 
-$(LIBHAL_DIR)/libhal.a: $(LIBTFM_DIR)/libtfm.a
-	$(MAKE) -C $(LIBHAL_DIR) IO_BUS=fmc RPC_MODE=server RPC_TRANSPORT=serial KS=flash libhal.a
+$(LIBHAL_BLD)/libhal.a: $(LIBTFM_BLD)/libtfm.a
+	$(MAKE) -C $(LIBHAL_BLD) IO_BUS=fmc RPC_MODE=server RPC_TRANSPORT=serial KS=flash libhal.a
 
-$(LIBCLI_DIR)/libcli.a:
-	$(MAKE) -C $(LIBCLI_DIR)
+$(LIBCLI_BLD)/libcli.a:
+	$(MAKE) -C $(LIBCLI_BLD)
 
-libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a
+libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a
 	$(MAKE) -C projects/libhal-test
 
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_DIR)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_DIR)/libcli.a
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_BLD)/libcli.a
 	$(MAKE) -C projects/hsm
 
 bootloader: $(BOARD_OBJS) $(LIBS)
@@ -156,6 +159,6 @@ clean:
 distclean: clean
 	$(MAKE) -C $(MBED_DIR) clean
 	$(MAKE) -C $(RTOS_DIR) clean
-	$(MAKE) -C $(LIBHAL_DIR) clean
-	$(MAKE) -C $(LIBTFM_DIR) clean
-	$(MAKE) -C $(LIBCLI_DIR) clean
+	$(MAKE) -C $(LIBHAL_BLD) clean
+	$(MAKE) -C $(LIBTFM_BLD) clean
+	$(MAKE) -C $(LIBCLI_BLD) clean
