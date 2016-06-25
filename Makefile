@@ -28,7 +28,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # absolute path, because we're going to be passing things to sub-makes
-export TOPLEVEL = $(shell pwd)
+export TOPLEVEL = $(abspath .)
 
 # define board: dev-bridge or alpha
 BOARD = TARGET_CRYPTECH_ALPHA
@@ -39,7 +39,7 @@ export MBED_DIR = $(LIBS_DIR)/mbed
 export CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
 export BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
 export RTOS_DIR = $(MBED_DIR)/rtos
-export LIBTFM_DIR = $(LIBS_DIR)/thirdparty/libtfm
+export LIBTFM_DIR = $(LIBS_DIR)/libtfm
 export LIBHAL_DIR = $(LIBS_DIR)/libhal
 export LIBCLI_DIR = $(LIBS_DIR)/libcli
 
@@ -158,3 +158,4 @@ distclean: clean
 	$(MAKE) -C $(RTOS_DIR) clean
 	$(MAKE) -C $(LIBHAL_DIR) clean
 	$(MAKE) -C $(LIBTFM_DIR) clean
+	$(MAKE) -C $(LIBCLI_DIR) clean

@@ -26,7 +26,11 @@ BOARD_OBJS = \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
 	$(BOARD_DIR)/stm32f4xx_it_rtos.o
 
-CFLAGS += -I$(LIBHAL_DIR)
+ifndef CRYPTECH_ROOT
+  CRYPTECH_ROOT := $(abspath ../../../..)
+endif
+
+CFLAGS += -I$(CRYPTECH_ROOT)/sw/libhal
 CFLAGS += -I$(LIBCLI_DIR)
 CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
 

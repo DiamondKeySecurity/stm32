@@ -1,9 +1,11 @@
 *.a
-*.o
-*.mo
 *.bin
 *.elf
 *.hex
 *.lst
 *.map
+*.mo
+*.o
 *~
+libraries/libcli/libcli.h
+libraries/libtfm/tfm.h
