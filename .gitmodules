@@ -1,9 +1,0 @@
-[submodule "libhal"]
-	path = libraries/libhal
-	url = git@git.cryptech.is:sw/libhal.git
-[submodule "thirdparty/libtfm"]
-	path = libraries/thirdparty/libtfm
-	url = git@git.cryptech.is:sw/thirdparty/libtfm.git
-[submodule "libraries/libcli"]
-	path = libraries/libcli
-	url = git@git.cryptech.is:user/ft/libcli
