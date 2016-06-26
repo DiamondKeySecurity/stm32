@@ -34,6 +34,8 @@
 
 #include <string.h>
 
+#include "cmsis_os.h"
+
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-led.h"
@@ -46,26 +48,59 @@
 #include "mgmt-keystore.h"
 #include "mgmt-masterkey.h"
 
-/* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
-volatile uint8_t uart_rx;
-
 #ifndef CLI_UART_RECVBUF_SIZE
-#define CLI_UART_RECVBUF_SIZE  256  /* This must be a power of 2 */
+#define CLI_UART_RECVBUF_SIZE  256
 #endif
-#define CLI_UART_RECVBUF_MASK  (CLI_UART_RECVBUF_SIZE - 1)
 
 typedef struct {
-    uint32_t enabled, ridx;
+    int ridx;
+    volatile int widx;	
     mgmt_cli_dma_state_t rx_state;
     uint8_t buf[CLI_UART_RECVBUF_SIZE];
-} uart_ringbuf_t;
+} ringbuf_t;
 
-volatile uart_ringbuf_t uart_ringbuf = {1, 0, DMA_RX_STOP, {0}};
+inline void ringbuf_init(ringbuf_t *rb)
+{
+    memset(rb, 0, sizeof(*rb));
+}
 
-#define RINGBUF_RIDX(rb)       (rb.ridx & CLI_UART_RECVBUF_MASK)
-#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_mgmt.hdmarx))
-#define RINGBUF_COUNT(rb)      ((unsigned)(RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)))
-#define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.buf[RINGBUF_RIDX(rb)] = '.'; rb.ridx++;}
+/* return number of characters read */
+inline int ringbuf_read_char(ringbuf_t *rb, uint8_t *c)
+{
+    if (rb->ridx != rb->widx) {
+        *c = rb->buf[rb->ridx];
+        if (++rb->ridx >= sizeof(rb->buf))
+            rb->ridx = 0;
+        return 1;
+    }
+    return 0;
+}
+
+inline void ringbuf_write_char(ringbuf_t *rb, uint8_t c)
+{
+    rb->buf[rb->widx] = c;
+    if (++rb->widx >= sizeof(rb->buf))
+        rb->widx = 0;
+}
+
+static ringbuf_t uart_ringbuf;
+
+/* current character received from UART */
+static uint8_t uart_rx;
+
+/* Semaphore to inform uart_cli_read that there's a new character.
+ */
+osSemaphoreId  uart_sem;
+osSemaphoreDef(uart_sem);
+
+/* Callback for HAL_UART_Receive_DMA().
+ */
+void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    ringbuf_write_char(&uart_ringbuf, uart_rx);
+    osSemaphoreRelease(uart_sem);
+    HAL_UART_Receive_DMA(huart, &uart_rx, 1);
+}
 
 static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
 {
@@ -76,18 +111,11 @@ static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const c
 
 static int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
-    uint32_t timeout = 0xffffff;
-    while (count && timeout) {
-	if (RINGBUF_COUNT(uart_ringbuf)) {
-	    RINGBUF_READ(uart_ringbuf, *(uint8_t *) buf);
-	    buf++;
-	    count--;
-	}
-	timeout--;
+    for (int i = 0; i < count; ++i) {
+        while (ringbuf_read_char(&uart_ringbuf, (uint8_t *)(buf + i)) == 0)
+            osSemaphoreWait(uart_sem, osWaitForever);
     }
-    if (! timeout) return 0;
-
-    return 1;
+    return count;
 }
 
 static int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count)
@@ -100,11 +128,8 @@ int control_mgmt_uart_dma_rx(mgmt_cli_dma_state_t state)
 {
     if (state == DMA_RX_START) {
 	if (uart_ringbuf.rx_state != DMA_RX_START) {
-	    memset((void *) uart_ringbuf.buf, 0, sizeof(uart_ringbuf.buf));
-
-	    /* Start receiving data from the UART using DMA */
-	    HAL_UART_Receive_DMA(&huart_mgmt, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf));
-	    uart_ringbuf.ridx = 0;
+            ringbuf_init(&uart_ringbuf);
+	    HAL_UART_Receive_DMA(&huart_mgmt, &uart_rx, 1);
 	    uart_ringbuf.rx_state = DMA_RX_START;
 	}
 	return 1;
@@ -196,6 +221,8 @@ static int check_auth(const char *username, const char *password)
 int cli_main(void)
 {
     static struct cli_def cli;
+
+    uart_sem = osSemaphoreCreate(osSemaphore(uart_sem), 0);
 
     mgmt_cli_init(&cli);
     cli_set_auth_callback(&cli, check_auth);
