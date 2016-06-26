@@ -57,8 +57,8 @@ int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[],
 {
     const hal_ks_keydb_t *db;
     hal_user_t user;
-    hal_ks_pin_t pin;
     hal_error_t status;
+    hal_client_handle_t client = { -1 };
 
     db = hal_ks_get_keydb();
 
@@ -67,28 +67,44 @@ int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[],
 	return CLI_OK;
     }
 
-    if (argc != 3) {
+    if (argc != 2) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore set pin <user|so|wheel> <iterations> <pin>");
+	cli_print(cli, "Syntax: keystore set pin <user|so|wheel> <pin>");
 	return CLI_ERROR;
     }
 
     user = HAL_USER_NONE;
-    if (strcmp(argv[0], "user") == 0) user = HAL_USER_NORMAL;
-    if (strcmp(argv[0], "so") == 0) user = HAL_USER_SO;
+    if (strcmp(argv[0], "user") == 0)  user = HAL_USER_NORMAL;
+    if (strcmp(argv[0], "so") == 0)    user = HAL_USER_SO;
     if (strcmp(argv[0], "wheel") == 0) user = HAL_USER_WHEEL;
     if (user == HAL_USER_NONE) {
 	cli_print(cli, "First argument must be 'user', 'so' or 'wheel' - not '%s'", argv[0]);
 	return CLI_ERROR;
     }
 
-    pin.iterations = strtol(argv[1], NULL, 0);
-
-    /* We don't actually PBKDF2 the given PIN yet, just testing */
-    strncpy((char *) pin.pin, argv[2], sizeof(pin.pin));
-
-    if ((status = hal_ks_set_pin(user, &pin)) != LIBHAL_OK) {
+    status = hal_rpc_set_pin(client, user, argv[1], strlen(argv[1]));
+    if (status != LIBHAL_OK) {
 	cli_print(cli, "Failed setting PIN: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
+
+    return CLI_OK;
+}
+
+int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    hal_error_t status;
+    hal_client_handle_t client = { -1 };
+
+    if (argc != 1) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore set pin iterations <number>");
+	return CLI_ERROR;
+    }
+
+    status = hal_set_pin_default_iterations(client, strtol(argv[0], NULL, 0));
+    if (status != LIBHAL_OK) {
+	cli_print(cli, "Failed setting iterations: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
 
@@ -268,6 +284,9 @@ void configure_cli_keystore(struct cli_def *cli)
 
     /* keystore set pin */
     cli_command_node(keystore_set, pin, "Set either 'wheel', 'user' or 'so' PIN");
+
+    /* keystore set pin iterations */
+    cli_command_node(keystore_set_pin, iterations, "Set PBKDF2 iterations for PINs");
 
     /* keystore set key */
     cli_command_node(keystore_set, key, "Set a key");

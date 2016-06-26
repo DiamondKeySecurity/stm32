@@ -34,6 +34,8 @@
 
 #include <string.h>
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#define HAL_OK CMSIS_HAL_OK
 #include "cmsis_os.h"
 
 #include "stm-init.h"
@@ -47,6 +49,11 @@
 #include "mgmt-show.h"
 #include "mgmt-keystore.h"
 #include "mgmt-masterkey.h"
+
+#undef HAL_OK
+#define HAL_OK LIBHAL_OK
+#include "hal.h"
+#undef HAL_OK
 
 #ifndef CLI_UART_RECVBUF_SIZE
 #define CLI_UART_RECVBUF_SIZE  256
@@ -134,7 +141,7 @@ int control_mgmt_uart_dma_rx(mgmt_cli_dma_state_t state)
 	}
 	return 1;
     } else if (state == DMA_RX_STOP) {
-	if (HAL_UART_DMAStop(&huart_mgmt) != HAL_OK) return 0;
+	if (HAL_UART_DMAStop(&huart_mgmt) != CMSIS_HAL_OK) return 0;
 	uart_ringbuf.rx_state = DMA_RX_STOP;
 	return 1;
     }
@@ -209,13 +216,32 @@ static void mgmt_cli_init(struct cli_def *cli)
     cli_telnet_protocol(cli, 0);
 }
 
+hal_user_t user;
+
 static int check_auth(const char *username, const char *password)
 {
-    if (strcasecmp(username, "ct") != 0)
-	return CLI_ERROR;
-    if (strcasecmp(password, "ct") != 0)
-	return CLI_ERROR;
-    return CLI_OK;
+    hal_client_handle_t client = { -1 };
+
+    /* Old default user. Remove this soon. */
+    if ((strcasecmp(username, "ct") == 0) && (strcasecmp(password, "ct") == 0)) {
+        user = HAL_USER_NORMAL;
+        return CLI_OK;
+    }
+
+    /* PIN-based login */
+    if (strcmp(username, "wheel") == 0)
+        user = HAL_USER_WHEEL;
+    else if (strcmp(username, "so") == 0)
+        user = HAL_USER_SO;
+    else if (strcmp(username, "user") == 0)
+        user = HAL_USER_NORMAL;
+    else
+        user = HAL_USER_NONE;
+
+    if (hal_rpc_login(client, user, password, strlen(password)) == LIBHAL_OK)
+        return CLI_OK;
+
+    return CLI_ERROR;
 }
 
 int cli_main(void)
