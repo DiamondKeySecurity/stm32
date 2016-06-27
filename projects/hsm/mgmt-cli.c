@@ -222,12 +222,6 @@ static int check_auth(const char *username, const char *password)
 {
     hal_client_handle_t client = { -1 };
 
-    /* Old default user. Remove this soon. */
-    if ((strcasecmp(username, "ct") == 0) && (strcasecmp(password, "ct") == 0)) {
-        user = HAL_USER_NORMAL;
-        return CLI_OK;
-    }
-
     /* PIN-based login */
     if (strcmp(username, "wheel") == 0)
         user = HAL_USER_WHEEL;
