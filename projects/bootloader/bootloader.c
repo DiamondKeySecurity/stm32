@@ -35,6 +35,7 @@
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-uart.h"
+#include "stm-fmc.h"
 #include "dfu.h"
 
 #undef HAL_Delay
@@ -72,12 +73,12 @@ int should_dfu()
     int i;
     uint8_t rx = 0;
 
-    /* While blinking the blue LED for one second, see if we receive a CR on the MGMT UART.
+    /* While blinking the blue LED for 5 seconds, see if we receive a CR on the MGMT UART.
      * We've discussed also requiring one or both of the FPGA config jumpers installed
      * before allowing DFU of the STM32 - that check could be done here.
      */
     led_on(LED_BLUE);
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < 50; i++) {
 	HAL_Delay(100);
 	led_toggle(LED_BLUE);
 	if (uart_recv_char2(STM_UART_MGMT, &rx, 0) == HAL_OK) {
@@ -93,6 +94,7 @@ main()
     int status;
 
     stm_init();
+    fmc_init();
 
     uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\nThis is the bootloader speaking...");
 

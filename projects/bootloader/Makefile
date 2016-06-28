@@ -4,13 +4,20 @@ OBJS = crc32.o dfu.o
 
 BOARD_OBJS = \
 	./stm-init.o \
+	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
+	$(TOPLEVEL)/spiflash_n25q128.o \
+	$(TOPLEVEL)/stm-fpgacfg.o \
+	$(TOPLEVEL)/stm-keystore.o \
 	$(TOPLEVEL)/stm-flash.o \
 	$(TOPLEVEL)/syscalls.o \
 	$(BOARD_DIR)/system_stm32f4xx.o \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
 	./startup_stm32f429xx.o \
 	$(BOARD_DIR)/stm32f4xx_it.o
+
+CFLAGS += -I$(LIBHAL_SRC)
+LIBS += $(LIBHAL_BLD)/libhal.a $(LIBTFM_BLD)/libtfm.a
 
 all: $(PROG:=.elf)
 

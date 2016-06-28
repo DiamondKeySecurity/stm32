@@ -31,43 +31,130 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#define HAL_OK CMSIS_HAL_OK
 #include "dfu.h"
 #include "stm-led.h"
 #include "stm-uart.h"
 #include "stm-flash.h"
 
+#undef HAL_OK
+#define HAL_OK LIBHAL_OK
+#include "hal.h"
+#undef HAL_OK
+
 #include <string.h>
 
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
+static int getline(char *buf, int len)
+{
+    int i;
+    uint8_t c;
+
+    for (i = 0; i < len; ++i) {
+        if (uart_recv_char2(STM_UART_MGMT, &c, HAL_MAX_DELAY) != CMSIS_HAL_OK)
+            return -1;
+        if (c == '\r') {
+            buf[i] = '\0';
+            break;
+        }
+        buf[i] = c;
+    }
+    return i;
+}
+
+static void uart_flush(void)
+{
+    uint8_t c;
+    while (uart_recv_char2(STM_UART_MGMT, &c, 0) == CMSIS_HAL_OK) { ; }
+}
+
+static int do_login(void)
+{
+    char username[8];
+    char pin[hal_rpc_max_pin_length];
+    hal_client_handle_t client = { -1 };
+    hal_user_t user;
+    int n;
+
+    uart_flush();
+    uart_send_string2(STM_UART_MGMT, "\r\nUsername: ");
+    if (getline(username, sizeof(username)) <= 0)
+        return -1;
+    if (strcmp(username, "wheel") == 0)
+        user = HAL_USER_WHEEL;
+    else if (strcmp(username, "so") == 0)
+        user = HAL_USER_SO;
+    else if (strcmp(username, "user") == 0)
+        user = HAL_USER_NORMAL;
+    else
+        user = HAL_USER_NONE;
+
+    uart_flush();
+    uart_send_string2(STM_UART_MGMT, "\r\nPassword: ");
+    if ((n = getline(pin, sizeof(pin))) <= 0)
+        return -1;
+
+    uart_flush();
+
+    if (hal_rpc_login(client, user, pin, n) != LIBHAL_OK) {
+        uart_send_string2(STM_UART_MGMT, "\r\nAccess denied\r\n");
+        return -1;
+    }
+    return 0;
+}
 
 int dfu_receive_firmware(void)
 {
     uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0;
     uint32_t offset = DFU_FIRMWARE_ADDR, n = DFU_UPLOAD_CHUNK_SIZE;
-    uint32_t buf[DFU_UPLOAD_CHUNK_SIZE / 4];
+    uint8_t buf[DFU_UPLOAD_CHUNK_SIZE];
 
-    uart_send_string2(STM_UART_MGMT, (char *) "\r\nOK, bootloader waiting for new firmware\r\n");
+    if (do_login() != 0)
+        return -1;
+
+    /* Fake the CLI */
+    uart_send_string2(STM_UART_MGMT, "\r\ncryptech> ");
+    char cmd[64];
+    if (getline(cmd, sizeof(cmd)) <= 0)
+        return -1;
+    if (strcmp(cmd, "firmware upload") != 0) {
+        uart_send_string2(STM_UART_MGMT, "\r\nInvalid command \"");
+        uart_send_string2(STM_UART_MGMT, cmd);
+        uart_send_string2(STM_UART_MGMT, "\"\r\n");
+        return -1;
+    }
+
+    uart_send_string2(STM_UART_MGMT, "OK, write size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)\r\n");
 
     /* Read file size (4 bytes) */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000);
+    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 10000);
     if (filesize < 512 || filesize > DFU_FIRMWARE_END_ADDR - DFU_FIRMWARE_ADDR) {
+        uart_send_string2(STM_UART_MGMT, "Invalid filesize ");
+        uart_send_number2(STM_UART_MGMT, filesize, 1, 10);
+        uart_send_string2(STM_UART_MGMT, "\r\n");
 	return -1;
     }
 
     HAL_FLASH_Unlock();
 
+    uart_send_string2(STM_UART_MGMT, "Send ");
+    uart_send_number2(STM_UART_MGMT, filesize, 1, 10);
+    uart_send_string2(STM_UART_MGMT, " bytes of data\r\n");
+
     while (filesize) {
 	/* By initializing buf to the same value that erased flash has (0xff), we don't
 	 * have to try and be smart when writing the last page of data to the memory.
 	 */
-	memset(buf, 0xffffffff, sizeof(buf));
+	memset(buf, 0xff, sizeof(buf));
 
 	if (filesize < n) {
 	    n = filesize;
 	}
 
-	if (uart_receive_bytes(STM_UART_MGMT, (void *) &buf, n, 1000) != HAL_OK) {
+	if (uart_receive_bytes(STM_UART_MGMT, (void *) buf, n, 10000) != CMSIS_HAL_OK) {
 	    return -2;
 	}
 	filesize -= n;
@@ -75,8 +162,8 @@ int dfu_receive_firmware(void)
 	/* After reception of a chunk but before ACKing we have "all" the time in the world to
 	 * calculate CRC and write it to flash.
 	 */
-	my_crc = update_crc(my_crc, (uint8_t *) buf, n);
-	stm_flash_write32(offset, buf, sizeof(buf) / 4);
+	my_crc = update_crc(my_crc, buf, n);
+	stm_flash_write32(offset, (uint32_t *)buf, sizeof(buf)/4);
 	offset += DFU_UPLOAD_CHUNK_SIZE;
 
 	/* ACK this chunk by sending the current chunk counter (4 bytes) */
@@ -87,11 +174,20 @@ int dfu_receive_firmware(void)
 
     HAL_FLASH_Lock();
 
-    /* The sending side will now send it's calculated CRC-32 */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
+    uart_send_string2(STM_UART_MGMT, "Send CRC-32\r\n");
+
+    /* The sending side will now send its calculated CRC-32 */
+    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 10000);
+
+    uart_send_string2(STM_UART_MGMT, "CRC-32 0x");
+    uart_send_number2(STM_UART_MGMT, crc, 1, 16);
+    uart_send_string2(STM_UART_MGMT, ", calculated CRC 0x");
+    uart_send_number2(STM_UART_MGMT, my_crc, 1, 16);
     if (crc == my_crc) {
-	uart_send_string2(STM_UART_MGMT, (char *) "\r\nSuccess\r\n");
-	return 0;
+	uart_send_string2(STM_UART_MGMT, "CRC checksum MATCHED\r\n");
+        return 0;
+    } else {
+	uart_send_string2(STM_UART_MGMT, "CRC checksum did NOT match\r\n");
     }
 
     led_on(LED_RED);

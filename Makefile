@@ -140,7 +140,7 @@ libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_BLD)/libcli.a
 	$(MAKE) -C projects/hsm
 
-bootloader: $(BOARD_OBJS) $(LIBS)
+bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a
 	$(MAKE) -C projects/bootloader
 
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
