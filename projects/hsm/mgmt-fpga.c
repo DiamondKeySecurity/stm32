@@ -32,6 +32,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#define HAL_OK CMSIS_HAL_OK
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-fpgacfg.h"
@@ -40,8 +42,15 @@
 #include "mgmt-fpga.h"
 #include "mgmt-misc.h"
 
+#undef HAL_OK
+#define HAL_OK LIBHAL_OK
+#include "hal.h"
+#undef HAL_OK
+
 #include <string.h>
 
+
+extern hal_user_t user;
 
 static volatile uint32_t dfu_offset = 0;
 
@@ -54,6 +63,11 @@ static int _flash_write_callback(uint8_t *buf, size_t len) {
 
 static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
     uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
 
     dfu_offset = 0;

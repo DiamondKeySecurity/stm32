@@ -3,7 +3,8 @@ PROJ = hsm
 # objs in addition to $(PROJ).o
 OBJS = crc32.o \
 	mgmt-cli.o \
-	mgmt-dfu.c \
+	mgmt-firmware.c \
+	mgmt-bootloader.c \
 	mgmt-fpga.c \
 	mgmt-keystore.c \
 	mgmt-masterkey.c \

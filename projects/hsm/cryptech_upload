@@ -40,8 +40,7 @@ import getpass
 
 from binascii import crc32
 
-CHUNK_SIZE = 256
-FIRMWARE_CHUNK_SIZE = 256
+FIRMWARE_CHUNK_SIZE = 4096
 FPGA_CHUNK_SIZE = 4096
 
 
@@ -101,16 +100,20 @@ def _read(dst):
     #print ("Read {!r}".format(res))
     return res
 
+pin = None
 
 def _execute(dst, cmd):
+    global pin
     _write(dst, '\r')
     prompt = _read(dst)
     if prompt.endswith('Username: '):
         _write(dst, 'so\r')
         prompt = _read(dst)
-    if prompt.endswith('Password: '):
-        _write(dst, getpass.getpass('SO PIN: ') + '\r')
-        prompt = _read(dst)
+        if prompt.endswith('Password: '):
+            if not pin:
+                pin = getpass.getpass('SO PIN: ')
+            _write(dst, pin + '\r')
+            prompt = _read(dst)
     if not prompt.endswith('> '):
         #sys.stderr.write('Device does not seem to be ready for a file transfer (got {!r})\n'.format(prompt))
         return prompt
@@ -123,14 +126,16 @@ def send_file(filename, args, dst):
     size = s.st_size
     src = open(filename, 'rb')
     if args.fpga:
-        # Skip header in FPGA bitstream file
-        #size -= 0x64
-        #src.read(0x64)
         chunk_size = FPGA_CHUNK_SIZE
         response = _execute(dst, 'fpga bitstream upload')
     elif args.firmware:
         chunk_size = FIRMWARE_CHUNK_SIZE
         response = _execute(dst, 'firmware upload')
+        if 'Rebooting' in response:
+            response = _execute(dst, 'firmware upload')
+    elif args.bootloader:
+        chunk_size = FIRMWARE_CHUNK_SIZE
+        response = _execute(dst, 'bootloader upload')
     if 'Access denied' in response:
         print 'Access denied'
         return False
@@ -176,9 +181,14 @@ def send_file(filename, args, dst):
     src.close()
 
     if args.fpga:
+        # tell the fpga to read its new configuration
         _execute(dst, 'fpga reset')
 
-    _execute(dst, 'exit')
+    if args.fpga or args.bootloader:
+        # log out of the CLI
+        # firmware upgrade reboots, doesn't need an exit
+        _execute(dst, 'exit')
+
     return True
 
 

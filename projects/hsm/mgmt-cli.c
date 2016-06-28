@@ -43,7 +43,8 @@
 #include "stm-led.h"
 
 #include "mgmt-cli.h"
-#include "mgmt-dfu.h"
+#include "mgmt-firmware.h"
+#include "mgmt-bootloader.h"
 #include "mgmt-fpga.h"
 #include "mgmt-misc.h"
 #include "mgmt-show.h"
@@ -235,6 +236,7 @@ static int check_auth(const char *username, const char *password)
     if (hal_rpc_login(client, user, password, strlen(password)) == LIBHAL_OK)
         return CLI_OK;
 
+    user = HAL_USER_NONE;
     return CLI_ERROR;
 }
 
@@ -250,7 +252,8 @@ int cli_main(void)
     configure_cli_show(&cli);
     configure_cli_fpga(&cli);
     configure_cli_misc(&cli);
-    configure_cli_dfu(&cli);
+    configure_cli_firmware(&cli);
+    configure_cli_bootloader(&cli);
     configure_cli_keystore(&cli);
     configure_cli_masterkey(&cli);
 
@@ -258,6 +261,7 @@ int cli_main(void)
         embedded_cli_loop(&cli);
         /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
         cli_print(&cli, "\nLogging out...\n");
+        user = HAL_USER_NONE;
     }
 
     /*NOTREACHED*/
