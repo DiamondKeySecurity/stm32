@@ -91,6 +91,44 @@ int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[],
     return CLI_OK;
 }
 
+int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    const hal_ks_keydb_t *db;
+    hal_user_t user;
+    hal_ks_pin_t pin;
+    hal_error_t status;
+
+    db = hal_ks_get_keydb();
+
+    if (db == NULL) {
+	cli_print(cli, "Could not get a keydb from libhal");
+	return CLI_OK;
+    }
+
+    if (argc != 1) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore clear pin <user|so|wheel>");
+	return CLI_ERROR;
+    }
+
+    user = HAL_USER_NONE;
+    if (strcmp(argv[0], "user") == 0)  user = HAL_USER_NORMAL;
+    if (strcmp(argv[0], "so") == 0)    user = HAL_USER_SO;
+    if (strcmp(argv[0], "wheel") == 0) user = HAL_USER_WHEEL;
+    if (user == HAL_USER_NONE) {
+	cli_print(cli, "First argument must be 'user', 'so' or 'wheel' - not '%s'", argv[0]);
+	return CLI_ERROR;
+    }
+
+    memset(&pin, 0x0, sizeof(pin));
+    if ((status = hal_ks_set_pin(user, &pin)) != LIBHAL_OK) {
+        cli_print(cli, "Failed clearing PIN: %s", hal_error_string(status));
+        return CLI_ERROR;
+    }
+
+    return CLI_OK;
+}
+
 int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
@@ -233,9 +271,48 @@ int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[
 
     cli_print(cli, "\nPins:");
     cli_print(cli, "Wheel iterations: 0x%lx", db->wheel_pin.iterations);
+    cli_print(cli, "pin");
+    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.pin, 0, sizeof(db->wheel_pin.pin) - 1);
+    cli_print(cli, "\nsalt");
+    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.salt, 0, sizeof(db->wheel_pin.salt) - 1);
+    cli_print(cli, "");
+
     cli_print(cli, "SO    iterations: 0x%lx", db->so_pin.iterations);
+    cli_print(cli, "pin");
+    uart_send_hexdump(STM_UART_MGMT, db->so_pin.pin, 0, sizeof(db->so_pin.pin) - 1);
+    cli_print(cli, "\nsalt");
+    uart_send_hexdump(STM_UART_MGMT, db->so_pin.salt, 0, sizeof(db->so_pin.salt) - 1);
+    cli_print(cli, "");
+
     cli_print(cli, "User  iterations: 0x%lx", db->user_pin.iterations);
+    cli_print(cli, "pin");
+    uart_send_hexdump(STM_UART_MGMT, db->user_pin.pin, 0, sizeof(db->user_pin.pin) - 1);
+    cli_print(cli, "\nsalt");
+    uart_send_hexdump(STM_UART_MGMT, db->user_pin.salt, 0, sizeof(db->user_pin.salt) - 1);
+    cli_print(cli, "");
     cli_print(cli, "\n");
+
+    return CLI_OK;
+}
+
+int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    int status;
+
+    if (argc != 1) {
+	cli_print(cli, "Syntax: keystore erase YesIAmSure");
+	return CLI_ERROR;
+    }
+
+    if (strcmp(argv[0], "YesIAmSure") == 0) {
+	if ((status = keystore_erase_sectors(0, 1)) != 1) {
+	    cli_print(cli, "Failed erasing keystore: %i", status);
+	} else {
+	    cli_print(cli, "Keystore erased (first two sectors at least)");
+	}
+    } else {
+	cli_print(cli, "Keystore NOT erased");
+    }
 
     return CLI_OK;
 }
@@ -246,6 +323,8 @@ void configure_cli_keystore(struct cli_def *cli)
     cli_command_root(keystore);
     /* keystore set */
     cli_command_branch(keystore, set);
+    /* keystore clear */
+    cli_command_branch(keystore, clear);
     /* keystore delete */
     cli_command_branch(keystore, delete);
     /* keystore rename */
@@ -253,11 +332,17 @@ void configure_cli_keystore(struct cli_def *cli)
     /* keystore show */
     cli_command_branch(keystore, show);
 
+    /* keystore erase */
+    cli_command_node(keystore, erase, "Erase the whole keystore");
+
     /* keystore set pin */
     cli_command_node(keystore_set, pin, "Set either 'wheel', 'user' or 'so' PIN");
 
     /* keystore set pin iterations */
     cli_command_node(keystore_set_pin, iterations, "Set PBKDF2 iterations for PINs");
+
+    /* keystore clear pin */
+    cli_command_node(keystore_clear, pin, "Clear either 'wheel', 'user' or 'so' PIN");
 
     /* keystore set key */
     cli_command_node(keystore_set, key, "Set a key");
