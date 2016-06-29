@@ -59,8 +59,8 @@ int keystore_erase_sectors(uint32_t start, uint32_t stop)
 {
     uint32_t sector;
 
-    if (start > N25Q128_NUM_SECTORS || start < 0) return -2;
-    if (stop > N25Q128_NUM_SECTORS || stop < 0 || stop > start) return -3;
+    if (start > N25Q128_NUM_SECTORS) return -2;
+    if (stop > N25Q128_NUM_SECTORS || stop < start) return -3;
 
     for (sector = start; sector <= stop; sector++) {
 	int timeout = 200; /* times 10ms = 2 seconds timeout */
