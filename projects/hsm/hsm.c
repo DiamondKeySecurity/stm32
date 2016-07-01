@@ -148,6 +148,7 @@ static void dispatch_thread(void const *args)
     while (1) {
         memset(&ibuf, 0, sizeof(ibuf));
         memset(&obuf, 0, sizeof(obuf));
+        obuf.len = sizeof(obuf.buf);
 
         /* Wait for access to the uart */
         osMutexWait(dispatch_mutex, osWaitForever);
@@ -161,16 +162,12 @@ static void dispatch_thread(void const *args)
         /* Let the next thread take the mutex */
         osThreadYield();
 
-        /* Copy client ID from request to response */
-        memcpy(obuf.buf, ibuf.buf, 4);
-        obuf.len = sizeof(obuf.buf) - 4;
-
         /* Process the request */
-        hal_rpc_server_dispatch(ibuf.buf + 4, ibuf.len - 4, obuf.buf + 4, &obuf.len);
+        hal_rpc_server_dispatch(ibuf.buf, ibuf.len, obuf.buf, &obuf.len);
 
         /* Send the response */
         osMutexWait(uart_mutex, osWaitForever);
-        hal_error_t ret = hal_rpc_sendto(obuf.buf, obuf.len + 4, NULL);
+        hal_error_t ret = hal_rpc_sendto(obuf.buf, obuf.len, NULL);
         osMutexRelease(uart_mutex);
         if (ret != HAL_OK)
             Error_Handler();
@@ -207,15 +204,6 @@ int main()
 {
     stm_init();
 
-#ifdef TARGET_CRYPTECH_DEV_BRIDGE
-    /* Wait six seconds to not upset the Novena at boot. */
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	osDelay(500);
-	led_toggle(LED_BLUE);
-    }
-    led_off(LED_BLUE);
-#endif
     led_on(LED_GREEN);
     /* Prepare FMC interface. */
     fmc_init();
@@ -231,13 +219,6 @@ int main()
     uart_mutex = osMutexCreate(osMutex(uart_mutex));
     dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex));
     rpc_sem = osSemaphoreCreate(osSemaphore(rpc_sem), 0);
-
-#ifdef TARGET_CRYPTECH_ALPHA
-    /* Launch other threads:
-     * - admin thread on USART1
-     * - csprng warm-up thread?
-     */
-#endif
 
     if (hal_rpc_server_init() != HAL_OK)
 	Error_Handler();
@@ -257,6 +238,10 @@ int main()
 
     /* Start the non-blocking receive */
     HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1);
+
+    /* Launch other threads:
+     * - csprng warm-up thread?
+     */
 
     return cli_main();
 }
