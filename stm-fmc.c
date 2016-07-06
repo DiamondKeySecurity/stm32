@@ -39,8 +39,6 @@
 static SRAM_HandleTypeDef _fmc_fpga_inst;
 
 static HAL_StatusTypeDef _fmc_init_params(void);
-static int _fmc_nwait_idle(void);
-
 
 HAL_StatusTypeDef fmc_init(void)
 {
@@ -59,82 +57,77 @@ HAL_StatusTypeDef fmc_init(void)
 }
 
 
+static int _fmc_nwait_idle(void)
+{
+    int cnt;
+
+    // poll NWAIT (number of iterations is limited)
+    for (cnt=0; cnt<FMC_FPGA_NWAIT_MAX_POLL_TICKS; cnt++)
+    {
+        // read pin state
+        if (HAL_GPIO_ReadPin(FMC_GPIO_PORT_NWAIT, FMC_GPIO_PIN_NWAIT) == FMC_NWAIT_IDLE)
+            return 0;
+    }
+
+    return -1;
+}
+
 int fmc_write_32(uint32_t addr, uint32_t *data)
 {
     // calculate target fpga address
     uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
 
-    // write data to fpga
-    HAL_StatusTypeDef ok = HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
+    int status =
+        // write data to fpga
+        (HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
+        // wait for transaction to complete
+        _fmc_nwait_idle();
 
-    // check for error
-    if (ok != HAL_OK) return -1;
-
-    // wait for transaction to complete
-    int wait = _fmc_nwait_idle();
-
-    // check for timeout
-    if (wait != 0) return -1;
-
-    // everything went ok
-    return 0;
+    return status;
 }
 
+static inline int _fmc_read_32(uint32_t *ptr, uint32_t *data)
+{
+    return
+        // read data from fpga
+        (HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
+        // wait for transaction to complete
+        _fmc_nwait_idle();
+
+}
 
 int fmc_read_32(uint32_t addr, uint32_t *data)
 {
     // calculate target fpga address
     uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
 
-    // perform dummy read transaction
-    HAL_StatusTypeDef ok = HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
+    /* Pavel says:
+     * The short story is like, on one hand STM32 has a dedicated FMC_NWAIT
+     * pin, that can be used in variable-latency data transfer mode. On the
+     * other hand STM32 also has a very nasty hardware bug associated with
+     * FMC_WAIT, that causes processor to freeze under certain conditions.
+     * Because of this FMC_NWAIT cannot be used and FPGA can't properly signal
+     * to STM32, when data transfer is done. Because of that we have to read
+     * two times.
+     */
 
-    // check for error
-    if (ok != HAL_OK) return -1;
+    /* Add some level of reentrancy protection. When running under a
+     * preemptive multitasker, with two threads banging on the fpga, we appear
+     * to sometimes read the wrong value. I think this is because the second
+     * read counts on the first read to put the correct value on the address
+     * bus.
+     */
+    __disable_irq();
 
-    // wait for dummy transaction to complete
-    int wait = _fmc_nwait_idle();
+    int status =
+        _fmc_read_32((uint32_t *)ptr, data) ||
+        _fmc_read_32((uint32_t *)ptr, data);
 
-    // check for timeout
-    if (wait != 0) return -1;
+    __enable_irq();
 
-    // read data from fpga
-    ok = HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
-
-    // check for error
-    if (ok != HAL_OK) return -1;
-
-    // wait for read transaction to complete
-    wait = _fmc_nwait_idle();
-
-    // check for timeout
-    if (wait != 0) return -1;
-
-    // everything went ok
-    return 0;
+    return status;
 }
 
-
-static int _fmc_nwait_idle()
-{
-    int cnt; // counter
-
-    // poll NWAIT (number of iterations is limited)
-    for (cnt=0; cnt<FMC_FPGA_NWAIT_MAX_POLL_TICKS; cnt++)
-	{
-	    // read pin state
-	    GPIO_PinState nwait = HAL_GPIO_ReadPin(FMC_GPIO_PORT_NWAIT, FMC_GPIO_PIN_NWAIT);
-
-	    // stop waiting if fpga is ready
-	    if (nwait == FMC_NWAIT_IDLE) break;
-	}
-
-    // check for timeout
-    if (cnt >= FMC_FPGA_NWAIT_MAX_POLL_TICKS) return -1;
-
-    // ok
-    return 0;
-}
 
 void fmc_init_gpio(void)
 {
