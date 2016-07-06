@@ -116,8 +116,8 @@ def _execute(dst, cmd):
                 pin = getpass.getpass('SO PIN: ')
             _write(dst, pin + '\r')
             prompt = _read(dst)
-    if not prompt.endswith('> '):
-        #sys.stderr.write('Device does not seem to be ready for a file transfer (got {!r})\n'.format(prompt))
+    if not prompt.endswith(('> ', '# ')):
+        print('Device does not seem to be ready for a file transfer (got {!r})'.format(prompt))
         return prompt
     _write(dst, cmd + '\r')
     response = _read(dst)
@@ -142,14 +142,18 @@ def send_file(filename, args, dst):
         print 'Access denied'
         return False
     if not 'OK' in response:
-        sys.stderr.write('Device did not accept the upload command (got {!r})\n'.format(response))
+        print('Device did not accept the upload command (got {!r})'.format(response))
         return False
 
     crc = 0
     counter = 0
     # 1. Write size of file (4 bytes)
     _write(dst, struct.pack('<I', size))
-    _read(dst)
+    response = _read(dst)
+    if not response.startswith('Send '):
+        print response
+        return False
+        
     # 2. Write file contents while calculating CRC-32
     while True:
         data = src.read(chunk_size)
@@ -178,7 +182,8 @@ def send_file(filename, args, dst):
 
     # 3. Write CRC-32 (4 bytes)
     _write(dst, struct.pack('<I', crc))
-    _read(dst)
+    response = _read(dst)
+    print response
 
     src.close()
 
