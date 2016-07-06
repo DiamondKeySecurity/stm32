@@ -129,7 +129,7 @@ void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 
 hal_error_t hal_serial_send_char(uint8_t c)
 {
-    return (uart_send_char(c) == 0) ? HAL_OK : HAL_ERROR_RPC_TRANSPORT;
+    return (uart_send_char2(STM_UART_USER, c) == 0) ? HAL_OK : HAL_ERROR_RPC_TRANSPORT;
 }
 
 hal_error_t hal_serial_recv_char(uint8_t *cp)
@@ -203,6 +203,7 @@ static uint8_t *sdram_malloc(size_t size)
 int main()
 {
     stm_init();
+    uart_set_default(STM_UART_MGMT);
 
     led_on(LED_GREEN);
     /* Prepare FMC interface. */
