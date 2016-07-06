@@ -77,11 +77,15 @@ int fmc_write_32(uint32_t addr, uint32_t *data)
     // calculate target fpga address
     uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
 
+    __disable_irq();
+
     int status =
         // write data to fpga
         (HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
         // wait for transaction to complete
         _fmc_nwait_idle();
+
+    __enable_irq();
 
     return status;
 }
