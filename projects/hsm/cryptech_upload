@@ -29,7 +29,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Utility to upload new a firmware image or FPGA bitstream
+Utility to upload a new firmware image or FPGA bitstream.
 """
 
 import os
@@ -37,8 +37,11 @@ import sys
 import time
 import struct
 import serial
-import argparse
 import getpass
+import os.path
+import tarfile
+import argparse
+import platform
 
 from binascii import crc32
 
@@ -50,35 +53,51 @@ def parse_args():
     """
     Parse the command line arguments
     """
-    parser = argparse.ArgumentParser(description = "File uploader",
-                                     add_help = True,
+
+    share_directory = "/usr/share" if platform.system() == "Linux" else "/usr/local/share"
+
+    default_tarball = os.path.join(share_directory, "cryptech-alpha-firmware.tar.gz")
+
+    if not os.path.exists(default_tarball):
+        default_tarball = None
+
+    parser = argparse.ArgumentParser(description = __doc__,
                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                      )
 
-    parser.add_argument('-d', '--device',
-                        dest='device',
-                        default=os.getenv('CRYPTECH_CTY_CLIENT_SERIAL_DEVICE', '/dev/ttyUSB0'),
-                        help='Name of management port USB serial device',
+    parser.add_argument("-d", "--device",
+                        default = os.getenv("CRYPTECH_CTY_CLIENT_SERIAL_DEVICE", "/dev/ttyUSB0"),
+                        help = "Name of management port USB serial device",
                         )
 
-    parser.add_argument('--fpga',
-                        dest='fpga',
-                        action='store_true', default=False,
-                        help='Upload FPGA bitstream',
-                        )
-    parser.add_argument('--firmware',
-                        dest='firmware',
-                        action='store_true', default=False,
-                        help='Upload firmware image',
-                        )
-    parser.add_argument('--bootloader',
-                        dest='bootloader',
-                        action='store_true', default=False,
-                        help='Upload bootloader image',
+    parser.add_argument("--firmware-tarball",
+                        type = argparse.FileType("rb"),
+                        default = default_tarball,
+                        help = "Location of firmware tarball",
                         )
 
-    # positional argument(s)
-    parser.add_argument('filename')
+    actions = parser.add_mutually_exclusive_group(required = True)
+    actions.add_argument("--fpga",
+                         action = "store_true",
+                         help = "Upload FPGA bitstream",
+                         )
+    actions.add_argument("--firmware", "--hsm",
+                         action = "store_true",
+                         help = "Upload HSM firmware image",
+                         )
+    actions.add_argument("--bootloader",
+                         action = "store_true",
+                         help = "Upload bootloader image (dangerous!)",
+                         )
+
+    parser.add_argument("--simon-says-whack-my-bootloader",
+                        action = "store_true",
+                        help = "Confirm that you really want to risk bricking the HSM",
+                        )
+
+    parser.add_argument("-i", "--explicit-image",
+                        type = argparse.FileType("rb"),
+                        help = "Explicit source image file for upload, overrides firmware tarball")
 
     return parser.parse_args()
 
@@ -86,13 +105,13 @@ def parse_args():
 def _write(dst, data):
     dst.write(data)
     #if len(data) == 4:
-    #    print("Wrote 0x{!s}".format(data.encode('hex')))
+    #    print("Wrote 0x{!s}".format(data.encode("hex")))
     #else:
     #    print("Wrote {!r}".format(data))
 
 
 def _read(dst):
-    res = ''
+    res = ""
     x = dst.read(1)
     while not x:
         x = dst.read(1)
@@ -106,54 +125,51 @@ pin = None
 
 def _execute(dst, cmd):
     global pin
-    _write(dst, '\r')
+    _write(dst, "\r")
     prompt = _read(dst)
-    if prompt.endswith('Username: '):
-        _write(dst, 'so\r')
+    if prompt.endswith("Username: "):
+        _write(dst, "so\r")
         prompt = _read(dst)
-        if prompt.endswith('Password: '):
+        if prompt.endswith("Password: "):
             if not pin:
-                pin = getpass.getpass('SO PIN: ')
-            _write(dst, pin + '\r')
+                pin = getpass.getpass("SO PIN: ")
+            _write(dst, pin + "\r")
             prompt = _read(dst)
-    if not prompt.endswith(('> ', '# ')):
-        print('Device does not seem to be ready for a file transfer (got {!r})'.format(prompt))
+    if not prompt.endswith(("> ", "# ")):
+        print("Device does not seem to be ready for a file transfer (got {!r})".format(prompt))
         return prompt
-    _write(dst, cmd + '\r')
+    _write(dst, cmd + "\r")
     response = _read(dst)
     return response
 
-def send_file(filename, args, dst):
-    s = os.stat(filename)
-    size = s.st_size
-    src = open(filename, 'rb')
+def send_file(src, size, args, dst):
     if args.fpga:
         chunk_size = FPGA_CHUNK_SIZE
-        response = _execute(dst, 'fpga bitstream upload')
+        response = _execute(dst, "fpga bitstream upload")
     elif args.firmware:
         chunk_size = FIRMWARE_CHUNK_SIZE
-        response = _execute(dst, 'firmware upload')
-        if 'Rebooting' in response:
-            response = _execute(dst, 'firmware upload')
+        response = _execute(dst, "firmware upload")
+        if "Rebooting" in response:
+            response = _execute(dst, "firmware upload")
     elif args.bootloader:
         chunk_size = FIRMWARE_CHUNK_SIZE
-        response = _execute(dst, 'bootloader upload')
-    if 'Access denied' in response:
-        print 'Access denied'
+        response = _execute(dst, "bootloader upload")
+    if "Access denied" in response:
+        print "Access denied"
         return False
-    if not 'OK' in response:
-        print('Device did not accept the upload command (got {!r})'.format(response))
+    if not "OK" in response:
+        print("Device did not accept the upload command (got {!r})".format(response))
         return False
 
     crc = 0
     counter = 0
     # 1. Write size of file (4 bytes)
-    _write(dst, struct.pack('<I', size))
+    _write(dst, struct.pack("<I", size))
     response = _read(dst)
-    if not response.startswith('Send '):
+    if not response.startswith("Send "):
         print response
         return False
-        
+
     # 2. Write file contents while calculating CRC-32
     while True:
         data = src.read(chunk_size)
@@ -166,13 +182,13 @@ def send_file(filename, args, dst):
             ack_bytes = dst.read(4)
             if len(ack_bytes) == 4:
                 break
-            print('ERROR: Did not receive an ACK, got {!r}'.format(ack_bytes))
-            dst.write('\r')  # eventually get back to the CLI prompt
-        ack = struct.unpack('<I', ack_bytes)[0]
+            print("ERROR: Did not receive an ACK, got {!r}".format(ack_bytes))
+            dst.write("\r")  # eventually get back to the CLI prompt
+        ack = struct.unpack("<I", ack_bytes)[0]
         if ack != counter + 1:
-            print('ERROR: Did not receive the expected counter as ACK (got {!r}/{!r}, not {!r})'.format(ack, ack_bytes, counter))
+            print("ERROR: Did not receive the expected counter as ACK (got {!r}/{!r}, not {!r})".format(ack, ack_bytes, counter))
             flush = dst.read(100)
-            print('FLUSH data: {!r}'.format(flush))
+            print("FLUSH data: {!r}".format(flush))
             return False
         counter += 1
 
@@ -181,7 +197,7 @@ def send_file(filename, args, dst):
     _read(dst)
 
     # 3. Write CRC-32 (4 bytes)
-    _write(dst, struct.pack('<I', crc))
+    _write(dst, struct.pack("<I", crc))
     response = _read(dst)
     print response
 
@@ -189,28 +205,80 @@ def send_file(filename, args, dst):
 
     if args.fpga:
         # tell the fpga to read its new configuration
-        _execute(dst, 'fpga reset')
+        _execute(dst, "fpga reset")
 
     if args.fpga or args.bootloader:
         # log out of the CLI
         # firmware upgrade reboots, doesn't need an exit
-        _execute(dst, 'exit')
+        _execute(dst, "exit")
 
     return True
 
 
-def main(args):
-    dst = serial.Serial(args.device, 921600, timeout=2)
-    send_file(args.filename, args, dst)
+dire_bootloader_warning = '''
+                            WARNING
+
+Updating the bootloader risks bricking your HSM!  If something goes
+badly wrong here, or you upload a bad bootloader image, you will not
+be able to recover without an ST-LINK programmer.
+
+In most cases a normal "--firmware" upgrade should be all that is
+necessary to bring your HSM up to date, there is seldom any real need
+to update the bootloader.
+
+Do not proceed with this unless you REALLY know what you are doing.
+
+If you got here by accident, ^C now, without answering the PIN prompt.
+'''
+
+
+def main():
+    args = parse_args()
+
+    if args.bootloader and not args.simon_says_whack_my_bootloader:
+        sys.exit("You didn't say \"Simon says\"")
+
+    if args.bootloader:
+        print dire_bootloader_warning
+
+    if args.explicit_image is None and args.firmware_tarball is None:
+        sys.exit("No source file specified for upload and firmware tarball not found")
+
+    if args.explicit_image:
+        src = args.explicit_image       # file-like object, thanks to argparse
+        size = os.fstat(src.fileno()).st_size
+        if size == 0:                   # Flashing from stdin won't work, sorry
+            sys.exit("Can't flash from a pipe or zero-length file")
+        print "Uploading from explicitly-specified file {}".format(args.explicit_image.name)
+
+    else:
+        tar = tarfile.open(fileobj = args.firmware_tarball)
+        print "Firmware tarball {} content:".format(args.firmware_tarball.name)
+        tar.list(True)
+        if args.fpga:
+            name = "alpha_fmc.bit"
+        elif args.firmware:
+            name = "hsm.bin"
+        elif args.bootloader:
+            name = "bootloader.bin"
+        else:
+            # Somebody updated other part of this script without updating this part :(
+            sys.exit("Don't know which component to select from firmware tarball, sorry")
+        try:
+            size = tar.getmember(name).size
+        except KeyError:
+            sys.exit("Expected component {} missing from firmware tarball {}".format(name, args.firmware_tarball.name))
+        src = tar.extractfile(name)
+        print "Uploading {} from {}".format(name, args.firmware_tarball.name)
+
+    print "Initializing serial port and synchronizing with HSM, this may take a few seconds"
+    dst  = serial.Serial(args.device, 921600, timeout = 2)
+    send_file(src, size, args, dst)
     dst.close()
-    return True
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     try:
-        args = parse_args()
-        if main(args):
-            sys.exit(0)
-        sys.exit(1)
+        main()
     except KeyboardInterrupt:
         pass
-
