@@ -30,7 +30,9 @@
 
 """
 Utility to probe USB serial port(s) trying to figure out which one(s)
-we have plugged in today.
+we have plugged in today.  stdout is environment variable settings,
+suitable for use in bash with "eval `cryptech_probe`"; all other output
+goes to stderr.
 """
 
 import sys
@@ -44,9 +46,10 @@ class positive_integer(int):
             raise ValueError
 
 parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-v", "--verbose", action = "store_true",   help = "blather about what we're doing")
-parser.add_argument("--no-cleanup",    action = "store_true",   help = "don't send cleanup sequences after probing")
-parser.add_argument("--read-size",     type = positive_integer, help = "size of read buffer", default = 1024)
+parser.add_argument("-v", "--verbose",    action = "store_true",   help = "produce human-readable output")
+parser.add_argument("-d", "--debug",      action = "store_true",   help = "blather about what we're doing")
+parser.add_argument("--no-cleanup",       action = "store_true",   help = "don't send cleanup sequences after probing")
+parser.add_argument("--read-buffer-size", type = positive_integer, help = "size of read buffer", default = 1024)
 args = parser.parse_args()
 
 SLIP_END     = chr(0300)        # Indicates end of SLIP packet
@@ -78,8 +81,10 @@ ports = [port for port, desc, hwid in serial.tools.list_ports_posix.comports()
 if not ports:
     sys.exit("Couldn't find any likely USB ports")
 
-if args.verbose:
-    print "Candidate USB ports:", ", ".join(ports)
+if args.debug:
+    sys.stderr.write("Candidate USB ports: {}\n".format(", ".join(ports)))
+
+env = {}
 
 for port in ports:
 
@@ -94,9 +99,9 @@ for port in ports:
         tty.write(c)
         time.sleep(0.1)
 
-    response = tty.read(args.read_size)
-    if args.verbose:
-        print "Received from {}: {!r} ({})".format(port, response, ":".join("{:02x}".format(ord(c)) for c in response))
+    response = tty.read(args.read_buffer_size)
+    if args.debug:
+        sys.stderr.write("Received from {}: {!r} ({})\n".format(port, response, ":".join("{:02x}".format(ord(c)) for c in response)))
 
     # Check whether we got a known console prompt.
 
@@ -115,17 +120,26 @@ for port in ports:
     except IndexError:
         is_hsm = False
 
+    if is_cty and args.verbose:
+        sys.stderr.write("{} looks like the Cryptech HSM console port\n".format(port))
+
+    if is_hsm and args.verbose:
+        sys.stderr.write("{} looks like the Cryptech HSM RPC port\n".format(port))
+
     if is_cty:
-        print "{} looks like the Cryptech HSM console port".format(port)
+        env.update(CRYPTECH_CTY_CLIENT_SERIAL_DEVICE = port)
+
     if is_hsm:
-        print "{} looks like the Cryptech HSM RPC port".format(port)
+        env.update(CRYPTECH_RPC_CLIENT_SERIAL_DEVICE = port)
 
     if (is_cty or is_hsm) and not args.no_cleanup:
         if is_cty:
             tty.write(Control_U)
         if is_hsm:
             tty.write(SLIP_END)
-        while tty.read(args.read_size):
+        while tty.read(args.read_buffer_size):
             pass
 
     tty.close()
+
+sys.stdout.write("export {}\n".format(" ".join("{}='{}'".format(var, env[var]) for var in sorted(env))))

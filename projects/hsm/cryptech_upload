@@ -57,7 +57,7 @@ def parse_args():
 
     parser.add_argument('-d', '--device',
                         dest='device',
-                        default='/dev/ttyUSB0',
+                        default=os.getenv('CRYPTECH_CTY_CLIENT_SERIAL_DEVICE', '/dev/ttyUSB0'),
                         help='Name of management port USB serial device',
                         )
 
