@@ -1,7 +1,7 @@
 /*
- * rpc_server.c
- * ------------
- * Remote procedure call server-side private API implementation.
+ * hsm.c
+ * ----------------
+ * Main module for the HSM project.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -33,20 +33,17 @@
  */
 
 /*
- * This is the main RPC server moddule. It creates a new thread to deal
- * with each request, to prevent a long-running request (e.g. RSA keygen)
- * from blocking independent requests from other clients. This has a
- * number of consequences. We can't do a blocking receive in the main
- * thread, because that prevents the dispatch thread from transmitting the
- * response (because they both want to lock the UART - see
- * stm32f4xx_hal_uart.c). So we have to do a non-blocking receive with a
- * callback routine. But we can't create a thread from the callback
- * routine, because it's in the context of an ISR, so we raise a semaphore
- * for the main thread to create the dispatch thread.
+ * This is the main RPC server module. At the moment, it has a single
+ * worker thread to handle RPC requests, while the main thread handles CLI
+ * activity. The design allows for multiple worker threads to handle
+ * concurrent RPC requests from multiple clients (muxed through a daemon
+ * on the host).
  */
 
 #include <string.h>
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#define HAL_OK CMSIS_HAL_OK
 #include "cmsis_os.h"
 
 #include "stm-init.h"
@@ -57,46 +54,44 @@
 
 #include "mgmt-cli.h"
 
-/* stm32f4xx_hal_def.h and hal.h both define HAL_OK as an enum value */
-#define HAL_OK HAL_OKAY
-
+#undef HAL_OK
+#define HAL_OK LIBHAL_OK
 #include "hal.h"
 #include "hal_internal.h"
 #include "slip_internal.h"
 #include "xdr_internal.h"
-
-/* RPC buffers. For each active RPC, there will be two - input and output.
- */
+#undef HAL_OK
 
 #ifndef NUM_RPC_TASK
-/* An arbitrary number, but we don't expect to have more than 8 concurrent
- * RPC requests.
+/* Just one RPC task for now. More will require active resource management
+ * of at least the FPGA cores.
  */
-#define NUM_RPC_TASK 8
+#define NUM_RPC_TASK 1
 #endif
 
 #ifndef TASK_STACK_SIZE
 /* Define an absurdly large task stack, because some pkey operation use a
- * lot of stack variables.
+ * lot of stack variables. This has to go in SDRAM, because it exceeds the
+ * total RAM on the ARM.
  */
 #define TASK_STACK_SIZE 200*1024
 #endif
 
 #ifndef MAX_PKT_SIZE
-/* Another arbitrary number, more or less driven by the 4096-bit RSA
+/* An arbitrary number, more or less driven by the 4096-bit RSA
  * keygen test.
  */
 #define MAX_PKT_SIZE 4096
 #endif
 
-/* The thread entry point takes a single void* argument, so we bundle the
- * packet buffer and length arguments together.
+/* RPC buffers. For each active RPC, there will be two - input and output.
  */
 typedef struct {
     size_t len;
     uint8_t buf[MAX_PKT_SIZE];
 } rpc_buffer_t;
 
+#if NUM_RPC_TASK > 1
 /* A mutex to arbitrate concurrent UART transmits, from RPC responses.
  */
 osMutexId  uart_mutex;
@@ -106,6 +101,7 @@ osMutexDef(uart_mutex);
  */
 osMutexId  dispatch_mutex;
 osMutexDef(dispatch_mutex);
+#endif
 
 /* Semaphore to inform the dispatch thread that there's a new RPC request.
  */
@@ -114,34 +110,49 @@ osSemaphoreDef(rpc_sem);
 
 static volatile uint8_t uart_rx;	/* current character received from UART */
 static rpc_buffer_t * volatile rbuf;	/* current RPC input buffer */
+static volatile int reenable_recv = 1;
 
 /* Callback for HAL_UART_Receive_IT().
+ * With multiple worker threads, we can't do a blocking receive, because
+ * that prevents other threads from sending RPC responses (because they
+ * both want to lock the UART - see stm32f4xx_hal_uart.c). So we have to
+ * do a non-blocking receive with a callback routine.
+ * Even with only one worker thread, context-switching to the CLI thread
+ * causes HAL_UART_Receive to miss input.
  */
 void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     int complete;
-    hal_slip_recv_char(rbuf->buf, &rbuf->len, sizeof(rbuf->buf), &complete);
+
+    if (hal_slip_recv_char(rbuf->buf, &rbuf->len, sizeof(rbuf->buf), &complete) != LIBHAL_OK)
+        Error_Handler();
+
     if (complete)
-	osSemaphoreRelease(rpc_sem);
+	if (osSemaphoreRelease(rpc_sem) != osOK)
+            Error_Handler();
 
-    HAL_UART_Receive_IT(huart, (uint8_t *)&uart_rx, 1);
-}
-
-hal_error_t hal_serial_send_char(uint8_t c)
-{
-    return (uart_send_char2(STM_UART_USER, c) == 0) ? HAL_OK : HAL_ERROR_RPC_TRANSPORT;
+    if (HAL_UART_Receive_IT(huart, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
+        /* We may have collided with a transmit.
+         * Signal the dispatch_thread to try again.
+         */
+        reenable_recv = 1;
 }
 
 hal_error_t hal_serial_recv_char(uint8_t *cp)
 {
     /* return the character from HAL_UART_Receive_IT */
     *cp = uart_rx;
-    return HAL_OK;
+    return LIBHAL_OK;
+}
+
+hal_error_t hal_serial_send_char(uint8_t c)
+{
+    return (uart_send_char2(STM_UART_USER, c) == 0) ? LIBHAL_OK : HAL_ERROR_RPC_TRANSPORT;
 }
 
 /* Thread entry point for the RPC request handler.
  */
-static void dispatch_thread(void const *args)
+void dispatch_thread(void const *args)
 {
     rpc_buffer_t ibuf, obuf;
 
@@ -150,26 +161,46 @@ static void dispatch_thread(void const *args)
         memset(&obuf, 0, sizeof(obuf));
         obuf.len = sizeof(obuf.buf);
 
+#if NUM_RPC_TASK > 1
         /* Wait for access to the uart */
         osMutexWait(dispatch_mutex, osWaitForever);
+#endif
+
+        /* Start receiving, or re-enable after failing in the callback. */
+        if (reenable_recv) {
+            if (HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
+                Error_Handler();
+            reenable_recv = 0;
+        }
 
         /* Wait for the complete rpc request */
         rbuf = &ibuf;
         osSemaphoreWait(rpc_sem, osWaitForever);
 
+#if NUM_RPC_TASK > 1
         /* Let the next thread handle the next request */
         osMutexRelease(dispatch_mutex);
         /* Let the next thread take the mutex */
         osThreadYield();
+#endif
 
         /* Process the request */
-        hal_rpc_server_dispatch(ibuf.buf, ibuf.len, obuf.buf, &obuf.len);
+        if (hal_rpc_server_dispatch(ibuf.buf, ibuf.len, obuf.buf, &obuf.len) != LIBHAL_OK)
+            /* If hal_rpc_server_dispatch failed with an XDR error, it
+             * probably means the request packet was garbage. In any case, we
+             * have nothing to transmit.
+             */
+            continue;
 
         /* Send the response */
+#if NUM_RPC_TASK > 1
         osMutexWait(uart_mutex, osWaitForever);
+#endif
         hal_error_t ret = hal_rpc_sendto(obuf.buf, obuf.len, NULL);
+#if NUM_RPC_TASK > 1
         osMutexRelease(uart_mutex);
-        if (ret != HAL_OK)
+#endif
+        if (ret != LIBHAL_OK)
             Error_Handler();
     }
 }
@@ -217,14 +248,18 @@ int main()
      */
     hal_core_iterate(NULL);
 
-    uart_mutex = osMutexCreate(osMutex(uart_mutex));
-    dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex));
-    rpc_sem = osSemaphoreCreate(osSemaphore(rpc_sem), 0);
-
-    if (hal_rpc_server_init() != HAL_OK)
+#if NUM_RPC_TASK > 1
+    if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL ||
+        (dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex)) == NULL)
+	Error_Handler();
+#endif
+    if ((rpc_sem = osSemaphoreCreate(osSemaphore(rpc_sem), 0)) == NULL)
 	Error_Handler();
 
-    /* Create the rpc dispatch threads */
+    if (hal_rpc_server_init() != LIBHAL_OK)
+	Error_Handler();
+
+    /* Create the rpc dispatch worker threads. */
     for (int i = 0; i < NUM_RPC_TASK; ++i) {
         osThreadDef_t *ot = &thread_def[i];
         ot->pthread = dispatch_thread;
@@ -237,11 +272,8 @@ int main()
             Error_Handler();
     }
 
-    /* Start the non-blocking receive */
-    HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1);
-
-    /* Launch other threads:
-     * - csprng warm-up thread?
+    /* Launch other threads (csprng warm-up thread?)
+     * Wait for FPGA_DONE interrupt.
      */
 
     return cli_main();
