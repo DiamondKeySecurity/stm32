@@ -1,7 +1,7 @@
 /*
- * mgmt-dfu.h
- * ---------
- * Management CLI Device Firmware Upgrade code.
+ * mgmt-masterkey.h
+ * -----------
+ * Management CLI masterkeyellaneous functions.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -32,17 +32,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_DFU_H
-#define __STM32_CLI_MGMT_DFU_H
+#ifndef __STM32_CLI_MGMT_MASTERKEY_H
+#define __STM32_CLI_MGMT_MASTERKEY_H
 
 #include "stm-init.h"
 #include <libcli.h>
 
-/* symbols defined in the linker script (STM32F429BI.ld) */
-extern uint32_t CRYPTECH_FIRMWARE_START;
-extern uint32_t CRYPTECH_FIRMWARE_END;
-extern uint32_t CRYPTECH_DFU_CONTROL;
+extern void configure_cli_masterkey(struct cli_def *cli);
 
-extern void configure_cli_dfu(struct cli_def *cli);
-
-#endif /* __STM32_CLI_MGMT_DFU_H */
+#endif /* __STM32_CLI_MGMT_MASTERKEY_H */

@@ -40,6 +40,11 @@
 
 #include <string.h>
 
+#define DFU_FIRMWARE_ADDR         ((uint32_t) &CRYPTECH_FIRMWARE_START)
+#define DFU_FIRMWARE_END_ADDR     ((uint32_t) &CRYPTECH_FIRMWARE_END)
+#define DFU_UPLOAD_CHUNK_SIZE     256
+#define HARDWARE_EARLY_DFU_JUMP   0xBADABADA
+
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
 /* Linker symbols are strange in C. Make regular pointers for sanity. */
@@ -53,9 +58,7 @@ __IO uint32_t *dfu_msp_ptr = &CRYPTECH_FIRMWARE_START;
  */
 __IO uint32_t *dfu_code_ptr = &CRYPTECH_FIRMWARE_START + 1;
 
-
-
-int cmd_dfu_dump(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_dfu_dump(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "First 256 bytes from DFU application address %p:\r\n", dfu_firmware);
 
@@ -65,7 +68,7 @@ int cmd_dfu_dump(struct cli_def *cli, const char *command, char *argv[], int arg
     return CLI_OK;
 }
 
-int cmd_dfu_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_dfu_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     int status;
 
@@ -82,7 +85,7 @@ int cmd_dfu_erase(struct cli_def *cli, const char *command, char *argv[], int ar
     return CLI_OK;
 }
 
-int cmd_dfu_jump(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_dfu_jump(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     uint32_t i;
     /* Load first byte from the DFU_FIRMWARE_PTR to verify it contains an IVT before

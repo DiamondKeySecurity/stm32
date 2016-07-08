@@ -43,16 +43,17 @@
 #include <string.h>
 
 
-volatile uint32_t dfu_offset = 0;
+static volatile uint32_t dfu_offset = 0;
 
 
-int _flash_write_callback(uint8_t *buf, size_t len) {
+
+static int _flash_write_callback(uint8_t *buf, size_t len) {
     int res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE) == 1;
     dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
     return res;
 }
 
-int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
 
@@ -74,7 +75,7 @@ int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *ar
     return CLI_OK;
 }
 
-int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     fpgacfg_access_control(ALLOW_ARM);
 
@@ -101,7 +102,7 @@ int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, char *arg
     return CLI_OK;
 }
 
-int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     fpgacfg_access_control(ALLOW_FPGA);
     fpgacfg_reset_fpga(RESET_FULL);
@@ -110,7 +111,7 @@ int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[], int a
     return CLI_OK;
 }
 
-int cmd_fpga_reset_registers(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_fpga_reset_registers(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     fpgacfg_access_control(ALLOW_FPGA);
     fpgacfg_reset_fpga(RESET_REGISTERS);

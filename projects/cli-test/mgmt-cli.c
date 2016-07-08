@@ -60,7 +60,7 @@ void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *bu
     uart_send_string2(STM_UART_MGMT, crlf);
 }
 
-int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
+static int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
     uint32_t timeout = 0xffffff;
     while (count && timeout) {
@@ -76,13 +76,13 @@ int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_
     return 1;
 }
 
-int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count)
+static int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count)
 {
     uart_send_bytes(STM_UART_MGMT, (uint8_t *) buf, count);
     return (int) count;
 }
 
-int control_mgmt_uart_dma_rx(enum mgmt_cli_dma_state state)
+int control_mgmt_uart_dma_rx(mgmt_cli_dma_state_t state)
 {
     if (state == DMA_RX_START) {
 	if (uart_ringbuf.rx_state != DMA_RX_START) {
@@ -102,7 +102,7 @@ int control_mgmt_uart_dma_rx(enum mgmt_cli_dma_state state)
     return 0;
 }
 
-int embedded_cli_loop(struct cli_def *cli)
+static int embedded_cli_loop(struct cli_def *cli)
 {
     unsigned char c;
     int n = 0;

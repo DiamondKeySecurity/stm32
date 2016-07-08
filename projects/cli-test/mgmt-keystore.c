@@ -57,6 +57,44 @@ int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[],
 {
     const hal_ks_keydb_t *db;
     hal_user_t user;
+    hal_error_t status;
+    hal_client_handle_t client = { -1 };
+
+    db = hal_ks_get_keydb();
+
+    if (db == NULL) {
+	cli_print(cli, "Could not get a keydb from libhal");
+	return CLI_OK;
+    }
+
+    if (argc != 2) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore set pin <user|so|wheel> <pin>");
+	return CLI_ERROR;
+    }
+
+    user = HAL_USER_NONE;
+    if (strcmp(argv[0], "user") == 0)  user = HAL_USER_NORMAL;
+    if (strcmp(argv[0], "so") == 0)    user = HAL_USER_SO;
+    if (strcmp(argv[0], "wheel") == 0) user = HAL_USER_WHEEL;
+    if (user == HAL_USER_NONE) {
+	cli_print(cli, "First argument must be 'user', 'so' or 'wheel' - not '%s'", argv[0]);
+	return CLI_ERROR;
+    }
+
+    status = hal_rpc_set_pin(client, user, argv[1], strlen(argv[1]));
+    if (status != LIBHAL_OK) {
+	cli_print(cli, "Failed setting PIN: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
+
+    return CLI_OK;
+}
+
+int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    const hal_ks_keydb_t *db;
+    hal_user_t user;
     hal_ks_pin_t pin;
     hal_error_t status;
 
@@ -67,28 +105,44 @@ int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[],
 	return CLI_OK;
     }
 
-    if (argc != 3) {
+    if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore set pin <user|so|wheel> <iterations> <pin>");
+	cli_print(cli, "Syntax: keystore clear pin <user|so|wheel>");
 	return CLI_ERROR;
     }
 
     user = HAL_USER_NONE;
-    if (strcmp(argv[0], "user") == 0) user = HAL_USER_NORMAL;
-    if (strcmp(argv[0], "so") == 0) user = HAL_USER_SO;
+    if (strcmp(argv[0], "user") == 0)  user = HAL_USER_NORMAL;
+    if (strcmp(argv[0], "so") == 0)    user = HAL_USER_SO;
     if (strcmp(argv[0], "wheel") == 0) user = HAL_USER_WHEEL;
     if (user == HAL_USER_NONE) {
 	cli_print(cli, "First argument must be 'user', 'so' or 'wheel' - not '%s'", argv[0]);
 	return CLI_ERROR;
     }
 
-    pin.iterations = strtol(argv[1], NULL, 0);
-
-    /* We don't actually PBKDF2 the given PIN yet, just testing */
-    strncpy((char *) pin.pin, argv[2], sizeof(pin.pin));
-
+    memset(&pin, 0x0, sizeof(pin));
     if ((status = hal_ks_set_pin(user, &pin)) != LIBHAL_OK) {
-	cli_print(cli, "Failed setting PIN: %s", hal_error_string(status));
+        cli_print(cli, "Failed clearing PIN: %s", hal_error_string(status));
+        return CLI_ERROR;
+    }
+
+    return CLI_OK;
+}
+
+int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    hal_error_t status;
+    hal_client_handle_t client = { -1 };
+
+    if (argc != 1) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore set pin iterations <number>");
+	return CLI_ERROR;
+    }
+
+    status = hal_set_pin_default_iterations(client, strtol(argv[0], NULL, 0));
+    if (status != LIBHAL_OK) {
+	cli_print(cli, "Failed setting iterations: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
 
@@ -190,35 +244,6 @@ int cmd_keystore_show_data(struct cli_def *cli, const char *command, char *argv[
     uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
     uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\n");
 
-    for (i = 0; i < 8; i++) {
-	if (buf[i] == 0xff) break;  /* never written */
-	if (buf[i] != 0x55) break;  /* something other than a tombstone */
-    }
-    /* As a demo, tombstone byte after byte of the first 8 bytes in the keystore memory
-     * (as long as they do not appear to contain real data).
-     * If all of them are tombstones, erase the first sector to start over.
-     */
-
-    /*
-    if (i < 8) {
-	if (buf[i] == 0xff) {
-	    cli_print(cli, "Tombstoning byte %li", i);
-	    buf[i] = 0x55;
-	    if ((i = keystore_write_data(0, buf, sizeof(buf))) != 1) {
-		cli_print(cli, "Failed writing data at offset 0: %li", i);
-		return CLI_ERROR;
-	    }
-	}
-    } else {
-	cli_print(cli, "Erasing first sector since all the first 8 bytes are tombstones");
-	if ((i = keystore_erase_sectors(1, 1)) != 1) {
-	    cli_print(cli, "Failed erasing the first sector: %li", i);
-	    return CLI_ERROR;
-	}
-	cli_print(cli, "Erase result: %li", i);
-    }
-    */
-
     return CLI_OK;
 }
 
@@ -246,9 +271,48 @@ int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[
 
     cli_print(cli, "\nPins:");
     cli_print(cli, "Wheel iterations: 0x%lx", db->wheel_pin.iterations);
+    cli_print(cli, "pin");
+    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.pin, 0, sizeof(db->wheel_pin.pin) - 1);
+    cli_print(cli, "\nsalt");
+    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.salt, 0, sizeof(db->wheel_pin.salt) - 1);
+    cli_print(cli, "");
+
     cli_print(cli, "SO    iterations: 0x%lx", db->so_pin.iterations);
+    cli_print(cli, "pin");
+    uart_send_hexdump(STM_UART_MGMT, db->so_pin.pin, 0, sizeof(db->so_pin.pin) - 1);
+    cli_print(cli, "\nsalt");
+    uart_send_hexdump(STM_UART_MGMT, db->so_pin.salt, 0, sizeof(db->so_pin.salt) - 1);
+    cli_print(cli, "");
+
     cli_print(cli, "User  iterations: 0x%lx", db->user_pin.iterations);
+    cli_print(cli, "pin");
+    uart_send_hexdump(STM_UART_MGMT, db->user_pin.pin, 0, sizeof(db->user_pin.pin) - 1);
+    cli_print(cli, "\nsalt");
+    uart_send_hexdump(STM_UART_MGMT, db->user_pin.salt, 0, sizeof(db->user_pin.salt) - 1);
+    cli_print(cli, "");
     cli_print(cli, "\n");
+
+    return CLI_OK;
+}
+
+int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    int status;
+
+    if (argc != 1) {
+	cli_print(cli, "Syntax: keystore erase YesIAmSure");
+	return CLI_ERROR;
+    }
+
+    if (strcmp(argv[0], "YesIAmSure") == 0) {
+	if ((status = keystore_erase_sectors(0, 1)) != 1) {
+	    cli_print(cli, "Failed erasing keystore: %i", status);
+	} else {
+	    cli_print(cli, "Keystore erased (first two sectors at least)");
+	}
+    } else {
+	cli_print(cli, "Keystore NOT erased");
+    }
 
     return CLI_OK;
 }
@@ -259,6 +323,8 @@ void configure_cli_keystore(struct cli_def *cli)
     cli_command_root(keystore);
     /* keystore set */
     cli_command_branch(keystore, set);
+    /* keystore clear */
+    cli_command_branch(keystore, clear);
     /* keystore delete */
     cli_command_branch(keystore, delete);
     /* keystore rename */
@@ -266,8 +332,17 @@ void configure_cli_keystore(struct cli_def *cli)
     /* keystore show */
     cli_command_branch(keystore, show);
 
+    /* keystore erase */
+    cli_command_node(keystore, erase, "Erase the whole keystore");
+
     /* keystore set pin */
     cli_command_node(keystore_set, pin, "Set either 'wheel', 'user' or 'so' PIN");
+
+    /* keystore set pin iterations */
+    cli_command_node(keystore_set_pin, iterations, "Set PBKDF2 iterations for PINs");
+
+    /* keystore clear pin */
+    cli_command_node(keystore_clear, pin, "Clear either 'wheel', 'user' or 'so' PIN");
 
     /* keystore set key */
     cli_command_node(keystore_set, key, "Set a key");
