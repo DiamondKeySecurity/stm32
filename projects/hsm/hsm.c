@@ -110,6 +110,7 @@ osSemaphoreDef(rpc_sem);
 
 static volatile uint8_t uart_rx;	/* current character received from UART */
 static rpc_buffer_t * volatile rbuf;	/* current RPC input buffer */
+static volatile int reenable_recv = 1;
 
 /* Callback for HAL_UART_Receive_IT().
  * With multiple worker threads, we can't do a blocking receive, because
@@ -122,11 +123,19 @@ static rpc_buffer_t * volatile rbuf;	/* current RPC input buffer */
 void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     int complete;
-    hal_slip_recv_char(rbuf->buf, &rbuf->len, sizeof(rbuf->buf), &complete);
-    if (complete)
-	osSemaphoreRelease(rpc_sem);
 
-    HAL_UART_Receive_IT(huart, (uint8_t *)&uart_rx, 1);
+    if (hal_slip_recv_char(rbuf->buf, &rbuf->len, sizeof(rbuf->buf), &complete) != LIBHAL_OK)
+        Error_Handler();
+
+    if (complete)
+	if (osSemaphoreRelease(rpc_sem) != osOK)
+            Error_Handler();
+
+    if (HAL_UART_Receive_IT(huart, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
+        /* We may have collided with a transmit.
+         * Signal the dispatch_thread to try again.
+         */
+        reenable_recv = 1;
 }
 
 hal_error_t hal_serial_recv_char(uint8_t *cp)
@@ -157,6 +166,13 @@ void dispatch_thread(void const *args)
         osMutexWait(dispatch_mutex, osWaitForever);
 #endif
 
+        /* Start receiving, or re-enable after failing in the callback. */
+        if (reenable_recv) {
+            if (HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
+                Error_Handler();
+            reenable_recv = 0;
+        }
+
         /* Wait for the complete rpc request */
         rbuf = &ibuf;
         osSemaphoreWait(rpc_sem, osWaitForever);
@@ -169,7 +185,12 @@ void dispatch_thread(void const *args)
 #endif
 
         /* Process the request */
-        hal_rpc_server_dispatch(ibuf.buf, ibuf.len, obuf.buf, &obuf.len);
+        if (hal_rpc_server_dispatch(ibuf.buf, ibuf.len, obuf.buf, &obuf.len) != LIBHAL_OK)
+            /* If hal_rpc_server_dispatch failed with an XDR error, it
+             * probably means the request packet was garbage. In any case, we
+             * have nothing to transmit.
+             */
+            continue;
 
         /* Send the response */
 #if NUM_RPC_TASK > 1
@@ -250,12 +271,6 @@ int main()
         if (osThreadCreate(ot, (void *)i) == NULL)
             Error_Handler();
     }
-
-    /* Start the non-blocking receive. Do this after launching the worker
-     * thread(s), because that's where rbuf is initialized.
-     */
-    if (HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
-	Error_Handler();
 
     /* Launch other threads (csprng warm-up thread?)
      * Wait for FPGA_DONE interrupt.
