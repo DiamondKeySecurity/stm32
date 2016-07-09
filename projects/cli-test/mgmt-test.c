@@ -40,6 +40,7 @@
 #include "mgmt-test.h"
 
 #include "test_sdram.h"
+#include "test_mkmif.h"
 
 #include <stdlib.h>
 
@@ -114,4 +115,7 @@ void configure_cli_test(struct cli_def *cli)
 
     /* test sdram */
     cli_command_node(test, sdram, "Run SDRAM tests");
+
+    /* test mkmif */
+    cli_command_node(test, mkmif, "Run Master Key Memory Interface tests");
 }
