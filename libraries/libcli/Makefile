@@ -1,10 +1,4 @@
-ifndef CRYPTECH_ROOT
-  CRYPTECH_ROOT := $(abspath ../../../..)
-endif
+vpath %.c ${LIBCLI_SRC}
+vpath %.h ${LIBCLI_SRC}
 
-REPO := ${CRYPTECH_ROOT}/user/ft/libcli
-
-vpath %.c ${REPO}
-vpath %.h ${REPO}
-
-include ${REPO}/Makefile
+include ${LIBCLI_SRC}/Makefile

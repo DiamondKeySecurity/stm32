@@ -1,10 +1,4 @@
-ifndef CRYPTECH_ROOT
-  CRYPTECH_ROOT := $(abspath ../../../../..)
-endif
+vpath %.c ${LIBHAL_SRC}/utils
+vpath %.h ${LIBHAL_SRC}/utils
 
-REPO := ${CRYPTECH_ROOT}/sw/libhal
-
-vpath %.c ${REPO}/utils
-vpath %.h ${REPO}/utils
-
-include ${REPO}/utils/Makefile
+include ${LIBHAL_SRC}/utils/Makefile

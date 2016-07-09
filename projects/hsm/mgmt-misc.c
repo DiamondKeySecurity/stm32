@@ -44,13 +44,6 @@
 extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
 
 
-static volatile uint32_t demo_crc = 0;
-
-static int _count_bytes_callback(uint8_t *buf, size_t len) {
-    demo_crc = update_crc(demo_crc, buf, len);
-    return 1;
-}
-
 int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_callback data_callback)
 {
     uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0;
@@ -109,16 +102,6 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
     return CLI_OK;
 }
 
-static int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    uint8_t buf[FILETRANSFER_UPLOAD_CHUNK_SIZE];
-
-    demo_crc = 0;
-    cli_receive_data(cli, &buf[0], sizeof(buf), _count_bytes_callback);
-    cli_print(cli, "Demo CRC is: %li/0x%x", demo_crc, (unsigned int) demo_crc);
-    return CLI_OK;
-}
-
 static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "\n\n\nRebooting\n\n\n");
@@ -130,8 +113,6 @@ static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], in
 
 void configure_cli_misc(struct cli_def *cli)
 {
-    /* filetransfer */
-    cli_command_root_node(filetransfer, "Test file transfering");
     /* reboot */
     cli_command_root_node(reboot, "Reboot the STM32");
 }

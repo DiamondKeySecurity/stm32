@@ -43,8 +43,13 @@ UART_HandleTypeDef huart_user;  /* USART2 */
 DMA_HandleTypeDef hdma_usart_mgmt_rx;
 DMA_HandleTypeDef hdma_usart_user_rx;
 
-#define DEFAULT_UART STM_UART_USER
+static stm_uart_port_t default_uart = STM_UART_USER;
 
+void uart_set_default(stm_uart_port_t port)
+{
+    if (port == STM_UART_USER || port == STM_UART_MGMT)
+        default_uart = port;
+}
 
 inline UART_HandleTypeDef *_which_uart(stm_uart_port_t port)
 {
@@ -60,7 +65,7 @@ inline UART_HandleTypeDef *_which_uart(stm_uart_port_t port)
 /* send a single character */
 HAL_StatusTypeDef uart_send_char(uint8_t ch)
 {
-    return uart_send_char2(DEFAULT_UART, ch);
+    return uart_send_char2(default_uart, ch);
 }
 
 HAL_StatusTypeDef uart_send_char2(stm_uart_port_t port, uint8_t ch)
@@ -71,7 +76,7 @@ HAL_StatusTypeDef uart_send_char2(stm_uart_port_t port, uint8_t ch)
 /* receive a single character */
 HAL_StatusTypeDef uart_recv_char(uint8_t *cp)
 {
-    return uart_recv_char2(DEFAULT_UART, cp, HAL_MAX_DELAY);
+    return uart_recv_char2(default_uart, cp, HAL_MAX_DELAY);
 }
 
 /* receive a single character */
@@ -88,7 +93,7 @@ HAL_StatusTypeDef uart_recv_char2(stm_uart_port_t port, uint8_t *cp, uint32_t ti
 /* send a string */
 HAL_StatusTypeDef uart_send_string(char *s)
 {
-    return uart_send_string2(DEFAULT_UART, s);
+    return uart_send_string2(default_uart, s);
 }
 
 /* send a string */
@@ -129,7 +134,7 @@ HAL_StatusTypeDef uart_receive_bytes(stm_uart_port_t port, uint8_t *buf, size_t 
  */
 HAL_StatusTypeDef uart_send_number(uint32_t num, uint8_t digits, uint8_t radix)
 {
-    return uart_send_number2(DEFAULT_UART, num, digits, radix);
+    return uart_send_number2(default_uart, num, digits, radix);
 }
 
 HAL_StatusTypeDef uart_send_number2(stm_uart_port_t port, uint32_t num, uint8_t digits, uint8_t radix)

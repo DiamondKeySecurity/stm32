@@ -133,10 +133,37 @@ static int cmd_fpga_reset_registers(struct cli_def *cli, const char *command, ch
     return CLI_OK;
 }
 
+static int cmd_fpga_show_status(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
+    return CLI_OK;
+}
+
+static int cmd_fpga_show_cores(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    const hal_core_t *core;
+    const hal_core_info_t *info;
+
+    for (core = hal_core_iterate(NULL); core != NULL; core = hal_core_iterate(core)) {
+	info = hal_core_info(core);
+	cli_print(cli, "%04x: %8.8s %4.4s",
+                  (unsigned int)info->base, info->name, info->version);
+    }
+
+    return CLI_OK;
+}
+
 void configure_cli_fpga(struct cli_def *cli)
 {
     /* fpga */
     cli_command_root(fpga);
+
+    cli_command_branch(fpga, show);
+    /* show fpga status*/
+    cli_command_node(fpga_show, status, "Show status about the FPGA");
+    /* show fpga cores*/
+    cli_command_node(fpga_show, cores, "Show FPGA core names and versions");
+
     /* fpga reset */
     cli_command_node(fpga, reset, "Reset FPGA (config reset)");
     /* fpga reset registers */
