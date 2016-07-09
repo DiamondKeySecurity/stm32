@@ -1,5 +1,5 @@
 /*
- * mgmt-misc.h
+ * mgmt-show.h
  * -----------
  * Management CLI 'show' functions.
  *

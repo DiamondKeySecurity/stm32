@@ -84,7 +84,6 @@ static int _parse_hex_groups(uint8_t *buf, size_t len, char *argv[], int argc)
 static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
-    uint8_t buf[KEK_LENGTH] = {0};
 
     cli_print(cli, "Status of master key:\n");
 
@@ -93,28 +92,6 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
 
     status = masterkey_flash_read(NULL, 0);
     cli_print(cli, "     flash: %s / %s", _status2str(status), hal_error_string(status));
-
-    /* XXX Temporary gaping security hole while developing the master key functionality.
-     * REMOVE READ-OUT OF MASTER KEY.
-     */
-
-    status = masterkey_volatile_read(&buf[0], sizeof(buf));
-    if (status == LIBHAL_OK || status == HAL_ERROR_MASTERKEY_NOT_SET) {
-	cli_print(cli, "\nVolatile read-out:\n");
-	uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-	cli_print(cli, "\n");
-    } else {
-	cli_print(cli, "Failed reading from volatile memory: %s", hal_error_string(status));
-    }
-
-    status = masterkey_flash_read(&buf[0], sizeof(buf));
-    if (status == LIBHAL_OK || status == HAL_ERROR_MASTERKEY_NOT_SET) {
-	cli_print(cli, "\nFlash read-out:\n");
-	uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-	cli_print(cli, "\n");
-    } else {
-	cli_print(cli, "Failed reading from flash: %s", hal_error_string(status));
-    }
 
     return CLI_OK;
 }
@@ -126,7 +103,7 @@ static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *arg
     int i;
 
     if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
-	cli_print(cli, "Failed parsing master key (%i)", i);
+	cli_print(cli, "Failed parsing master key, expected up to 8 groups of 32-bit hex chars (%i)", i);
 	return CLI_OK;
     }
 
@@ -161,7 +138,7 @@ static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, 
     int i;
 
     if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
-	cli_print(cli, "Failed parsing master key (%i)", i);
+	cli_print(cli, "Failed parsing master key, expected up to 8 groups of 32-bit hex chars (%i)", i);
 	return CLI_OK;
     }
 

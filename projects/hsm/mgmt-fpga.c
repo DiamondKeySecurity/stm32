@@ -124,15 +124,6 @@ static int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[]
     return CLI_OK;
 }
 
-static int cmd_fpga_reset_registers(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    fpgacfg_access_control(ALLOW_FPGA);
-    fpgacfg_reset_fpga(RESET_REGISTERS);
-    cli_print(cli, "FPGA registers have been reset");
-
-    return CLI_OK;
-}
-
 static int cmd_fpga_show_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
@@ -166,8 +157,6 @@ void configure_cli_fpga(struct cli_def *cli)
 
     /* fpga reset */
     cli_command_node(fpga, reset, "Reset FPGA (config reset)");
-    /* fpga reset registers */
-    cli_command_node(fpga_reset, registers, "Reset FPGA registers (soft reset)");
 
     cli_command_branch(fpga, bitstream);
     /* fpga bitstream upload */

@@ -149,104 +149,6 @@ int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, ch
     return CLI_OK;
 }
 
-int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    hal_error_t status;
-    int hint = 0;
-
-    if (argc != 2) {
-	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore set key <name> <der>");
-	return CLI_ERROR;
-    }
-
-    if ((status = hal_ks_store(HAL_KEY_TYPE_EC_PUBLIC,
-			       HAL_CURVE_NONE,
-			       0,
-			       (uint8_t *) argv[0], strlen(argv[0]),
-			       (uint8_t *) argv[1], strlen(argv[1]),
-			       &hint)) != LIBHAL_OK) {
-
-	cli_print(cli, "Failed storing key: %s", hal_error_string(status));
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "Stored key %i", hint);
-
-    return CLI_OK;
-}
-
-int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    hal_error_t status;
-    int hint = 0;
-
-    if (argc != 1) {
-	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore delete key <name>");
-	return CLI_ERROR;
-    }
-
-    if ((status = hal_ks_delete(HAL_KEY_TYPE_EC_PUBLIC,
-				(uint8_t *) argv[0], strlen(argv[0]),
-				&hint)) != LIBHAL_OK) {
-
-	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "Deleted key %i", hint);
-
-    return CLI_OK;
-}
-
-int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    hal_error_t status;
-    int hint = 0;
-
-    if (argc != 2) {
-	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore rename key <name> <new name>");
-	return CLI_ERROR;
-    }
-
-    if ((status = hal_ks_rename(HAL_KEY_TYPE_EC_PUBLIC,
-				(uint8_t *) argv[0], strlen(argv[0]),
-				(uint8_t *) argv[1], strlen(argv[1]),
-				&hint)) != LIBHAL_OK) {
-
-	cli_print(cli, "Failed renaming key: %s", hal_error_string(status));
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "Renamed key %i", hint);
-
-    return CLI_OK;
-}
-
-int cmd_keystore_show_data(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    uint8_t buf[KEYSTORE_PAGE_SIZE];
-    uint32_t i;
-
-    if (keystore_check_id() != 1) {
-	cli_print(cli, "ERROR: The keystore memory is not accessible.");
-    }
-
-    memset(buf, 0, sizeof(buf));
-    if ((i = keystore_read_data(0, buf, sizeof(buf))) != 1) {
-	cli_print(cli, "Failed reading first page from keystore memory: %li", i);
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "First page from keystore memory:\r\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\n");
-
-    return CLI_OK;
-}
-
 int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_ks_keydb_t *db;
@@ -258,39 +160,21 @@ int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[
 	return CLI_OK;
     }
 
-    cli_print(cli, "Sizeof db->keys is %i, sizeof one key is %i\n", sizeof(db->keys), sizeof(*db->keys));
+    /* cli_print(cli, "Sizeof db->keys is %i, sizeof one key is %i\n", sizeof(db->keys), sizeof(*db->keys)); */
 
     for (int i = 0; i < sizeof(db->keys)/sizeof(*db->keys); i++) {
 	if (! db->keys[i].in_use) {
 	    cli_print(cli, "Key %i, not in use", i);
 	} else {
-	    cli_print(cli, "Key %i, in use 0x%x, name '%s' der '%s'",
-		      i, db->keys[i].in_use, db->keys[i].name, db->keys[i].der);
+	    cli_print(cli, "Key %i, in use 0x%x",
+		      i, db->keys[i].in_use);
 	}
     }
 
     cli_print(cli, "\nPins:");
     cli_print(cli, "Wheel iterations: 0x%lx", db->wheel_pin.iterations);
-    cli_print(cli, "pin");
-    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.pin, 0, sizeof(db->wheel_pin.pin) - 1);
-    cli_print(cli, "\nsalt");
-    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.salt, 0, sizeof(db->wheel_pin.salt) - 1);
-    cli_print(cli, "");
-
     cli_print(cli, "SO    iterations: 0x%lx", db->so_pin.iterations);
-    cli_print(cli, "pin");
-    uart_send_hexdump(STM_UART_MGMT, db->so_pin.pin, 0, sizeof(db->so_pin.pin) - 1);
-    cli_print(cli, "\nsalt");
-    uart_send_hexdump(STM_UART_MGMT, db->so_pin.salt, 0, sizeof(db->so_pin.salt) - 1);
-    cli_print(cli, "");
-
     cli_print(cli, "User  iterations: 0x%lx", db->user_pin.iterations);
-    cli_print(cli, "pin");
-    uart_send_hexdump(STM_UART_MGMT, db->user_pin.pin, 0, sizeof(db->user_pin.pin) - 1);
-    cli_print(cli, "\nsalt");
-    uart_send_hexdump(STM_UART_MGMT, db->user_pin.salt, 0, sizeof(db->user_pin.salt) - 1);
-    cli_print(cli, "");
-    cli_print(cli, "\n");
 
     return CLI_OK;
 }
@@ -325,10 +209,6 @@ void configure_cli_keystore(struct cli_def *cli)
     cli_command_branch(keystore, set);
     /* keystore clear */
     cli_command_branch(keystore, clear);
-    /* keystore delete */
-    cli_command_branch(keystore, delete);
-    /* keystore rename */
-    cli_command_branch(keystore, rename);
     /* keystore show */
     cli_command_branch(keystore, show);
 
@@ -343,18 +223,6 @@ void configure_cli_keystore(struct cli_def *cli)
 
     /* keystore clear pin */
     cli_command_node(keystore_clear, pin, "Clear either 'wheel', 'user' or 'so' PIN");
-
-    /* keystore set key */
-    cli_command_node(keystore_set, key, "Set a key");
-
-    /* keystore delete key */
-    cli_command_node(keystore_delete, key, "Delete a key");
-
-    /* keystore rename key */
-    cli_command_node(keystore_rename, key, "Rename a key");
-
-    /* keystore show data */
-    cli_command_node(keystore_show, data, "Dump the first page from the keystore memory");
 
     /* keystore show keys */
     cli_command_node(keystore_show, keys, "Show what PINs and keys are in the keystore");
