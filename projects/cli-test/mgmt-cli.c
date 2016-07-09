@@ -31,29 +31,85 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "stm-init.h"
-#include "stm-uart.h"
-#include "stm-led.h"
-#include "mgmt-cli.h"
 
 #include <string.h>
 
-extern uint8_t uart_rx;
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+#define HAL_OK CMSIS_HAL_OK
+#include "cmsis_os.h"
 
-struct uart_ringbuf_t {
-    uint32_t enabled, ridx;
-    enum mgmt_cli_dma_state rx_state;
+#include "stm-init.h"
+#include "stm-uart.h"
+#include "stm-led.h"
+
+#include "mgmt-cli.h"
+#include "mgmt-fpga.h"
+#include "mgmt-misc.h"
+#include "mgmt-show.h"
+#include "mgmt-test.h"
+#include "mgmt-keystore.h"
+#include "mgmt-masterkey.h"
+
+#undef HAL_OK
+#define HAL_OK LIBHAL_OK
+#include "hal.h"
+#undef HAL_OK
+
+#ifndef CLI_UART_RECVBUF_SIZE
+#define CLI_UART_RECVBUF_SIZE  256
+#endif
+
+typedef struct {
+    int ridx;
+    volatile int widx;
+    mgmt_cli_dma_state_t rx_state;
     uint8_t buf[CLI_UART_RECVBUF_SIZE];
-};
+} ringbuf_t;
 
-volatile struct uart_ringbuf_t uart_ringbuf = {1, 0, DMA_RX_STOP, {0}};
+inline void ringbuf_init(ringbuf_t *rb)
+{
+    memset(rb, 0, sizeof(*rb));
+}
 
-#define RINGBUF_RIDX(rb)       (rb.ridx & CLI_UART_RECVBUF_MASK)
-#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_mgmt.hdmarx))
-#define RINGBUF_COUNT(rb)      ((unsigned)(RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)))
-#define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.buf[RINGBUF_RIDX(rb)] = '.'; rb.ridx++;}
+/* return number of characters read */
+inline int ringbuf_read_char(ringbuf_t *rb, uint8_t *c)
+{
+    if (rb->ridx != rb->widx) {
+        *c = rb->buf[rb->ridx];
+        if (++rb->ridx >= sizeof(rb->buf))
+            rb->ridx = 0;
+        return 1;
+    }
+    return 0;
+}
 
-void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
+inline void ringbuf_write_char(ringbuf_t *rb, uint8_t c)
+{
+    rb->buf[rb->widx] = c;
+    if (++rb->widx >= sizeof(rb->buf))
+        rb->widx = 0;
+}
+
+static ringbuf_t uart_ringbuf;
+
+/* current character received from UART */
+static uint8_t uart_rx;
+
+/* Semaphore to inform uart_cli_read that there's a new character.
+ */
+osSemaphoreId  uart_sem;
+osSemaphoreDef(uart_sem);
+
+/* Callback for HAL_UART_Receive_DMA().
+ */
+void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    ringbuf_write_char(&uart_ringbuf, uart_rx);
+    osSemaphoreRelease(uart_sem);
+    HAL_UART_Receive_DMA(huart, &uart_rx, 1);
+}
+
+static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
 {
     char crlf[] = "\r\n";
     uart_send_string2(STM_UART_MGMT, buf);
@@ -62,18 +118,11 @@ void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *bu
 
 static int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
-    uint32_t timeout = 0xffffff;
-    while (count && timeout) {
-	if (RINGBUF_COUNT(uart_ringbuf)) {
-	    RINGBUF_READ(uart_ringbuf, *(uint8_t *) buf);
-	    buf++;
-	    count--;
-	}
-	timeout--;
+    for (int i = 0; i < count; ++i) {
+        while (ringbuf_read_char(&uart_ringbuf, (uint8_t *)(buf + i)) == 0)
+            osSemaphoreWait(uart_sem, osWaitForever);
     }
-    if (! timeout) return 0;
-
-    return 1;
+    return count;
 }
 
 static int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count)
@@ -86,16 +135,13 @@ int control_mgmt_uart_dma_rx(mgmt_cli_dma_state_t state)
 {
     if (state == DMA_RX_START) {
 	if (uart_ringbuf.rx_state != DMA_RX_START) {
-	    memset((void *) uart_ringbuf.buf, 0, sizeof(uart_ringbuf.buf));
-
-	    /* Start receiving data from the UART using DMA */
-	    HAL_UART_Receive_DMA(&huart_mgmt, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf));
-	    uart_ringbuf.ridx = 0;
+            ringbuf_init(&uart_ringbuf);
+	    HAL_UART_Receive_DMA(&huart_mgmt, &uart_rx, 1);
 	    uart_ringbuf.rx_state = DMA_RX_START;
 	}
 	return 1;
     } else if (state == DMA_RX_STOP) {
-	if (HAL_UART_DMAStop(&huart_mgmt) != HAL_OK) return 0;
+	if (HAL_UART_DMAStop(&huart_mgmt) != CMSIS_HAL_OK) return 0;
 	uart_ringbuf.rx_state = DMA_RX_STOP;
 	return 1;
     }
@@ -159,13 +205,51 @@ static int embedded_cli_loop(struct cli_def *cli)
     return CLI_OK;
 }
 
-void mgmt_cli_init(struct cli_def *cli)
+static void mgmt_cli_init(struct cli_def *cli)
 {
     cli_init(cli);
     cli_read_callback(cli, uart_cli_read);
     cli_write_callback(cli, uart_cli_write);
     cli_print_callback(cli, uart_cli_print);
-    cli_set_banner(cli, "Cryptech Alpha");
+    cli_set_banner(cli, "Cryptech Alpha test CLI");
     cli_set_hostname(cli, "cryptech");
     cli_telnet_protocol(cli, 0);
 }
+
+hal_user_t user;
+
+static int check_auth(const char *username, const char *password)
+{
+    if (strcasecmp(username, "ct") != 0)
+	return CLI_ERROR;
+    if (strcasecmp(password, "ct") != 0)
+	return CLI_ERROR;
+    return CLI_OK;
+}
+
+int cli_main(void)
+{
+    static struct cli_def cli;
+
+    uart_sem = osSemaphoreCreate(osSemaphore(uart_sem), 0);
+
+    mgmt_cli_init(&cli);
+    cli_set_auth_callback(&cli, check_auth);
+
+    configure_cli_show(&cli);
+    configure_cli_fpga(&cli);
+    configure_cli_misc(&cli);
+    configure_cli_test(&cli);
+    configure_cli_keystore(&cli);
+
+    while (1) {
+        embedded_cli_loop(&cli);
+        /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
+        cli_print(&cli, "\nLogging out...\n");
+        user = HAL_USER_NONE;
+    }
+
+    /*NOTREACHED*/
+    return -1;
+}
+

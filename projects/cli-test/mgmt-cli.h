@@ -73,11 +73,7 @@ typedef enum {
     DMA_RX_START,
 } mgmt_cli_dma_state_t;
 
-extern void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf);
-extern int uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count);
-extern int uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count);
-extern int embedded_cli_loop(struct cli_def *cli);
-extern void mgmt_cli_init(struct cli_def *cli);
 extern int control_mgmt_uart_dma_rx(mgmt_cli_dma_state_t state);
+extern int cli_main(void);
 
 #endif /* __STM32_MGMT_CLI_H */

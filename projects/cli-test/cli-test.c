@@ -33,6 +33,7 @@
  */
 #include "stm-init.h"
 #include "stm-led.h"
+#include "stm-uart.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-dfu.h"
@@ -50,61 +51,17 @@
 volatile uint8_t uart_rx;
 
 
-int check_auth(const char *username, const char *password)
-{
-    if (strcasecmp(username, "ct") != 0)
-	return CLI_ERROR;
-    if (strcasecmp(password, "ct") != 0)
-	return CLI_ERROR;
-    return CLI_OK;
-}
-
-typedef  void (*pFunction)(void);
-
-/* This is it's own function to make it more convenient to set a breakpoint at it in gdb */
-void do_early_dfu_jump(void)
-{
-    pFunction loaded_app = (pFunction) *dfu_code_ptr;
-    /* Set the stack pointer to the correct one for the firmware */
-    __set_MSP(*dfu_msp_ptr);
-    /* Set the Vector Table Offset Register */
-    SCB->VTOR = (uint32_t) dfu_firmware;
-    loaded_app();
-    while (1);
-}
-
 int
 main()
 {
-    static struct cli_def cli;
-
-    /* Check if we've just rebooted in order to jump to the firmware. */
-    if (*dfu_control == HARDWARE_EARLY_DFU_JUMP) {
-	*dfu_control = 0;
-	do_early_dfu_jump();
-    }
-
     stm_init();
+    uart_set_default(STM_UART_MGMT);
 
-    led_on(LED_RED);
-
-    mgmt_cli_init(&cli);
-    cli_set_auth_callback(&cli, check_auth);
-
-    configure_cli_show(&cli);
-    configure_cli_fpga(&cli);
-    configure_cli_test(&cli);
-    configure_cli_misc(&cli);
-    configure_cli_dfu(&cli);
-    configure_cli_keystore(&cli);
-
-    led_off(LED_RED);
     led_on(LED_GREEN);
 
     while (1) {
-        embedded_cli_loop(&cli);
+        cli_main();
         /* embedded_cli_loop returns when the user enters 'quit' or 'exit' */
-        cli_print(&cli, "\nLogging out...\n");
     }
 
     /* NOT REACHED */
