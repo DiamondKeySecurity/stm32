@@ -206,28 +206,6 @@ void dispatch_thread(void const *args)
 }
 osThreadDef_t thread_def[NUM_RPC_TASK];
 
-/* Allocate memory from SDRAM1. There is only malloc, no free, so we don't
- * worry about fragmentation. */
-static uint8_t *sdram_malloc(size_t size)
-{
-    /* end of variables declared with __attribute__((section(".sdram1"))) */
-    extern uint8_t _esdram1 __asm ("_esdram1");
-    /* end of SDRAM1 section */
-    extern uint8_t __end_sdram1 __asm ("__end_sdram1");
-
-    static uint8_t *sdram_heap = &_esdram1;
-    uint8_t *p = sdram_heap;
-
-#define pad(n) (((n) + 3) & ~3)
-    size = pad(size);
-
-    if (p + size > &__end_sdram1)
-        return NULL;
-
-    sdram_heap += size;
-    return p;
-}
-
 /* The main thread. This does all the setup, and the worker threads handle
  * the rest.
  */

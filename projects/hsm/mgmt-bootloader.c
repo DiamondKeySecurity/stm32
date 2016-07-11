@@ -38,6 +38,7 @@
 #include "stm-uart.h"
 #include "stm-flash.h"
 #include "stm-fpgacfg.h"
+#include "sdram-malloc.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-misc.h"
@@ -49,15 +50,6 @@
 #undef HAL_OK
 
 extern hal_user_t user;
-
-static uint32_t dfu_offset;
-
-static int _flash_write_callback(uint8_t *buf, size_t len)
-{
-    stm_flash_write32(dfu_offset, (uint32_t *)buf, sizeof(buf)/4);
-    dfu_offset += DFU_UPLOAD_CHUNK_SIZE;
-    return 1;
-}
 
 static int cmd_bootloader_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
@@ -78,13 +70,24 @@ static int cmd_bootloader_upload(struct cli_def *cli, const char *command, char 
         return CLI_ERROR;
     }
 
-    uint8_t buf[DFU_UPLOAD_CHUNK_SIZE];
-    dfu_offset = DFU_BOOTLOADER_ADDR;
+    uint8_t *filebuf;
+    size_t file_len;
 
-    cli_receive_data(cli, buf, sizeof(buf), _flash_write_callback);
+    if (cli_receive_data(cli, &filebuf, &file_len, DFU_UPLOAD_CHUNK_SIZE) == CLI_ERROR)
+        return CLI_ERROR;
 
-    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / DFU_UPLOAD_CHUNK_SIZE);
-    return CLI_OK;
+    cli_print(cli, "Writing flash");
+    int res = stm_flash_write32(DFU_BOOTLOADER_ADDR, (uint32_t *)filebuf, file_len/4) == 1;
+    sdram_free(filebuf);
+
+    if (res) {
+        cli_print(cli, "SUCCESS");
+        return CLI_OK;
+    }
+    else {
+        cli_print(cli, "FAIL");
+        return CLI_ERROR;
+    }
 }
 
 void configure_cli_bootloader(struct cli_def *cli)

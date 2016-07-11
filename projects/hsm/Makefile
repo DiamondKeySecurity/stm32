@@ -22,6 +22,7 @@ BOARD_OBJS = \
 	$(TOPLEVEL)/stm-keystore.o \
 	$(TOPLEVEL)/stm-sdram.o \
 	$(TOPLEVEL)/stm-flash.o \
+	$(TOPLEVEL)/sdram-malloc.o \
 	$(BOARD_DIR)/TOOLCHAIN_GCC_ARM/startup_stm32f429xx_rtos.o \
 	$(BOARD_DIR)/system_stm32f4xx.o \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \

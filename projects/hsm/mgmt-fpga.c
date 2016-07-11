@@ -37,6 +37,7 @@
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-fpgacfg.h"
+#include "sdram-malloc.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-fpga.h"
@@ -52,15 +53,6 @@
 
 extern hal_user_t user;
 
-static volatile uint32_t dfu_offset = 0;
-
-
-static int _flash_write_callback(uint8_t *buf, size_t len) {
-    int res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE) == 1;
-    dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
-    return res;
-}
-
 static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     if (user < HAL_USER_SO) {
@@ -68,9 +60,8 @@ static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, c
         return CLI_ERROR;
     }
 
-    uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
-
-    dfu_offset = 0;
+    uint8_t *filebuf;
+    size_t file_len;
 
     fpgacfg_access_control(ALLOW_ARM);
 
@@ -80,12 +71,23 @@ static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, c
 	return CLI_ERROR;
     }
 
-    cli_receive_data(cli, &buf[0], sizeof(buf), _flash_write_callback);
+    if (cli_receive_data(cli, &filebuf, &file_len, BITSTREAM_UPLOAD_CHUNK_SIZE) == CLI_ERROR)
+        return CLI_ERROR;
+
+    cli_print(cli, "Writing flash");
+    int res = fpgacfg_write_data(0, filebuf, file_len) == 1;
 
     fpgacfg_access_control(ALLOW_FPGA);
+    sdram_free(filebuf);
 
-    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / BITSTREAM_UPLOAD_CHUNK_SIZE);
-    return CLI_OK;
+    if (res) {
+        cli_print(cli, "SUCCESS");
+        return CLI_OK;
+    }
+    else {
+        cli_print(cli, "FAIL");
+        return CLI_ERROR;
+    }
 }
 
 static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, char *argv[], int argc)

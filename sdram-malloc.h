@@ -1,7 +1,7 @@
 /*
- * mgmt-misc.h
- * -----------
- * Management CLI miscellaneous functions.
+ * sdram_malloc.h
+ * --------------
+ * Use SDRAM for a very limited sort of heap.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -32,13 +32,5 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_MISC_H
-#define __STM32_CLI_MGMT_MISC_H
-
-#include "stm-init.h"
-#include <libcli.h>
-
-extern void configure_cli_misc(struct cli_def *cli);
-extern int cli_receive_data(struct cli_def *cli, uint8_t **filebuf, size_t *file_len, size_t chunksize);
-
-#endif /* __STM32_CLI_MGMT_MISC_H */
+extern uint8_t *sdram_malloc(size_t size);
+extern void sdram_free(uint8_t *s);

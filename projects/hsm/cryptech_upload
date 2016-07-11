@@ -79,16 +79,17 @@ def parse_args():
 
     # positional argument(s)
     parser.add_argument('filename')
+    parser.add_argument('signature')
 
     return parser.parse_args()
 
 
 def _write(dst, data):
     dst.write(data)
-    #if len(data) == 4:
-    #    print("Wrote 0x{!s}".format(data.encode('hex')))
-    #else:
-    #    print("Wrote {!r}".format(data))
+    if len(data) == 4:
+        print("Wrote 0x{!s}".format(data.encode('hex')))
+    else:
+        print("Wrote {!r}".format(data))
 
 
 def _read(dst):
@@ -99,7 +100,7 @@ def _read(dst):
     while x:
         res += x
         x = dst.read(1)
-    #print ("Read {!r}".format(res))
+    print ("Read {!r}".format(res))
     return res
 
 pin = None
@@ -123,9 +124,16 @@ def _execute(dst, cmd):
     response = _read(dst)
     return response
 
-def send_file(filename, args, dst):
-    s = os.stat(filename)
-    size = s.st_size
+def send_file(filename, signature, args, dst):
+    def fsize(fn):
+        try:
+            s = os.stat(fn)
+        except OSError as e:
+            print e
+            exit(1)
+        return s.st_size
+
+    size = fsize(filename)
     src = open(filename, 'rb')
     if args.fpga:
         chunk_size = FPGA_CHUNK_SIZE
@@ -178,14 +186,29 @@ def send_file(filename, args, dst):
 
         crc = crc32(data, crc) & 0xffffffff
 
-    _read(dst)
-
-    # 3. Write CRC-32 (4 bytes)
-    _write(dst, struct.pack('<I', crc))
-    response = _read(dst)
-    print response
-
     src.close()
+
+    response = _read(dst)
+
+    if response.startswith('Send CRC-32'):
+
+        # 3a. Write CRC-32 (4 bytes)
+        _write(dst, struct.pack('<I', crc))
+        response = _read(dst)
+        print response
+
+    elif response.startswith('Send signature'):
+
+        # 3b. Write ECDSA signature
+        # write signature size
+        _write(dst, struct.pack('<I', fsize(signature)))
+        response = _read(dst)
+        if not response.startswith('Send '):
+            print response
+            return False
+        _write(dst, open(signature, 'rb').read())
+        response = _read(dst)
+        print response
 
     if args.fpga:
         # tell the fpga to read its new configuration
@@ -201,7 +224,7 @@ def send_file(filename, args, dst):
 
 def main(args):
     dst = serial.Serial(args.device, 921600, timeout=2)
-    send_file(args.filename, args, dst)
+    send_file(args.filename, args.signature, args, dst)
     dst.close()
     return True
 
