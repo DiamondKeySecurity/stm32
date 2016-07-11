@@ -179,7 +179,7 @@ int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[],
 int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
-    int hint = 0;
+    int hint = -1;
 
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
@@ -191,7 +191,7 @@ int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv
 				(uint8_t *) argv[0], strlen(argv[0]),
 				&hint)) != LIBHAL_OK) {
 
-	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
+	cli_print(cli, "Failed deleting key \"%s\": %s", argv[0], hal_error_string(status));
 	return CLI_ERROR;
     }
 
@@ -358,4 +358,14 @@ void configure_cli_keystore(struct cli_def *cli)
 
     /* keystore show keys */
     cli_command_node(keystore_show, keys, "Show what PINs and keys are in the keystore");
+
+    cli_set_cmd_mode(keystore, MODE_ANY);
+    cli_set_cmd_mode(keystore_erase, MODE_ANY);
+    cli_set_cmd_mode(keystore_set, MODE_ANY);
+    cli_set_cmd_mode(keystore_set_pin, MODE_ANY);
+    cli_set_cmd_mode(keystore_set_pin_iterations, MODE_ANY);
+    cli_set_cmd_mode(keystore_clear, MODE_ANY);
+    cli_set_cmd_mode(keystore_clear_pin, MODE_ANY);
+    cli_set_cmd_mode(keystore_show, MODE_ANY);
+    cli_set_cmd_mode(keystore_show_keys, MODE_ANY);
 }

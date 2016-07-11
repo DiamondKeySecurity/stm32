@@ -67,6 +67,12 @@
     _cli_cmd_struct(name, name, cmd_##name, (char *) help);		\
     cli_register_command2(cli, &cmd_##name##_s, NULL)
 
+#define cli_set_cmd_privilege(name, p)				\
+    cmd_##name##_s.privilege = p
+
+#define cli_set_cmd_mode(name, m)				\
+    cmd_##name##_s.mode = m
+
 
 typedef enum {
     DMA_RX_STOP,

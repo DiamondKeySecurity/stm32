@@ -195,7 +195,7 @@ static int embedded_cli_loop(struct cli_def *cli)
 	}
 
 	if (ctx.l < 0)
-            continue;
+            break;
 
 	/* cli_print(cli, "Process command: '%s'", ctx.cmd); */
 	n = cli_loop_process_cmd(cli, &ctx);
@@ -219,6 +219,8 @@ static void mgmt_cli_init(struct cli_def *cli)
 
 hal_user_t user;
 
+static struct cli_def cli;
+
 static int check_auth(const char *username, const char *password)
 {
     hal_client_handle_t client = { -1 };
@@ -233,25 +235,30 @@ static int check_auth(const char *username, const char *password)
     else
         user = HAL_USER_NONE;
 
-    if (hal_rpc_login(client, user, password, strlen(password)) == LIBHAL_OK)
-        return CLI_OK;
+    if (hal_rpc_login(client, user, password, strlen(password)) != LIBHAL_OK) {
+        user = HAL_USER_NONE;
+        return CLI_ERROR;
+    }
 
-    user = HAL_USER_NONE;
-    return CLI_ERROR;
+    /* set mode to 'config', so wheel can only set pins */
+    if (user == HAL_USER_WHEEL)
+        cli_set_configmode(&cli, MODE_CONFIG, NULL);
+
+    return CLI_OK;
 }
 
 int cli_main(void)
 {
-    static struct cli_def cli;
-
     uart_sem = osSemaphoreCreate(osSemaphore(uart_sem), 0);
 
     mgmt_cli_init(&cli);
     cli_set_auth_callback(&cli, check_auth);
 
+    cli_unregister_command(&cli, "configure");
+
+    configure_cli_misc(&cli);
     configure_cli_show(&cli);
     configure_cli_fpga(&cli);
-    configure_cli_misc(&cli);
     configure_cli_firmware(&cli);
     configure_cli_bootloader(&cli);
     configure_cli_keystore(&cli);
