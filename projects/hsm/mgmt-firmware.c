@@ -38,6 +38,7 @@
 #include "mgmt-cli.h"
 #include "stm-uart.h"
 #include "stm-flash.h"
+#include "stm-fpgacfg.h"
 
 #undef HAL_OK
 #define HAL_OK LIBHAL_OK
@@ -50,6 +51,18 @@ static int cmd_firmware_upload(struct cli_def *cli, const char *command, char *a
 {
     if (user < HAL_USER_SO) {
         cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    /* JP7 and JP8 must be installed in order to reprogram the FPGA.
+     * We extend this to an enabling mechanism for reflashing the firmware.
+     * Unfortunately, we can't read JP7 and JP8 directly, as that just gives
+     * us the last things written to them, so we see if we can read the
+     * FPGA configuration memory.
+     */
+    fpgacfg_access_control(ALLOW_ARM);
+    if (fpgacfg_check_id() != 1) {
+	cli_print(cli, "ERROR: Check that jumpers JP7 and JP8 are installed.");
         return CLI_ERROR;
     }
 

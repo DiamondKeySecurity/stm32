@@ -36,6 +36,7 @@
 #include "stm-led.h"
 #include "stm-uart.h"
 #include "stm-fmc.h"
+#include "stm-fpgacfg.h"
 #include "dfu.h"
 
 #undef HAL_Delay
@@ -68,21 +69,27 @@ void check_early_dfu_jump(void)
     }
 }
 
-int should_dfu()
+static int should_dfu()
 {
-    int i;
-    uint8_t rx = 0;
+    /* JP7 and JP8 must be installed in order to reprogram the FPGA.
+     * We extend this to an enabling mechanism for reflashing the firmware.
+     * Unfortunately, we can't read JP7 and JP8 directly, as that just gives
+     * us the last things written to them, so we see if we can read the
+     * FPGA configuration memory.
+     */
+    fpgacfg_access_control(ALLOW_ARM);
+    if (fpgacfg_check_id() != 1)
+        return 0;
 
     /* While blinking the blue LED for 5 seconds, see if we receive a CR on the MGMT UART.
-     * We've discussed also requiring one or both of the FPGA config jumpers installed
-     * before allowing DFU of the STM32 - that check could be done here.
      */
     led_on(LED_BLUE);
-    for (i = 0; i < 50; i++) {
+    for (int i = 0; i < 50; i++) {
 	HAL_Delay(100);
 	led_toggle(LED_BLUE);
+        uint8_t rx = 0;
 	if (uart_recv_char2(STM_UART_MGMT, &rx, 0) == HAL_OK) {
-	    if (rx == 13) return 1;
+	    if (rx == '\r') return 1;
 	}
     }
     return 0;
