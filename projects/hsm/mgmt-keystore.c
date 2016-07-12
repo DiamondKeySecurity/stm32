@@ -32,8 +32,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
-
 #include "stm-init.h"
 #include "stm-keystore.h"
 #include "stm-fpgacfg.h"
@@ -42,7 +42,6 @@
 #include "mgmt-cli.h"
 #include "mgmt-show.h"
 
-/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #undef HAL_OK
 #define LIBHAL_OK HAL_OK
 #include "hal.h"
@@ -52,6 +51,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 
 int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
@@ -150,6 +150,7 @@ int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, ch
     return CLI_OK;
 }
 
+#if 0
 int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
@@ -176,6 +177,7 @@ int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[],
 
     return CLI_OK;
 }
+#endif
 
 static int key_by_index(struct cli_def *cli, char *str, const uint8_t **name, size_t *name_len, hal_key_type_t *type)
 {
@@ -233,6 +235,13 @@ int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv
     }    
 
     if ((status = hal_ks_delete(type, name, name_len, &hint)) != LIBHAL_OK) {
+        if (status == HAL_ERROR_KEY_NOT_FOUND) {
+            /* sigh, try again including the terminal nul */
+            if ((status = hal_ks_delete(type, name, name_len+1, &hint)) == LIBHAL_OK) {
+                cli_print(cli, "Deleted key %i", hint);
+                return CLI_OK;
+            }
+        }
 	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
@@ -269,6 +278,13 @@ int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv
     }    
 
     if ((status = hal_ks_rename(type, name, name_len, (uint8_t *)argv[1], strlen(argv[1]), &hint)) != LIBHAL_OK) {
+        if (status == HAL_ERROR_KEY_NOT_FOUND) {
+            /* sigh, try again including the terminal nul */
+            if ((status = hal_ks_rename(type, name, name_len+1, (uint8_t *)argv[1], strlen(argv[1]), &hint)) == LIBHAL_OK) {
+                cli_print(cli, "Renamed key %i", hint);
+                return CLI_OK;
+            }
+        }
 	cli_print(cli, "Failed renaming key: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
@@ -281,7 +297,6 @@ int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv
 int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_ks_keydb_t *db;
-    uint8_t name[HAL_RPC_PKEY_NAME_MAX + 1];
     char *type;
 
     db = hal_ks_get_keydb();
@@ -314,10 +329,35 @@ int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[
                 type = "unknown";
                 break;
             }
-            /* name is nul-terminated */
-            memcpy(name, db->keys[i].name, db->keys[i].name_len);
-            name[db->keys[i].name_len] = '\0';
-	    cli_print(cli, "Key %i, type %s, name '%s'", i, type, name);
+            int printable = 1;
+            for (int j = 0; j < db->keys[i].name_len; ++j) {
+                if (!isprint(db->keys[i].name[j])) {
+                    printable = 0;
+                    break;
+                }
+            }
+            if (printable) {
+                /* name may not be nul-terminated in the db, and %*s
+                 * doesn't seem to be working properly, so copy it
+                 */
+                uint8_t name[db->keys[i].name_len + 1];
+                memcpy(name, db->keys[i].name, db->keys[i].name_len);
+                name[db->keys[i].name_len] = '\0';
+                cli_print(cli, "Key %i, type %s, name '%s'", i, type, name);
+            }
+            else {
+                /* hexdump name */
+                uint8_t name[db->keys[i].name_len * 3];
+                for (int j = 0; j < db->keys[i].name_len; ++j) {
+                    uint8_t b = db->keys[i].name[j];
+                    #define hexify(n) (((n) < 10) ? ((n) + '0') : ((n) - 10 + 'A'))
+                    name[j*3] = hexify((b & 0xf0) >> 4);
+                    name[j*3+1] = hexify(b & 0x0f);
+                    name[j*3+2] = ':';
+                }
+                name[sizeof(name)-1] = '\0';
+                cli_print(cli, "Key %i, type %s, name %s", i, type, name);
+            }
 	}
     }
 
@@ -366,9 +406,6 @@ void configure_cli_keystore(struct cli_def *cli)
     /* keystore show */
     cli_command_branch(keystore, show);
 
-    /* keystore erase */
-    cli_command_node(keystore, erase, "Erase the whole keystore");
-
     /* keystore set pin */
     cli_command_node(keystore_set, pin, "Set either 'wheel', 'user' or 'so' PIN");
 
@@ -378,15 +415,20 @@ void configure_cli_keystore(struct cli_def *cli)
     /* keystore clear pin */
     cli_command_node(keystore_clear, pin, "Clear either 'wheel', 'user' or 'so' PIN");
 
+    /* keystore show keys */
+    cli_command_node(keystore_show, keys, "Show what PINs and keys are in the keystore");
+
+#if 0
     /* keystore set key */
     cli_command_node(keystore_set, key, "Set a key");
-
-    /* keystore delete key */
-    cli_command_node(keystore_delete, key, "Delete a key");
+#endif
 
     /* keystore rename key */
     cli_command_node(keystore_rename, key, "Rename a key");
 
-    /* keystore show keys */
-    cli_command_node(keystore_show, keys, "Show what PINs and keys are in the keystore");
+    /* keystore delete key */
+    cli_command_node(keystore_delete, key, "Delete a key");
+
+    /* keystore erase */
+    cli_command_node(keystore, erase, "Erase the whole keystore");
 }

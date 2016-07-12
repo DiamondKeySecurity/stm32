@@ -195,7 +195,7 @@ static int embedded_cli_loop(struct cli_def *cli)
 	}
 
 	if (ctx.l < 0)
-            continue;
+            break;
 
 	/* cli_print(cli, "Process command: '%s'", ctx.cmd); */
 	n = cli_loop_process_cmd(cli, &ctx);
@@ -249,13 +249,15 @@ int cli_main(void)
     mgmt_cli_init(&cli);
     cli_set_auth_callback(&cli, check_auth);
 
-    configure_cli_show(&cli);
+    /* we don't have any privileged commands at the moment */
+    cli_unregister_command(&cli, "enable");
+
     configure_cli_fpga(&cli);
-    configure_cli_misc(&cli);
-    configure_cli_firmware(&cli);
-    configure_cli_bootloader(&cli);
     configure_cli_keystore(&cli);
     configure_cli_masterkey(&cli);
+    configure_cli_firmware(&cli);
+    configure_cli_bootloader(&cli);
+    configure_cli_misc(&cli);
 
     while (1) {
         embedded_cli_loop(&cli);

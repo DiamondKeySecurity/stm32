@@ -124,16 +124,15 @@ static int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[]
     return CLI_OK;
 }
 
-static int cmd_fpga_show_status(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
-    return CLI_OK;
-}
-
 static int cmd_fpga_show_cores(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_core_t *core;
     const hal_core_info_t *info;
+
+    if (! fpgacfg_check_done()) {
+        cli_print(cli, "FPGA has not loaded a bitstream");
+        return CLI_OK;
+    }
 
     for (core = hal_core_iterate(NULL); core != NULL; core = hal_core_iterate(core)) {
 	info = hal_core_info(core);
@@ -150,8 +149,6 @@ void configure_cli_fpga(struct cli_def *cli)
     cli_command_root(fpga);
 
     cli_command_branch(fpga, show);
-    /* show fpga status*/
-    cli_command_node(fpga_show, status, "Show status about the FPGA");
     /* show fpga cores*/
     cli_command_node(fpga_show, cores, "Show FPGA core names and versions");
 

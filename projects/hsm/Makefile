@@ -8,8 +8,7 @@ OBJS = crc32.o \
 	mgmt-fpga.c \
 	mgmt-keystore.c \
 	mgmt-masterkey.c \
-	mgmt-misc.c \
-	mgmt-show.c
+	mgmt-misc.c
 
 BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
