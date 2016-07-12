@@ -241,6 +241,7 @@ int cli_main(void)
     configure_cli_misc(&cli);
     configure_cli_test(&cli);
     configure_cli_keystore(&cli);
+    configure_cli_masterkey(&cli);
 
     while (1) {
         embedded_cli_loop(&cli);

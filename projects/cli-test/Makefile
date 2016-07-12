@@ -1,6 +1,17 @@
 TEST = cli-test
 
-OBJS = crc32.o test_sdram.o mgmt-cli.o mgmt-dfu.c mgmt-fpga.c mgmt-misc.c mgmt-show.c mgmt-test.c mgmt-keystore.o test-mkmif.c
+OBJS = \
+	crc32.o \
+	mgmt-cli.o \
+	mgmt-dfu.o \
+	mgmt-fpga.o \
+	mgmt-keystore.o \
+	mgmt-masterkey.o \
+	mgmt-misc.o \
+	test-mkmif.o \
+	mgmt-show.o \
+	mgmt-test.o \
+	test_sdram.o
 
 BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
