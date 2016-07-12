@@ -76,6 +76,12 @@ def parse_args():
                         help = "Location of firmware tarball",
                         )
 
+    parser.add_argument("--username",
+                        choices = ("so", "wheel"),
+                        default = "so",
+                        help = "Username to use when logging into the HSM",
+                        )
+
     actions = parser.add_mutually_exclusive_group(required = True)
     actions.add_argument("--fpga",
                          action = "store_true",
@@ -128,15 +134,11 @@ def _execute(dst, cmd):
     _write(dst, "\r")
     prompt = _read(dst)
     if prompt.endswith("Username: "):
-        if sys.version_info[0] > 2:
-            user = input("Username (so, wheel): ")
-        else:
-            user = raw_input("Username (so, wheel): ")
-        _write(dst, user + "\r")
+        _write(dst, args.username + "\r")
         prompt = _read(dst)
         if prompt.endswith("Password: "):
             if not pin:
-                pin = getpass.getpass("PIN: ")
+                pin = getpass.getpass("{} PIN: ".format(args.username))
             _write(dst, pin + "\r")
             prompt = _read(dst)
     if not prompt.endswith(("> ", "# ")):
@@ -237,6 +239,7 @@ If you got here by accident, ^C now, without answering the PIN prompt.
 
 
 def main():
+    global args
     args = parse_args()
 
     if args.bootloader and not args.simon_says_whack_my_bootloader:
