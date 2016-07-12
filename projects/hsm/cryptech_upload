@@ -128,11 +128,15 @@ def _execute(dst, cmd):
     _write(dst, "\r")
     prompt = _read(dst)
     if prompt.endswith("Username: "):
-        _write(dst, "so\r")
+        if sys.version_info[0] > 2:
+            user = input("Username (so, wheel): ")
+        else:
+            user = raw_input("Username (so, wheel): ")
+        _write(dst, user + "\r")
         prompt = _read(dst)
         if prompt.endswith("Password: "):
             if not pin:
-                pin = getpass.getpass("SO PIN: ")
+                pin = getpass.getpass("PIN: ")
             _write(dst, pin + "\r")
             prompt = _read(dst)
     if not prompt.endswith(("> ", "# ")):
