@@ -20,7 +20,7 @@
 #undef HAL_OK
 
 
-#define SCLK_DIV 0x01
+#define SCLK_DIV 0x20
 
 typedef union {
     uint8_t byte[4];
