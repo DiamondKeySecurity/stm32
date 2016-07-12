@@ -50,6 +50,7 @@
 #include "hal_internal.h"
 #undef HAL_OK
 
+#include <stdlib.h>
 #include <string.h>
 
 
@@ -149,9 +150,139 @@ int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, ch
     return CLI_OK;
 }
 
+int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    hal_error_t status;
+    int hint = 0;
+
+    if (argc != 2) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore set key <name> <der>");
+	return CLI_ERROR;
+    }
+
+    if ((status = hal_ks_store(HAL_KEY_TYPE_EC_PUBLIC,
+			       HAL_CURVE_NONE,
+			       0,
+			       (uint8_t *) argv[0], strlen(argv[0]),
+			       (uint8_t *) argv[1], strlen(argv[1]),
+			       &hint)) != LIBHAL_OK) {
+
+	cli_print(cli, "Failed storing key: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Stored key %i", hint);
+
+    return CLI_OK;
+}
+
+static int key_by_index(struct cli_def *cli, char *str, const uint8_t **name, size_t *name_len, hal_key_type_t *type)
+{
+    char *end;
+    long index;
+
+    /* base=0, because someone will try to be clever, and enter '0x0001' */
+    index = strtol(str, &end, 0);
+
+    /* If strtol converted the whole string, it's an index.
+     * Otherwise, it could be something like "3Mustaphas3".
+     */
+    if (*end == '\0') {
+        const hal_ks_keydb_t *db = hal_ks_get_keydb();
+        if (index < 0 || index >= sizeof(db->keys)/sizeof(*db->keys)) {
+            cli_print(cli, "Index %ld out of range", index);
+            return CLI_ERROR_ARG;
+        }
+	if (! db->keys[index].in_use) {
+            cli_print(cli, "Key %ld not in use", index);
+            return CLI_ERROR_ARG;
+        }
+        *name = db->keys[index].name;
+        *name_len = db->keys[index].name_len;
+        *type = db->keys[index].type;
+        return CLI_OK;
+    }
+    return CLI_ERROR;
+}
+
+int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    hal_error_t status;
+    int hint = 0;
+    const uint8_t *name;
+    size_t name_len;
+    hal_key_type_t type;
+
+    if (argc != 1) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore delete key <name or index>");
+	return CLI_ERROR;
+    }
+
+    switch (key_by_index(cli, argv[0], &name, &name_len, &type)) {
+    case CLI_OK:
+        break;
+    case CLI_ERROR:
+        name = (uint8_t *)argv[0];
+        name_len = strlen(argv[0]);
+        type = HAL_KEY_TYPE_EC_PUBLIC;
+        break;
+    default:
+        return CLI_ERROR;
+    }    
+
+    if ((status = hal_ks_delete(type, name, name_len, &hint)) != LIBHAL_OK) {
+	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Deleted key %i", hint);
+
+    return CLI_OK;
+}
+
+int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    hal_error_t status;
+    int hint = 0;
+    const uint8_t *name;
+    size_t name_len;
+    hal_key_type_t type;
+
+    if (argc != 2) {
+	cli_print(cli, "Wrong number of arguments (%i).", argc);
+	cli_print(cli, "Syntax: keystore rename key <name or index> <new name>");
+	return CLI_ERROR;
+    }
+
+    switch (key_by_index(cli, argv[0], &name, &name_len, &type)) {
+    case CLI_OK:
+        break;
+    case CLI_ERROR:
+        name = (uint8_t *)argv[0];
+        name_len = strlen(argv[0]);
+        type = HAL_KEY_TYPE_EC_PUBLIC;
+        break;
+    default:
+        return CLI_ERROR;
+    }    
+
+    if ((status = hal_ks_rename(type, name, name_len, (uint8_t *)argv[1], strlen(argv[1]), &hint)) != LIBHAL_OK) {
+	cli_print(cli, "Failed renaming key: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Renamed key %i", hint);
+
+    return CLI_OK;
+}
+
 int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_ks_keydb_t *db;
+    uint8_t name[HAL_RPC_PKEY_NAME_MAX + 1];
+    char *type;
 
     db = hal_ks_get_keydb();
 
@@ -166,8 +297,27 @@ int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[
 	if (! db->keys[i].in_use) {
 	    cli_print(cli, "Key %i, not in use", i);
 	} else {
-	    cli_print(cli, "Key %i, in use 0x%x",
-		      i, db->keys[i].in_use);
+            switch (db->keys[i].type) {
+            case HAL_KEY_TYPE_RSA_PRIVATE:
+                type = "RSA private";
+                break;
+            case HAL_KEY_TYPE_RSA_PUBLIC:
+                type = "RSA public";
+                break;
+            case HAL_KEY_TYPE_EC_PRIVATE:
+                type = "EC private";
+                break;
+            case HAL_KEY_TYPE_EC_PUBLIC:
+                type = "EC public";
+                break;
+            default:
+                type = "unknown";
+                break;
+            }
+            /* name is nul-terminated */
+            memcpy(name, db->keys[i].name, db->keys[i].name_len);
+            name[db->keys[i].name_len] = '\0';
+	    cli_print(cli, "Key %i, type %s, name '%s'", i, type, name);
 	}
     }
 
@@ -209,6 +359,10 @@ void configure_cli_keystore(struct cli_def *cli)
     cli_command_branch(keystore, set);
     /* keystore clear */
     cli_command_branch(keystore, clear);
+    /* keystore delete */
+    cli_command_branch(keystore, delete);
+    /* keystore rename */
+    cli_command_branch(keystore, rename);
     /* keystore show */
     cli_command_branch(keystore, show);
 
@@ -223,6 +377,15 @@ void configure_cli_keystore(struct cli_def *cli)
 
     /* keystore clear pin */
     cli_command_node(keystore_clear, pin, "Clear either 'wheel', 'user' or 'so' PIN");
+
+    /* keystore set key */
+    cli_command_node(keystore_set, key, "Set a key");
+
+    /* keystore delete key */
+    cli_command_node(keystore_delete, key, "Delete a key");
+
+    /* keystore rename key */
+    cli_command_node(keystore_rename, key, "Rename a key");
 
     /* keystore show keys */
     cli_command_node(keystore_show, keys, "Show what PINs and keys are in the keystore");
