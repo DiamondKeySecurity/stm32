@@ -32,14 +32,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
-
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "mgmt-cli.h"
 #include "mgmt-masterkey.h"
 
-/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #undef HAL_OK
 #define LIBHAL_OK HAL_OK
 #include <hal.h>
@@ -74,7 +73,7 @@ static int _parse_hex_groups(uint8_t *buf, size_t len, char *argv[], int argc)
 
     for (i = 0; i < argc; i++) {
 	if (dst >= end) return -1;
-	*dst++ = strtol(argv[i], &err_ptr, 16);
+	*dst++ = strtoul(argv[i], &err_ptr, 16);
 	if (*err_ptr) return -2;
     }
 
@@ -96,27 +95,46 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
     return CLI_OK;
 }
 
-static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
+                          char *label, hal_error_t (*writer)(uint8_t *, size_t))
 {
     uint8_t buf[KEK_LENGTH] = {0};
     hal_error_t err;
     int i;
 
-    if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
-	cli_print(cli, "Failed parsing master key, expected up to 8 groups of 32-bit hex chars (%i)", i);
-	return CLI_OK;
+    if (argc == 0) {
+        /* fill master key with yummy randomness */
+        if ((err = hal_get_random(NULL, buf, sizeof(buf))) != LIBHAL_OK) {
+            cli_print(cli, "Error getting random key: %s", hal_error_string(err));
+            return CLI_ERROR;
+        }
+        cli_print(cli, "Random key:\n");
+        uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+        cli_print(cli, "\n");
     }
 
-    cli_print(cli, "Parsed key:\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-    cli_print(cli, "\n");
+    else {
+        if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
+            cli_print(cli, "Failed parsing master key, expected up to 8 groups of 32-bit hex chars (%i)", i);
+            return CLI_ERROR;
+        }
 
-    if ((err = masterkey_volatile_write(buf, sizeof(buf))) == LIBHAL_OK) {
-	cli_print(cli, "Master key set in volatile memory");
+        cli_print(cli, "Parsed key:\n");
+        uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+        cli_print(cli, "\n");
+    }
+
+    if ((err = writer(buf, sizeof(buf))) == LIBHAL_OK) {
+	cli_print(cli, "Master key set in %s memory", label);
     } else {
-	cli_print(cli, "Failed writing key to volatile memory: %s", hal_error_string(err));
+	cli_print(cli, "Failed writing key to %s memory: %s", label, hal_error_string(err));
     }
     return CLI_OK;
+}
+
+static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    return _masterkey_set(cli, argv, argc, "volatile", masterkey_volatile_write);
 }
 
 static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
@@ -133,25 +151,7 @@ static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *a
 
 static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    uint8_t buf[KEK_LENGTH] = {0};
-    hal_error_t err;
-    int i;
-
-    if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
-	cli_print(cli, "Failed parsing master key, expected up to 8 groups of 32-bit hex chars (%i)", i);
-	return CLI_OK;
-    }
-
-    cli_print(cli, "Parsed key:\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-    cli_print(cli, "\n");
-
-    if ((err = masterkey_flash_write(buf, sizeof(buf))) == LIBHAL_OK) {
-	cli_print(cli, "Master key set in unsecure flash memory");
-    } else {
-	cli_print(cli, "Failed writing key to unsecure flash memory: %s", hal_error_string(err));
-    }
-    return CLI_OK;
+    return _masterkey_set(cli, argv, argc, "flash", masterkey_flash_write);
 }
 
 static int cmd_masterkey_unsecure_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
