@@ -241,13 +241,6 @@ int main()
     fmc_init();
     sdram_init();
 
-    /* Haaaack. probe_cores() calls malloc(), which works from the main
-     * thread, but not from a spawned thread. It would be better to
-     * rewrite it to use static memory, but for now, just force it to
-     * probe early.
-     */
-    hal_core_iterate(NULL);
-
 #if NUM_RPC_TASK > 1
     if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL ||
         (dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex)) == NULL)
