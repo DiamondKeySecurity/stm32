@@ -142,4 +142,6 @@ for port in ports:
 
     tty.close()
 
-sys.stdout.write("export {}\n".format(" ".join("{}='{}'".format(var, env[var]) for var in sorted(env))))
+if env:
+    sys.stdout.write("export {}\n".format(
+        " ".join("{}='{}'".format(var, env[var]) for var in sorted(env))))
