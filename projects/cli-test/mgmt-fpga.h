@@ -35,7 +35,6 @@
 #ifndef __STM32_CLI_MGMT_FPGA_H
 #define __STM32_CLI_MGMT_FPGA_H
 
-#include "stm-init.h"
 #include <libcli.h>
 
 

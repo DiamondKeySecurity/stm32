@@ -145,19 +145,20 @@ static int cmd_fpga_show_cores(struct cli_def *cli, const char *command, char *a
 
 void configure_cli_fpga(struct cli_def *cli)
 {
-    /* fpga */
-    cli_command_root(fpga);
+    struct cli_command *c = cli_register_command(cli, NULL, "fpga", NULL, 0, 0, NULL);
 
-    cli_command_branch(fpga, show);
-    /* show fpga cores*/
-    cli_command_node(fpga_show, cores, "Show FPGA core names and versions");
+    struct cli_command *c_show = cli_register_command(cli, c, "show", NULL, 0, 0, NULL);
+    struct cli_command *c_bitstream = cli_register_command(cli, c, "bitstream", NULL, 0, 0, NULL);
+
+    /* fpga show cores */
+    cli_register_command(cli, c_show, "cores", cmd_fpga_show_cores, 0, 0, "Show FPGA core names and versions");
 
     /* fpga reset */
-    cli_command_node(fpga, reset, "Reset FPGA (config reset)");
+    cli_register_command(cli, c, "reset", cmd_fpga_reset, 0, 0, "Reset FPGA (config reset)");
 
-    cli_command_branch(fpga, bitstream);
     /* fpga bitstream upload */
-    cli_command_node(fpga_bitstream, upload, "Upload new FPGA bitstream");
+    cli_register_command(cli, c_bitstream, "upload", cmd_fpga_bitstream_upload, 0, 0, "Upload new FPGA bitstream");
+
     /* fpga bitstream erase */
-    cli_command_node(fpga_bitstream, erase, "Erase FPGA config memory");
+    cli_register_command(cli, c_bitstream, "erase", cmd_fpga_bitstream_erase, 0, 0, "Erase FPGA config memory");
 }

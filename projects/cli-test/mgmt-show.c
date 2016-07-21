@@ -32,8 +32,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
-
 #include "stm-init.h"
 #include "stm-keystore.h"
 #include "stm-fpgacfg.h"
@@ -42,7 +42,6 @@
 #include "mgmt-cli.h"
 #include "mgmt-show.h"
 
-/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #undef HAL_OK
 #define LIBHAL_OK HAL_OK
 #include "hal.h"
@@ -52,7 +51,6 @@
 #undef HAL_OK
 
 #include <string.h>
-
 
 static int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
@@ -127,18 +125,21 @@ static int cmd_show_keystore_data(struct cli_def *cli, const char *command, char
 
 void configure_cli_show(struct cli_def *cli)
 {
-    /* show */
-    cli_command_root(show);
+    struct cli_command *c = cli_register_command(cli, NULL, "show", NULL, 0, 0, NULL);
 
     /* show cpuspeed */
-    cli_command_node(show, cpuspeed, "Show the speed at which the CPU currently operates");
+    cli_register_command(cli, c, "cpuspeed", cmd_show_cpuspeed, 0, 0, "Show the speed at which the CPU currently operates");
 
-    cli_command_branch(show, fpga);
+    struct cli_command *c_fpga = cli_register_command(cli, c, "fpga", NULL, 0, 0, NULL);
+
     /* show fpga status*/
-    cli_command_node(show_fpga, status, "Show status about the FPGA");
+    cli_register_command(cli, c_fpga, "status", cmd_show_fpga_status, 0, 0, "Show status about the FPGA");
 
-    cli_command_branch(show, keystore);
+    struct cli_command *c_keystore = cli_register_command(cli, c, "keystore", NULL, 0, 0, NULL);
+
     /* show keystore status*/
-    cli_command_node(show_keystore, status, "Show status of the keystore memory");
-    cli_command_node(show_keystore, data, "Show the first page of the keystore memory");
+    cli_register_command(cli, c_keystore, "status", cmd_show_keystore_status, 0, 0, "Show status of the keystore memory");
+
+    /* show keystore data */
+    cli_register_command(cli, c_keystore, "data", cmd_show_keystore_data, 0, 0, "Show the first page of the keystore memory");
 }

@@ -131,8 +131,9 @@ static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], in
 void configure_cli_misc(struct cli_def *cli)
 {
     /* filetransfer */
-    cli_command_root_node(filetransfer, "Test file transfering");
+    cli_register_command(cli, NULL, "filetransfer", cmd_filetransfer, 0, 0, "Test file transfering");
+
     /* reboot */
-    cli_command_root_node(reboot, "Reboot the STM32");
+    cli_register_command(cli, NULL, "reboot", cmd_reboot, 0, 0, "Reboot the STM32");
 }
 

@@ -44,8 +44,7 @@
 
 #include <stdlib.h>
 
-
-int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     // run external memory initialization sequence
     HAL_StatusTypeDef status;
@@ -110,12 +109,11 @@ int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int a
 
 void configure_cli_test(struct cli_def *cli)
 {
-    /* test */
-    cli_command_root(test);
+    struct cli_command *c = cli_register_command(cli, NULL, "test", NULL, 0, 0, NULL);
 
     /* test sdram */
-    cli_command_node(test, sdram, "Run SDRAM tests");
+    cli_register_command(cli, c, "sdram", cmd_test_sdram, 0, 0, "Run SDRAM tests");
 
     /* test mkmif */
-    cli_command_node(test, mkmif, "Run Master Key Memory Interface tests");
+    cli_register_command(cli, c, "mkmif", cmd_test_mkmif, 0, 0, "Run Master Key Memory Interface tests");
 }

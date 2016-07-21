@@ -35,9 +35,10 @@
 /* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
 #include "stm-init.h"
-#include "mgmt-cli.h"
 #include "stm-uart.h"
 #include "stm-flash.h"
+
+#include "mgmt-cli.h"
 
 #undef HAL_OK
 #define HAL_OK LIBHAL_OK
@@ -63,7 +64,9 @@ static int cmd_firmware_upload(struct cli_def *cli, const char *command, char *a
 
 void configure_cli_firmware(struct cli_def *cli)
 {
-    cli_command_root(firmware);
+    struct cli_command *c;
 
-    cli_command_node(firmware, upload, "Upload new firmware image");
+    c = cli_register_command(cli, NULL, "firmware", NULL, 0, 0, NULL);
+
+    cli_register_command(cli, c, "upload", cmd_firmware_upload, 0, 0, "Upload new firmware image");
 }

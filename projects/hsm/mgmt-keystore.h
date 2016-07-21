@@ -35,7 +35,6 @@
 #ifndef __STM32_CLI_MGMT_KEYSTORE_H
 #define __STM32_CLI_MGMT_KEYSTORE_H
 
-#include "stm-init.h"
 #include <libcli.h>
 
 extern void configure_cli_keystore(struct cli_def *cli);

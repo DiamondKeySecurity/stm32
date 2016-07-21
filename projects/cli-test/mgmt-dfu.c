@@ -115,9 +115,11 @@ static int cmd_dfu_jump(struct cli_def *cli, const char *command, char *argv[], 
 
 void configure_cli_dfu(struct cli_def *cli)
 {
-    cli_command_root(dfu);
+    struct cli_command *c;
 
-    cli_command_node(dfu, dump, "Show the first 256 bytes of the loaded firmware");
-    cli_command_node(dfu, jump, "Jump to the loaded firmware");
-    cli_command_node(dfu, erase, "Erase the firmware memory (will crash the CLI)");
+    c = cli_register_command(cli, NULL, "dfu", NULL, 0, 0, NULL);
+
+    cli_register_command(cli, c, "dump", cmd_dfu_dump, 0, 0, "Show the first 256 bytes of the loaded firmware");
+    cli_register_command(cli, c, "jump", cmd_dfu_jump, 0, 0, "Jump to the loaded firmware");
+    cli_register_command(cli, c, "erase", cmd_dfu_erase, 0, 0, "Erase the firmware memory (will crash the CLI)");
 }

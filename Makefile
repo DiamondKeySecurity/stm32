@@ -43,7 +43,7 @@ export RTOS_DIR = $(MBED_DIR)/rtos
 export LIBHAL_SRC = $(CRYPTECH_ROOT)/sw/libhal
 export LIBHAL_BLD = $(LIBS_DIR)/libhal
 
-export LIBCLI_SRC = $(CRYPTECH_ROOT)/user/ft/libcli
+export LIBCLI_SRC = $(CRYPTECH_ROOT)/user/paul/libcli
 export LIBCLI_BLD = $(LIBS_DIR)/libcli
 
 export LIBTFM_SRC = $(CRYPTECH_ROOT)/sw/thirdparty/libtfm

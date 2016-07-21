@@ -168,19 +168,22 @@ static int cmd_masterkey_unsecure_erase(struct cli_def *cli, const char *command
 
 void configure_cli_masterkey(struct cli_def *cli)
 {
-    /* masterkey */
-    cli_command_root(masterkey);
+    struct cli_command *c = cli_register_command(cli, NULL, "masterkey", NULL, 0, 0, NULL);
+
     /* masterkey status */
-    cli_command_node(masterkey, status, "Show status of master key in RAM/flash");
+    cli_register_command(cli, c, "status", cmd_masterkey_status, 0, 0, "Show status of master key in RAM/flash");
 
     /* masterkey set */
-    cli_command_node(masterkey, set, "Set the master key in the volatile Master Key Memory");
-    /* masterkey erase */
-    cli_command_node(masterkey, erase, "Erase the master key from the volatile Master Key Memory");
+    cli_register_command(cli, c, "set", cmd_masterkey_set, 0, 0, "Set the master key in the volatile Master Key Memory");
 
-    cli_command_branch(masterkey, unsecure);
+    /* masterkey erase */
+    cli_register_command(cli, c, "erase", cmd_masterkey_erase, 0, 0, "Erase the master key from the volatile Master Key Memory");
+
+    struct cli_command *c_unsecure = cli_register_command(cli, c, "unsecure", NULL, 0, 0, NULL);
+
     /* masterkey unsecure set */
-    cli_command_node(masterkey_unsecure, set, "Set master key in unprotected flash memory (if unsure, DON'T)");
+    cli_register_command(cli, c_unsecure, "set", cmd_masterkey_unsecure_set, 0, 0, "Set master key in unprotected flash memory (if unsure, DON'T)");
+
     /* masterkey unsecure erase */
-    cli_command_node(masterkey_unsecure, erase, "Erase master key from unprotected flash memory");
+    cli_register_command(cli, c_unsecure, "erase", cmd_masterkey_unsecure_erase, 0, 0, "Erase master key from unprotected flash memory");
 }

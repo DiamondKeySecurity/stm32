@@ -75,7 +75,9 @@ static int cmd_bootloader_upload(struct cli_def *cli, const char *command, char 
 
 void configure_cli_bootloader(struct cli_def *cli)
 {
-    cli_command_root(bootloader);
+    struct cli_command *c;
 
-    cli_command_node(bootloader, upload, "Upload new bootloader image");
+    c = cli_register_command(cli, NULL, "bootloader", NULL, 0, 0, NULL);
+
+    cli_register_command(cli, c, "upload", cmd_bootloader_upload, 0, 0, "Upload new bootloader image");
 }

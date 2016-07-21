@@ -35,7 +35,6 @@
 #ifndef __STM32_CLI_MGMT_DFU_H
 #define __STM32_CLI_MGMT_DFU_H
 
-#include "stm-init.h"
 #include <libcli.h>
 
 /* symbols defined in the linker script (STM32F429BI.ld) */

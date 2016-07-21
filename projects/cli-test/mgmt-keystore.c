@@ -32,8 +32,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
-
 #include "stm-init.h"
 #include "stm-keystore.h"
 #include "stm-fpgacfg.h"
@@ -42,7 +42,6 @@
 #include "mgmt-cli.h"
 #include "mgmt-show.h"
 
-/* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #undef HAL_OK
 #define LIBHAL_OK HAL_OK
 #include "hal.h"
@@ -54,7 +53,7 @@
 #include <string.h>
 
 
-int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_ks_keydb_t *db;
     hal_user_t user;
@@ -92,7 +91,7 @@ int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[],
     return CLI_OK;
 }
 
-int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_ks_keydb_t *db;
     hal_user_t user;
@@ -130,7 +129,7 @@ int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char *argv[
     return CLI_OK;
 }
 
-int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
     hal_client_handle_t client = { -1 };
@@ -150,7 +149,7 @@ int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *command, ch
     return CLI_OK;
 }
 
-int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
     int hint = 0;
@@ -206,7 +205,7 @@ static int key_by_index(struct cli_def *cli, char *str, const uint8_t **name, si
     return CLI_ERROR;
 }
 
-int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
     int hint = 0;
@@ -242,7 +241,7 @@ int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv
     return CLI_OK;
 }
 
-int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
     int hint = 0;
@@ -278,7 +277,7 @@ int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv
     return CLI_OK;
 }
 
-int cmd_keystore_show_data(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_show_data(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     uint8_t buf[KEYSTORE_PAGE_SIZE];
     uint32_t i;
@@ -300,7 +299,7 @@ int cmd_keystore_show_data(struct cli_def *cli, const char *command, char *argv[
     return CLI_OK;
 }
 
-int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     const hal_ks_keydb_t *db;
     uint8_t name[HAL_RPC_PKEY_NAME_MAX + 1];
@@ -369,7 +368,7 @@ int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[
     return CLI_OK;
 }
 
-int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
+static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     int status;
 
@@ -393,43 +392,38 @@ int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], i
 
 void configure_cli_keystore(struct cli_def *cli)
 {
-    /* keystore */
-    cli_command_root(keystore);
-    /* keystore set */
-    cli_command_branch(keystore, set);
-    /* keystore clear */
-    cli_command_branch(keystore, clear);
-    /* keystore delete */
-    cli_command_branch(keystore, delete);
-    /* keystore rename */
-    cli_command_branch(keystore, rename);
-    /* keystore show */
-    cli_command_branch(keystore, show);
+    struct cli_command *c = cli_register_command(cli, NULL, "keystore", NULL, 0, 0, NULL);
+
+    struct cli_command *c_set = cli_register_command(cli, c, "set", NULL, 0, 0, NULL);
+    struct cli_command *c_clear = cli_register_command(cli, c, "clear", NULL, 0, 0, NULL);
+    struct cli_command *c_delete = cli_register_command(cli, c, "delete", NULL, 0, 0, NULL);
+    struct cli_command *c_rename = cli_register_command(cli, c, "rename", NULL, 0, 0, NULL);
+    struct cli_command *c_show = cli_register_command(cli, c, "show", NULL, 0, 0, NULL);
 
     /* keystore erase */
-    cli_command_node(keystore, erase, "Erase the whole keystore");
-
+    cli_register_command(cli, c, "erase", cmd_keystore_erase, 0, 0, "Erase the whole keystore");
     /* keystore set pin */
-    cli_command_node(keystore_set, pin, "Set either 'wheel', 'user' or 'so' PIN");
+    struct cli_command *c_set_pin = cli_register_command(cli, c_set, "pin", cmd_keystore_set_pin, 0, 0, "Set either 'wheel', 'user' or 'so' PIN");
 
     /* keystore set pin iterations */
-    cli_command_node(keystore_set_pin, iterations, "Set PBKDF2 iterations for PINs");
+    cli_register_command(cli, c_set_pin, "iterations", cmd_keystore_set_pin_iterations, 0, 0, "Set PBKDF2 iterations for PINs");
 
     /* keystore clear pin */
-    cli_command_node(keystore_clear, pin, "Clear either 'wheel', 'user' or 'so' PIN");
+    cli_register_command(cli, c_clear, "pin", cmd_keystore_clear_pin, 0, 0, "Clear either 'wheel', 'user' or 'so' PIN");
 
     /* keystore set key */
-    cli_command_node(keystore_set, key, "Set a key");
+    cli_register_command(cli, c_set, "key", cmd_keystore_set_key, 0, 0, "Set a key");
 
     /* keystore delete key */
-    cli_command_node(keystore_delete, key, "Delete a key");
+    cli_register_command(cli, c_delete, "key", cmd_keystore_delete_key, 0, 0, "Delete a key");
 
     /* keystore rename key */
-    cli_command_node(keystore_rename, key, "Rename a key");
-
+    cli_register_command(cli, c_rename, "key", cmd_keystore_rename_key, 0, 0, "Rename a key");
+ 
     /* keystore show data */
-    cli_command_node(keystore_show, data, "Dump the first page from the keystore memory");
+    cli_register_command(cli, c_show, "data", cmd_keystore_show_data, 0, 0, "Dump the first page from the keystore memory");
 
-    /* keystore show keys */
-    cli_command_node(keystore_show, keys, "Show what PINs and keys are in the keystore");
+   /* keystore show keys */
+    cli_register_command(cli, c_show, "keys", cmd_keystore_show_keys, 0, 0, "Show what PINs and keys are in the keystore");
+
 }
