@@ -228,6 +228,20 @@ static uint8_t *sdram_malloc(size_t size)
     return p;
 }
 
+#if NUM_RPC_TASK > 1
+/* Critical section start/end, currently used just for hal_core_alloc/_free.
+ */
+void hal_critical_section_start(void)
+{
+    __disable_irq();
+}
+
+void hal_critical_section_end(void)
+{
+    __enable_irq();
+}
+#endif
+
 /* The main thread. This does all the setup, and the worker threads handle
  * the rest.
  */
@@ -243,7 +257,7 @@ int main()
 
 #if NUM_RPC_TASK > 1
     if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL ||
-        (dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex)) == NULL)
+        (dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex))) == NULL)
 	Error_Handler();
 #endif
     if ((rpc_sem = osSemaphoreCreate(osSemaphore(rpc_sem), 0)) == NULL)

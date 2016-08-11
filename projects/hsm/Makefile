@@ -26,9 +26,7 @@ BOARD_OBJS = \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
 	$(BOARD_DIR)/stm32f4xx_it_rtos.o
 
-ifndef CRYPTECH_ROOT
-  CRYPTECH_ROOT := $(abspath ../../../..)
-endif
+CFLAGS += -DNUM_RPC_TASK=6
 
 CFLAGS += -I$(LIBHAL_SRC)
 CFLAGS += -I$(LIBCLI_SRC)
