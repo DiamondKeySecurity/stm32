@@ -35,12 +35,15 @@
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-sdram.h"
+#include "stm-fmc.h"
+#include "stm-fpgacfg.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-test.h"
 
 #include "test_sdram.h"
 #include "test_mkmif.h"
+#include "test-fmc.h"
 
 #include <stdlib.h>
 
@@ -107,6 +110,75 @@ static int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[]
     return CLI_OK;
 }
 
+static int cmd_test_fmc(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    int i, num_cycles = 1, num_rounds = 100000;
+
+    if (argc >= 1) {
+	num_cycles = strtol(argv[0], NULL, 0);
+	if (num_cycles > 100000) num_cycles = 100000;
+	if (num_cycles < 1) num_cycles = 1;
+    }
+
+    if (argc == 2) {
+	num_rounds = strtol(argv[1], NULL, 0);
+	if (num_rounds > 1000000) num_rounds = 1000000;
+	if (num_rounds < 1) num_rounds = 1;
+    }
+
+    cli_print(cli, "Checking if FPGA has loaded it's bitstream");
+    // Blink blue LED until the FPGA reports it has loaded it's bitstream
+    led_on(LED_BLUE);
+    while (! fpgacfg_check_done()) {
+	for (i = 0; i < 4; i++) {
+	    HAL_Delay(500);
+	    led_toggle(LED_BLUE);
+	}
+    }
+
+    // prepare fmc interface
+    cli_print(cli, "Initializing FMC interface");
+    fmc_init();
+
+    // turn on green led, turn off other leds
+    led_on(LED_GREEN);
+    led_off(LED_YELLOW);
+    led_off(LED_RED);
+    led_off(LED_BLUE);
+
+    // vars
+    volatile int data_test_ok = 0, addr_test_ok = 0, successful_runs = 0, failed_runs = 0, sleep = 0;
+
+    for (i = 1; i <= num_cycles; i++) {
+	cli_print(cli, "Starting FMC test (%i/%i)", i, num_cycles);
+
+	// test data bus
+	data_test_ok = test_fpga_data_bus(cli, num_rounds);
+	// test address bus
+	addr_test_ok = test_fpga_address_bus(cli, num_rounds);
+
+	cli_print(cli, "Data: %i, addr %i", data_test_ok, addr_test_ok);
+
+	if (data_test_ok == num_rounds &&
+	    addr_test_ok == num_rounds) {
+	    // toggle yellow led to indicate, that we are alive
+	    led_toggle(LED_YELLOW);
+
+	    successful_runs++;
+	    sleep = 0;
+	} else {
+	    led_on(LED_RED);
+	    failed_runs++;
+	    sleep = 2000;
+	}
+
+	cli_print(cli, "Success %i, failed %i runs\r\n", successful_runs, failed_runs);
+	HAL_Delay(sleep);
+    }
+
+    return CLI_OK;
+}
+
 void configure_cli_test(struct cli_def *cli)
 {
     struct cli_command *c = cli_register_command(cli, NULL, "test", NULL, 0, 0, NULL);
@@ -116,4 +188,7 @@ void configure_cli_test(struct cli_def *cli)
 
     /* test mkmif */
     cli_register_command(cli, c, "mkmif", cmd_test_mkmif, 0, 0, "Run Master Key Memory Interface tests");
+
+    /* test fmc */
+    cli_register_command(cli, c, "fmc", cmd_test_fmc, 0, 0, "Run FMC bus tests");
 }
