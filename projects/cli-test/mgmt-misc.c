@@ -58,14 +58,14 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 
     if (! control_mgmt_uart_dma_rx(DMA_RX_STOP)) {
 	cli_print(cli, "Failed stopping DMA");
-	return CLI_OK;
+	goto fail;
     }
 
     cli_print(cli, "OK, write size (4 bytes), data in %li byte chunks, CRC-32 (4 bytes)", (uint32_t) n);
 
     if (uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000) != HAL_OK) {
 	cli_print(cli, "Receive timed out");
-	return CLI_ERROR;
+	goto fail;
     }
 
     cli_print(cli, "Send %li bytes of data", filesize);
@@ -80,7 +80,7 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 
 	if (uart_receive_bytes(STM_UART_MGMT, (void *) buf, n, 1000) != HAL_OK) {
 	    cli_print(cli, "Receive timed out");
-	    return CLI_ERROR;
+	    goto fail;
 	}
 	filesize -= n;
 	my_crc = update_crc(my_crc, buf, n);
@@ -90,7 +90,7 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 	 */
 	if (data_callback != NULL && ! data_callback(buf, (size_t) n)) {
 	    cli_print(cli, "Data processing failed");
-	    return CLI_OK;
+	    goto fail;
 	}
 
 	counter++;
@@ -106,6 +106,8 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 	cli_print(cli, "CRC checksum did NOT match");
     }
 
+ fail:
+    control_mgmt_uart_dma_rx(DMA_RX_START);
     return CLI_OK;
 }
 
