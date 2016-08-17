@@ -91,28 +91,21 @@ typedef struct {
     uint8_t buf[MAX_PKT_SIZE];
 } rpc_buffer_t;
 
+/* A mail queue (memory pool + message queue) for RPC request messages.
+ */
+osMailQId  ibuf_queue;
+osMailQDef(ibuf_queue, NUM_RPC_TASK, rpc_buffer_t);
+
 #if NUM_RPC_TASK > 1
 /* A mutex to arbitrate concurrent UART transmits, from RPC responses.
  */
 osMutexId  uart_mutex;
 osMutexDef(uart_mutex);
-
-/* A mutex so only one dispatch thread can receive requests.
- */
-osMutexId  dispatch_mutex;
-osMutexDef(dispatch_mutex);
 #endif
 
-/* Semaphore to inform the dispatch thread that there's a new RPC request.
- */
-osSemaphoreId  rpc_sem;
-osSemaphoreDef(rpc_sem);
-
 static volatile uint8_t uart_rx;	/* current character received from UART */
-static rpc_buffer_t * volatile rbuf;	/* current RPC input buffer */
-static volatile int reenable_recv = 1;
 
-/* Callback for HAL_UART_Receive_IT().
+/* Callback for HAL_UART_Receive_DMA().
  * With multiple worker threads, we can't do a blocking receive, because
  * that prevents other threads from sending RPC responses (because they
  * both want to lock the UART - see stm32f4xx_hal_uart.c). So we have to
@@ -122,25 +115,35 @@ static volatile int reenable_recv = 1;
  */
 void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+    /* current RPC input buffer */
+    static rpc_buffer_t *ibuf = NULL;
     int complete;
 
-    if (hal_slip_recv_char(rbuf->buf, &rbuf->len, sizeof(rbuf->buf), &complete) != LIBHAL_OK)
+    if (ibuf == NULL) {
+        if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 0)) == NULL)
+            Error_Handler();
+        ibuf->len = 0;
+    }
+
+    if (hal_slip_recv_char(ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
         Error_Handler();
 
-    if (complete)
-	if (osSemaphoreRelease(rpc_sem) != osOK)
+    if (complete) {
+	if (osMailPut(ibuf_queue, (void *)ibuf) != osOK)
             Error_Handler();
+        ibuf = NULL;
+    }
+}
 
-    if (HAL_UART_Receive_IT(huart, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
-        /* We may have collided with a transmit.
-         * Signal the dispatch_thread to try again.
-         */
-        reenable_recv = 1;
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    /* I dunno, just trap it for now */
+    Error_Handler();
 }
 
 hal_error_t hal_serial_recv_char(uint8_t *cp)
 {
-    /* return the character from HAL_UART_Receive_IT */
+    /* return the character from HAL_UART_Receive_DMA */
     *cp = uart_rx;
     return LIBHAL_OK;
 }
@@ -154,49 +157,35 @@ hal_error_t hal_serial_send_char(uint8_t c)
  */
 void dispatch_thread(void const *args)
 {
-    rpc_buffer_t ibuf, obuf;
+    rpc_buffer_t obuf_s, *obuf = &obuf_s, *ibuf;
 
     while (1) {
-        memset(&ibuf, 0, sizeof(ibuf));
-        memset(&obuf, 0, sizeof(obuf));
-        obuf.len = sizeof(obuf.buf);
+        memset(obuf, 0, sizeof(*obuf));
+        obuf->len = sizeof(obuf->buf);
 
-#if NUM_RPC_TASK > 1
-        /* Wait for access to the uart */
-        osMutexWait(dispatch_mutex, osWaitForever);
-#endif
-
-        /* Start receiving, or re-enable after failing in the callback. */
-        if (reenable_recv) {
-            if (HAL_UART_Receive_IT(&huart_user, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
-                Error_Handler();
-            reenable_recv = 0;
-        }
-
-        /* Wait for the complete rpc request */
-        rbuf = &ibuf;
-        osSemaphoreWait(rpc_sem, osWaitForever);
-
-#if NUM_RPC_TASK > 1
-        /* Let the next thread handle the next request */
-        osMutexRelease(dispatch_mutex);
-        /* Let the next thread take the mutex */
-        osThreadYield();
-#endif
+        /* Wait for a complete RPC request */
+        osEvent evt = osMailGet(ibuf_queue, osWaitForever);
+        if (evt.status != osEventMail)
+            continue;
+        ibuf = (rpc_buffer_t *)evt.value.p;
 
         /* Process the request */
-        if (hal_rpc_server_dispatch(ibuf.buf, ibuf.len, obuf.buf, &obuf.len) != LIBHAL_OK)
+	hal_error_t ret = hal_rpc_server_dispatch(ibuf->buf, ibuf->len, obuf->buf, &obuf->len);
+        osMailFree(ibuf_queue, (void *)ibuf);
+        if (ret != LIBHAL_OK) {
+            Error_Handler();
             /* If hal_rpc_server_dispatch failed with an XDR error, it
              * probably means the request packet was garbage. In any case, we
              * have nothing to transmit.
              */
             continue;
+	}
 
         /* Send the response */
 #if NUM_RPC_TASK > 1
         osMutexWait(uart_mutex, osWaitForever);
 #endif
-        hal_error_t ret = hal_rpc_sendto(obuf.buf, obuf.len, NULL);
+        ret = hal_rpc_sendto(obuf->buf, obuf->len, NULL);
 #if NUM_RPC_TASK > 1
         osMutexRelease(uart_mutex);
 #endif
@@ -255,13 +244,13 @@ int main()
     fmc_init();
     sdram_init();
 
+    if ((ibuf_queue = osMailCreate(osMailQ(ibuf_queue), NULL)) == NULL)
+        Error_Handler();
+
 #if NUM_RPC_TASK > 1
-    if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL ||
-        (dispatch_mutex = osMutexCreate(osMutex(dispatch_mutex))) == NULL)
+    if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL)
 	Error_Handler();
 #endif
-    if ((rpc_sem = osSemaphoreCreate(osSemaphore(rpc_sem), 0)) == NULL)
-	Error_Handler();
 
     if (hal_rpc_server_init() != LIBHAL_OK)
 	Error_Handler();
@@ -278,6 +267,10 @@ int main()
         if (osThreadCreate(ot, (void *)i) == NULL)
             Error_Handler();
     }
+
+    /* Start the UART receiver. */
+    if (HAL_UART_Receive_DMA(&huart_user, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
+        Error_Handler();
 
     /* Launch other threads (csprng warm-up thread?)
      * Wait for FPGA_DONE interrupt.
