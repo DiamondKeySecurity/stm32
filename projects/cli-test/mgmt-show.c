@@ -69,6 +69,25 @@ static int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *
     return CLI_OK;
 }
 
+static int cmd_show_fpga_cores(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    const hal_core_t *core;
+    const hal_core_info_t *info;
+
+    if (! fpgacfg_check_done()) {
+        cli_print(cli, "FPGA has not loaded a bitstream");
+        return CLI_OK;
+    }
+
+    for (core = hal_core_iterate(NULL); core != NULL; core = hal_core_iterate(core)) {
+	info = hal_core_info(core);
+	cli_print(cli, "%04x: %8.8s %4.4s",
+		  (unsigned int)info->base, info->name, info->version);
+    }
+
+    return CLI_OK;
+}
+
 static int cmd_show_keystore_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "Keystore memory is %sonline", (keystore_check_id() != 1) ? "NOT ":"");
@@ -134,6 +153,9 @@ void configure_cli_show(struct cli_def *cli)
 
     /* show fpga status*/
     cli_register_command(cli, c_fpga, "status", cmd_show_fpga_status, 0, 0, "Show status about the FPGA");
+
+    /* show fpga cores*/
+    cli_register_command(cli, c_fpga, "cores", cmd_show_fpga_cores, 0, 0, "Show the currently available FPGA cores");
 
     struct cli_command *c_keystore = cli_register_command(cli, c, "keystore", NULL, 0, 0, NULL);
 

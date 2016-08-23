@@ -8,9 +8,10 @@ OBJS = \
 	mgmt-keystore.o \
 	mgmt-masterkey.o \
 	mgmt-misc.o \
-	test-mkmif.o \
 	mgmt-show.o \
 	mgmt-test.o \
+	test-fmc.o \
+	test-mkmif.o \
 	test_sdram.o
 
 BOARD_OBJS = \
