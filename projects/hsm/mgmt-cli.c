@@ -49,6 +49,7 @@
 #include "mgmt-misc.h"
 #include "mgmt-keystore.h"
 #include "mgmt-masterkey.h"
+#include "mgmt-thread.h"
 
 #undef HAL_OK
 #define HAL_OK LIBHAL_OK
@@ -106,7 +107,6 @@ void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     ringbuf_write_char(&uart_ringbuf, uart_rx);
     osSemaphoreRelease(uart_sem);
-    HAL_UART_Receive_DMA(huart, &uart_rx, 1);
 }
 
 static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
@@ -196,6 +196,7 @@ int cli_main(void)
     configure_cli_firmware(cli);
     configure_cli_bootloader(cli);
     configure_cli_misc(cli);
+    configure_cli_thread(cli);
 
     while (1) {
         control_mgmt_uart_dma_rx(DMA_RX_START);

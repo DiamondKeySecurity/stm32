@@ -8,7 +8,8 @@ OBJS = crc32.o \
 	mgmt-fpga.c \
 	mgmt-keystore.c \
 	mgmt-masterkey.c \
-	mgmt-misc.c
+	mgmt-misc.c \
+	mgmt-thread.c
 
 BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \
@@ -26,7 +27,7 @@ BOARD_OBJS = \
 	$(BOARD_DIR)/stm32f4xx_hal_msp.o \
 	$(BOARD_DIR)/stm32f4xx_it_rtos.o
 
-CFLAGS += -DNUM_RPC_TASK=6
+CFLAGS += -DNUM_RPC_TASK=4
 
 CFLAGS += -I$(LIBHAL_SRC)
 CFLAGS += -I$(LIBCLI_SRC)
