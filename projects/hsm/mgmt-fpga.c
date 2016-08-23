@@ -119,6 +119,7 @@ static int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[]
 {
     fpgacfg_access_control(ALLOW_FPGA);
     fpgacfg_reset_fpga(RESET_FULL);
+    hal_core_reset_table();
     cli_print(cli, "FPGA has been reset");
 
     return CLI_OK;
@@ -126,7 +127,7 @@ static int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[]
 
 static int cmd_fpga_show_cores(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_core_t *core;
+    hal_core_t *core;
     const hal_core_info_t *info;
 
     if (! fpgacfg_check_done()) {
