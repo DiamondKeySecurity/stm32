@@ -19,4 +19,4 @@ libcli.a: libcli.o
 	$(AR) rcs $@ $^
 
 clean:
-	rm libcli.[ao]
+	rm -f libcli.[ao]
