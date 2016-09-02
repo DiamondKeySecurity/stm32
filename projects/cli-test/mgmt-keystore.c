@@ -45,7 +45,7 @@
 #undef HAL_OK
 #define LIBHAL_OK HAL_OK
 #include "hal.h"
-#define HAL_STATIC_PKEY_STATE_BLOCKS 6
+#warning Really should not be including hal_internal.h here, fix API instead of bypassing it
 #include "hal_internal.h"
 #undef HAL_OK
 
@@ -55,17 +55,9 @@
 
 static int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_ks_keydb_t *db;
     hal_user_t user;
     hal_error_t status;
     hal_client_handle_t client = { -1 };
-
-    db = hal_ks_get_keydb();
-
-    if (db == NULL) {
-	cli_print(cli, "Could not get a keydb from libhal");
-	return CLI_OK;
-    }
 
     if (argc != 2) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
@@ -73,11 +65,13 @@ static int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *
 	return CLI_ERROR;
     }
 
-    user = HAL_USER_NONE;
-    if (strcmp(argv[0], "user") == 0)  user = HAL_USER_NORMAL;
-    if (strcmp(argv[0], "so") == 0)    user = HAL_USER_SO;
-    if (strcmp(argv[0], "wheel") == 0) user = HAL_USER_WHEEL;
-    if (user == HAL_USER_NONE) {
+    if (!strcmp(argv[0], "user"))
+	user = HAL_USER_NORMAL;
+    else if (!strcmp(argv[0], "so"))
+	user = HAL_USER_SO;
+    else if (!strcmp(argv[0], "wheel"))
+	user = HAL_USER_WHEEL;
+    else {
 	cli_print(cli, "First argument must be 'user', 'so' or 'wheel' - not '%s'", argv[0]);
 	return CLI_ERROR;
     }
@@ -93,17 +87,9 @@ static int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *
 
 static int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_ks_keydb_t *db;
     hal_user_t user;
-    hal_ks_pin_t pin;
     hal_error_t status;
-
-    db = hal_ks_get_keydb();
-
-    if (db == NULL) {
-	cli_print(cli, "Could not get a keydb from libhal");
-	return CLI_OK;
-    }
+    hal_client_handle_t client = { -1 };
 
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
@@ -111,19 +97,21 @@ static int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char
 	return CLI_ERROR;
     }
 
-    user = HAL_USER_NONE;
-    if (strcmp(argv[0], "user") == 0)  user = HAL_USER_NORMAL;
-    if (strcmp(argv[0], "so") == 0)    user = HAL_USER_SO;
-    if (strcmp(argv[0], "wheel") == 0) user = HAL_USER_WHEEL;
-    if (user == HAL_USER_NONE) {
+    if (!strcmp(argv[0], "user"))
+	user = HAL_USER_NORMAL;
+    else if (!strcmp(argv[0], "so"))
+	user = HAL_USER_SO;
+    else if (!strcmp(argv[0], "wheel"))
+	user = HAL_USER_WHEEL;
+    else {
 	cli_print(cli, "First argument must be 'user', 'so' or 'wheel' - not '%s'", argv[0]);
 	return CLI_ERROR;
     }
 
-    memset(&pin, 0x0, sizeof(pin));
-    if ((status = hal_ks_set_pin(user, &pin)) != LIBHAL_OK) {
-        cli_print(cli, "Failed clearing PIN: %s", hal_error_string(status));
-        return CLI_ERROR;
+    status = hal_rpc_set_pin(client, user, "", 0);
+    if (status != LIBHAL_OK) {
+	cli_print(cli, "Failed setting PIN: %s", hal_error_string(status));
+	return CLI_ERROR;
     }
 
     return CLI_OK;
@@ -140,7 +128,7 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
 	return CLI_ERROR;
     }
 
-    status = hal_set_pin_default_iterations(client, strtol(argv[0], NULL, 0));
+    status = hal_set_pin_default_iterations(client, strtoul(argv[0], NULL, 0));
     if (status != LIBHAL_OK) {
 	cli_print(cli, "Failed setting iterations: %s", hal_error_string(status));
 	return CLI_ERROR;
@@ -149,6 +137,20 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
     return CLI_OK;
 }
 
+/*
+ * This is badly broken under either old or new keystore API:
+ *
+ * + DER is a binary format, it's not safe to read it this way,
+ *   and strlen() will not do what anybody wants;
+ *
+ * + As written, this stores an EC public key on no known curve,
+ *   ie, useless nonsense.
+ *
+ * The usual text format for DER objects is Base64, often with
+ * so-called "PEM" header and footer lines.  Key type, curve, etcetera
+ * would be extra command line parameters.
+ */
+#if 0
 static int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
@@ -175,104 +177,49 @@ static int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *
 
     return CLI_OK;
 }
-
-static int key_by_index(struct cli_def *cli, char *str, const uint8_t **name, size_t *name_len, hal_key_type_t *type)
-{
-    char *end;
-    long index;
-
-    /* base=0, because someone will try to be clever, and enter '0x0001' */
-    index = strtol(str, &end, 0);
-
-    /* If strtol converted the whole string, it's an index.
-     * Otherwise, it could be something like "3Mustaphas3".
-     */
-    if (*end == '\0') {
-        const hal_ks_keydb_t *db = hal_ks_get_keydb();
-        if (index < 0 || index >= sizeof(db->keys)/sizeof(*db->keys)) {
-            cli_print(cli, "Index %ld out of range", index);
-            return CLI_ERROR_ARG;
-        }
-	if (! db->keys[index].in_use) {
-            cli_print(cli, "Key %ld not in use", index);
-            return CLI_ERROR_ARG;
-        }
-        *name = db->keys[index].name;
-        *name_len = db->keys[index].name_len;
-        *type = db->keys[index].type;
-        return CLI_OK;
-    }
-    return CLI_ERROR;
-}
+#endif /* 0 */
 
 static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
-    int hint = 0;
-    const uint8_t *name;
-    size_t name_len;
-    hal_key_type_t type;
-
-    if (argc != 1) {
-	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore delete key <name or index>");
-	return CLI_ERROR;
-    }
-
-    switch (key_by_index(cli, argv[0], &name, &name_len, &type)) {
-    case CLI_OK:
-        break;
-    case CLI_ERROR:
-        name = (uint8_t *)argv[0];
-        name_len = strlen(argv[0]);
-        type = HAL_KEY_TYPE_EC_PUBLIC;
-        break;
-    default:
-        return CLI_ERROR;
-    }    
-
-    if ((status = hal_ks_delete(type, name, name_len, &hint)) != LIBHAL_OK) {
-	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "Deleted key %i", hint);
-
-    return CLI_OK;
-}
-
-static int cmd_keystore_rename_key(struct cli_def *cli, const char *command, char *argv[], int argc)
-{
-    hal_error_t status;
-    int hint = 0;
-    const uint8_t *name;
-    size_t name_len;
+    hal_uuid_t name;
     hal_key_type_t type;
 
     if (argc != 2) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore rename key <name or index> <new name>");
+	cli_print(cli, "Syntax: keystore delete key <name> <type>");
 	return CLI_ERROR;
     }
 
-    switch (key_by_index(cli, argv[0], &name, &name_len, &type)) {
-    case CLI_OK:
-        break;
-    case CLI_ERROR:
-        name = (uint8_t *)argv[0];
-        name_len = strlen(argv[0]);
-        type = HAL_KEY_TYPE_EC_PUBLIC;
-        break;
-    default:
-        return CLI_ERROR;
-    }    
-
-    if ((status = hal_ks_rename(type, name, name_len, (uint8_t *)argv[1], strlen(argv[1]), &hint)) != LIBHAL_OK) {
-	cli_print(cli, "Failed renaming key: %s", hal_error_string(status));
+    if ((status = hal_uuid_parse(&name, argv[0])) != LIBHAL_OK) {
+	cli_print(cli, "Couldn't parse key name: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
 
-    cli_print(cli, "Renamed key %i", hint);
+    if (!strcmp(argv[1], "rsa-private"))
+	type = HAL_KEY_TYPE_RSA_PRIVATE;
+    else if (!strcmp(argv[1], "rsa-public"))
+	type = HAL_KEY_TYPE_RSA_PUBLIC;
+    else if (!strcmp(argv[1], "ec-private"))
+	type = HAL_KEY_TYPE_EC_PRIVATE;
+    else if (!strcmp(argv[1], "ec-public"))
+	type = HAL_KEY_TYPE_EC_PUBLIC;
+    else {
+	cli_print(cli, "Key type must be \"rsa-private\", \"rsa-public\", \"ec-private\", or \"ec-public\"");
+	return CLI_ERROR;
+    }
+
+    const hal_client_handle_t  client  = { HAL_HANDLE_NONE };
+    const hal_session_handle_t session = { HAL_HANDLE_NONE };
+    hal_pkey_handle_t pkey = { HAL_HANDLE_NONE };
+
+    if ((status = hal_rpc_pkey_find(client, session, &pkey, type, &name, HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK ||
+	(status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
+	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Deleted key %s", argv[0]);
 
     return CLI_OK;
 }
@@ -301,68 +248,45 @@ static int cmd_keystore_show_data(struct cli_def *cli, const char *command, char
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_ks_keydb_t *db;
-    uint8_t name[HAL_RPC_PKEY_NAME_MAX + 1];
-    char *type;
+    hal_pkey_info_t keys[64];
+    unsigned n;
+    hal_error_t status;
 
-    db = hal_ks_get_keydb();
-
-    if (db == NULL) {
-	cli_print(cli, "Could not get a keydb from libhal");
-	return CLI_OK;
+    if ((status = hal_rpc_pkey_list(keys, &n, sizeof(keys)/sizeof(*keys), HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK) {
+	cli_print(cli, "Could not fetch key info: %s", hal_error_string(status));
+	return CLI_ERROR;
     }
 
-    cli_print(cli, "Sizeof db->keys is %i, sizeof one key is %i\n", sizeof(db->keys), sizeof(*db->keys));
+    for (int i = 0; i < n; i++) {
+	char name[HAL_UUID_TEXT_SIZE];
+	const char *type, *curve;
 
-    for (int i = 0; i < sizeof(db->keys)/sizeof(*db->keys); i++) {
-	if (! db->keys[i].in_use) {
-	    cli_print(cli, "Key %i, not in use", i);
-	} else {
-            switch (db->keys[i].type) {
-            case HAL_KEY_TYPE_RSA_PRIVATE:
-                type = "RSA private";
-                break;
-            case HAL_KEY_TYPE_RSA_PUBLIC:
-                type = "RSA public";
-                break;
-            case HAL_KEY_TYPE_EC_PRIVATE:
-                type = "EC private";
-                break;
-            case HAL_KEY_TYPE_EC_PUBLIC:
-                type = "EC public";
-                break;
-            default:
-                type = "unknown";
-                break;
-            }
-            /* name is nul-terminated */
-            memcpy(name, db->keys[i].name, db->keys[i].name_len);
-            name[db->keys[i].name_len] = '\0';
-	    cli_print(cli, "Key %i, type %s, name '%s'", i, type, name);
+	switch (keys[i].type) {
+	case HAL_KEY_TYPE_RSA_PRIVATE:	type = "RSA private";	break;
+	case HAL_KEY_TYPE_RSA_PUBLIC:	type = "RSA public";	break;
+	case HAL_KEY_TYPE_EC_PRIVATE:	type = "EC private";	break;
+	case HAL_KEY_TYPE_EC_PUBLIC:	type = "EC public";	break;
+	default:			type = "unknown";	break;
 	}
+
+	switch (keys[i].curve) {
+	case HAL_CURVE_NONE:		curve = "none";		break;
+	case HAL_CURVE_P256:		curve = "P-256";	break;
+	case HAL_CURVE_P384:		curve = "P-384";	break;
+	case HAL_CURVE_P521:		curve = "P-521";	break;
+	default:			curve = "unknown";	break;
+	}
+
+	if ((status = hal_uuid_format(&keys[i].name, name, sizeof(name))) != LIBHAL_OK) {
+	    cli_print(cli, "Could not convert key name: %s", hal_error_string(status));
+	    return CLI_ERROR;
+	}
+
+	cli_print(cli, "Key %2i, name %s, type %s, curve %s, flags 0x%lx",
+		  i, name, type, curve, (unsigned long) keys[i].flags);
+
     }
 
-    cli_print(cli, "\nPins:");
-    cli_print(cli, "Wheel iterations: 0x%lx", db->wheel_pin.iterations);
-    cli_print(cli, "pin");
-    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.pin, 0, sizeof(db->wheel_pin.pin) - 1);
-    cli_print(cli, "\nsalt");
-    uart_send_hexdump(STM_UART_MGMT, db->wheel_pin.salt, 0, sizeof(db->wheel_pin.salt) - 1);
-    cli_print(cli, "");
-
-    cli_print(cli, "SO    iterations: 0x%lx", db->so_pin.iterations);
-    cli_print(cli, "pin");
-    uart_send_hexdump(STM_UART_MGMT, db->so_pin.pin, 0, sizeof(db->so_pin.pin) - 1);
-    cli_print(cli, "\nsalt");
-    uart_send_hexdump(STM_UART_MGMT, db->so_pin.salt, 0, sizeof(db->so_pin.salt) - 1);
-    cli_print(cli, "");
-
-    cli_print(cli, "User  iterations: 0x%lx", db->user_pin.iterations);
-    cli_print(cli, "pin");
-    uart_send_hexdump(STM_UART_MGMT, db->user_pin.pin, 0, sizeof(db->user_pin.pin) - 1);
-    cli_print(cli, "\nsalt");
-    uart_send_hexdump(STM_UART_MGMT, db->user_pin.salt, 0, sizeof(db->user_pin.salt) - 1);
-    cli_print(cli, "");
     cli_print(cli, "\n");
 
     return CLI_OK;
@@ -377,15 +301,12 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
 	return CLI_ERROR;
     }
 
-    if (strcmp(argv[0], "YesIAmSure") == 0) {
-	if ((status = keystore_erase_sectors(0, 1)) != 1) {
-	    cli_print(cli, "Failed erasing keystore: %i", status);
-	} else {
-	    cli_print(cli, "Keystore erased (first two sectors at least)");
-	}
-    } else {
+    if (strcmp(argv[0], "YesIAmSure") != 0)
 	cli_print(cli, "Keystore NOT erased");
-    }
+    else if ((status = keystore_erase_sectors(0, 1)) != 1)
+	cli_print(cli, "Failed erasing keystore: %i", status);
+    else
+        cli_print(cli, "Keystore erased (first two sectors at least)");
 
     return CLI_OK;
 }
@@ -394,14 +315,14 @@ void configure_cli_keystore(struct cli_def *cli)
 {
     struct cli_command *c = cli_register_command(cli, NULL, "keystore", NULL, 0, 0, NULL);
 
-    struct cli_command *c_set = cli_register_command(cli, c, "set", NULL, 0, 0, NULL);
-    struct cli_command *c_clear = cli_register_command(cli, c, "clear", NULL, 0, 0, NULL);
+    struct cli_command *c_set    = cli_register_command(cli, c, "set",    NULL, 0, 0, NULL);
+    struct cli_command *c_clear  = cli_register_command(cli, c, "clear",  NULL, 0, 0, NULL);
     struct cli_command *c_delete = cli_register_command(cli, c, "delete", NULL, 0, 0, NULL);
-    struct cli_command *c_rename = cli_register_command(cli, c, "rename", NULL, 0, 0, NULL);
-    struct cli_command *c_show = cli_register_command(cli, c, "show", NULL, 0, 0, NULL);
+    struct cli_command *c_show   = cli_register_command(cli, c, "show",   NULL, 0, 0, NULL);
 
     /* keystore erase */
     cli_register_command(cli, c, "erase", cmd_keystore_erase, 0, 0, "Erase the whole keystore");
+
     /* keystore set pin */
     struct cli_command *c_set_pin = cli_register_command(cli, c_set, "pin", cmd_keystore_set_pin, 0, 0, "Set either 'wheel', 'user' or 'so' PIN");
 
@@ -411,19 +332,18 @@ void configure_cli_keystore(struct cli_def *cli)
     /* keystore clear pin */
     cli_register_command(cli, c_clear, "pin", cmd_keystore_clear_pin, 0, 0, "Clear either 'wheel', 'user' or 'so' PIN");
 
+#if 0
     /* keystore set key */
     cli_register_command(cli, c_set, "key", cmd_keystore_set_key, 0, 0, "Set a key");
+#endif
 
     /* keystore delete key */
     cli_register_command(cli, c_delete, "key", cmd_keystore_delete_key, 0, 0, "Delete a key");
 
-    /* keystore rename key */
-    cli_register_command(cli, c_rename, "key", cmd_keystore_rename_key, 0, 0, "Rename a key");
- 
     /* keystore show data */
     cli_register_command(cli, c_show, "data", cmd_keystore_show_data, 0, 0, "Dump the first page from the keystore memory");
 
    /* keystore show keys */
-    cli_register_command(cli, c_show, "keys", cmd_keystore_show_keys, 0, 0, "Show what PINs and keys are in the keystore");
+    cli_register_command(cli, c_show, "keys", cmd_keystore_show_keys, 0, 0, "Show what keys are in the keystore");
 
 }

@@ -71,7 +71,7 @@ static int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *
 
 static int cmd_show_fpga_cores(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_core_t *core;
+    hal_core_t *core;
     const hal_core_info_t *info;
 
     if (! fpgacfg_check_done()) {

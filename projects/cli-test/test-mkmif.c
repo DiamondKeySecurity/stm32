@@ -27,7 +27,7 @@ typedef union {
     uint32_t word;
 } byteword_t;
 
-static hal_error_t sclk_test(struct cli_def *cli, const hal_core_t *core, const uint32_t divisor)
+static hal_error_t sclk_test(struct cli_def *cli, hal_core_t *core, const uint32_t divisor)
 {
     uint32_t readback;
     hal_error_t err;
@@ -49,7 +49,7 @@ static hal_error_t sclk_test(struct cli_def *cli, const hal_core_t *core, const 
     return LIBHAL_OK;
 }
 
-static hal_error_t init_test(struct cli_def *cli, const hal_core_t *core)
+static hal_error_t init_test(struct cli_def *cli, hal_core_t *core)
 {
     hal_error_t err;
 
@@ -63,7 +63,7 @@ static hal_error_t init_test(struct cli_def *cli, const hal_core_t *core)
     return LIBHAL_OK;
 }
 
-static hal_error_t write_test(struct cli_def *cli, const hal_core_t *core)
+static hal_error_t write_test(struct cli_def *cli, hal_core_t *core)
 {
     uint32_t write_data;
     uint32_t write_address;
@@ -86,7 +86,7 @@ static hal_error_t write_test(struct cli_def *cli, const hal_core_t *core)
     return LIBHAL_OK;
 }
 
-static hal_error_t read_test(struct cli_def *cli, const hal_core_t *core)
+static hal_error_t read_test(struct cli_def *cli, hal_core_t *core)
 {
     uint32_t read_data;
     uint32_t read_address;
@@ -109,7 +109,7 @@ static hal_error_t read_test(struct cli_def *cli, const hal_core_t *core)
     return LIBHAL_OK;
 }
 
-static hal_error_t write_read_test(struct cli_def *cli, const hal_core_t *core)
+static hal_error_t write_read_test(struct cli_def *cli, hal_core_t *core)
 {
     uint32_t data;
     uint32_t readback;
@@ -139,7 +139,7 @@ static hal_error_t write_read_test(struct cli_def *cli, const hal_core_t *core)
 
 int cmd_test_mkmif(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_core_t *core = hal_core_find(MKMIF_NAME, NULL);
+    hal_core_t *core = hal_core_find(MKMIF_NAME, NULL);
     hal_error_t res;
 
     if (core == NULL) {

@@ -33,7 +33,7 @@ BOARD_OBJS = \
 CFLAGS += -I$(LIBCLI_SRC) -I$(LIBHAL_SRC)
 CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
 
-LIBS += $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a
+LIBS += $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(LIBTFM_BLD)/libtfm.a $(RTOS_DIR)/librtos.a
 
 all: $(TEST:=.elf)
 
