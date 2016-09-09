@@ -139,13 +139,15 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
 
 static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    const hal_client_handle_t  client  = { HAL_HANDLE_NONE };
+    const hal_session_handle_t session = { HAL_HANDLE_NONE };
+    hal_pkey_handle_t pkey = { HAL_HANDLE_NONE };
     hal_error_t status;
     hal_uuid_t name;
-    hal_key_type_t type;
 
-    if (argc != 2) {
+    if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
-	cli_print(cli, "Syntax: keystore delete key <name> <type>");
+	cli_print(cli, "Syntax: keystore delete key <name>");
 	return CLI_ERROR;
     }
 
@@ -154,24 +156,7 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
 	return CLI_ERROR;
     }
 
-    if (!strcmp(argv[1], "rsa-private"))
-	type = HAL_KEY_TYPE_RSA_PRIVATE;
-    else if (!strcmp(argv[1], "rsa-public"))
-	type = HAL_KEY_TYPE_RSA_PUBLIC;
-    else if (!strcmp(argv[1], "ec-private"))
-	type = HAL_KEY_TYPE_EC_PRIVATE;
-    else if (!strcmp(argv[1], "ec-public"))
-	type = HAL_KEY_TYPE_EC_PUBLIC;
-    else {
-	cli_print(cli, "Key type must be \"rsa-private\", \"rsa-public\", \"ec-private\", or \"ec-public\"");
-	return CLI_ERROR;
-    }
-
-    const hal_client_handle_t  client  = { HAL_HANDLE_NONE };
-    const hal_session_handle_t session = { HAL_HANDLE_NONE };
-    hal_pkey_handle_t pkey = { HAL_HANDLE_NONE };
-
-    if ((status = hal_rpc_pkey_find(client, session, &pkey, type, &name, HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK ||
+    if ((status = hal_rpc_pkey_find(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK ||
 	(status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
 	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
 	return CLI_ERROR;
