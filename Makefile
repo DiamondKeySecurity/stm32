@@ -110,43 +110,52 @@ export CFLAGS
 
 all: board-test cli-test libhal-test hsm bootloader
 
-$(MBED_DIR)/libstmf4.a:
+$(MBED_DIR)/libstmf4.a: .FORCE
 	$(MAKE) -C $(MBED_DIR)
 
-board-test: $(BOARD_OBJS) $(LIBS)
+board-test: $(BOARD_OBJS) $(LIBS) .FORCE
 	$(MAKE) -C projects/board-test
 
-cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a  .FORCE
 	$(MAKE) -C projects/cli-test
 
-$(RTOS_DIR)/librtos.a:
+$(RTOS_DIR)/librtos.a: .FORCE
 	$(MAKE) -C $(RTOS_DIR)
 
-rtos-test: $(RTOS_OBJS) $(LIBS) $(RTOS_DIR)/librtos.a
+rtos-test: $(RTOS_OBJS) $(LIBS) $(RTOS_DIR)/librtos.a .FORCE
 	$(MAKE) -C projects/rtos-test
 
-$(LIBTFM_BLD)/libtfm.a:
+$(LIBTFM_BLD)/libtfm.a: .FORCE
 	$(MAKE) -C $(LIBTFM_BLD) PREFIX=$(PREFIX)
 
-$(LIBHAL_BLD)/libhal.a: $(LIBTFM_BLD)/libtfm.a
+$(LIBHAL_BLD)/libhal.a: $(LIBTFM_BLD)/libtfm.a .FORCE
 	$(MAKE) -C $(LIBHAL_BLD) IO_BUS=fmc RPC_MODE=server RPC_TRANSPORT=serial KS=flash libhal.a
 
-$(LIBCLI_BLD)/libcli.a:
+$(LIBCLI_BLD)/libcli.a: .FORCE
 	$(MAKE) -C $(LIBCLI_BLD)
 
-libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a
+libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/libhal-test
 
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_BLD)/libcli.a
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_BLD)/libcli.a .FORCE
 	$(MAKE) -C projects/hsm
 
-bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a
+bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/bootloader
 
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
 .PHONY: board-test rtos-test libhal-test cli-test hsm bootloader
+
+# We don't (and shouldn't) know enough about libraries and projects to
+# know whether they need rebuilding or not, so we let their Makefiles
+# decide that.  Which means we always need to run all the sub-makes.
+# We could do this with .PHONY (which is supposedly more "efficient")
+# but using a .FORCE target is simpler once one takes inter-library
+# dependency specifications into account.
+
+.FORCE:				# (sic)
 
 clean:
 	rm -f $(BOARD_OBJS)
