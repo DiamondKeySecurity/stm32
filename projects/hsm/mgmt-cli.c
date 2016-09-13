@@ -54,6 +54,8 @@
 #undef HAL_OK
 #define HAL_OK LIBHAL_OK
 #include "hal.h"
+#warning Refactor so we do not need to include hal_internal.h here
+#include "hal_internal.h"
 #undef HAL_OK
 
 #ifndef CLI_UART_RECVBUF_SIZE

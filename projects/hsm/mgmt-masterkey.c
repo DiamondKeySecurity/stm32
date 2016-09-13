@@ -42,7 +42,8 @@
 #undef HAL_OK
 #define LIBHAL_OK HAL_OK
 #include <hal.h>
-#include <masterkey.h>
+#warning Refactor so we do not need to include hal_internal.h here
+#include <hal_internal.h>
 #undef HAL_OK
 
 #include <stdlib.h>
@@ -86,17 +87,17 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
 
     cli_print(cli, "Status of master key:\n");
 
-    status = masterkey_volatile_read(NULL, 0);
+    status = hal_mkm_volatile_read(NULL, 0);
     cli_print(cli, "  volatile: %s / %s", _status2str(status), hal_error_string(status));
 
-    status = masterkey_flash_read(NULL, 0);
+    status = hal_mkm_flash_read(NULL, 0);
     cli_print(cli, "     flash: %s / %s", _status2str(status), hal_error_string(status));
 
     return CLI_OK;
 }
 
 static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
-                          char *label, hal_error_t (*writer)(uint8_t *, size_t))
+                          char *label, hal_error_t (*writer)(const uint8_t * const, const size_t))
 {
     uint8_t buf[KEK_LENGTH] = {0};
     hal_error_t err;
@@ -134,14 +135,14 @@ static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
 
 static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    return _masterkey_set(cli, argv, argc, "volatile", masterkey_volatile_write);
+    return _masterkey_set(cli, argv, argc, "volatile", hal_mkm_volatile_write);
 }
 
 static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t err;
 
-    if ((err = masterkey_volatile_erase(KEK_LENGTH)) == LIBHAL_OK) {
+    if ((err = hal_mkm_volatile_erase(KEK_LENGTH)) == LIBHAL_OK) {
 	cli_print(cli, "Erased master key from volatile memory");
     } else {
 	cli_print(cli, "Failed erasing master key from volatile memory: %s", hal_error_string(err));
@@ -151,14 +152,14 @@ static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *a
 
 static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    return _masterkey_set(cli, argv, argc, "flash", masterkey_flash_write);
+    return _masterkey_set(cli, argv, argc, "flash", hal_mkm_flash_write);
 }
 
 static int cmd_masterkey_unsecure_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t err;
 
-    if ((err = masterkey_flash_erase(KEK_LENGTH)) == LIBHAL_OK) {
+    if ((err = hal_mkm_flash_erase(KEK_LENGTH)) == LIBHAL_OK) {
 	cli_print(cli, "Erased unsecure master key from flash");
     } else {
 	cli_print(cli, "Failed erasing unsecure master key from flash: %s", hal_error_string(err));
