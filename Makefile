@@ -85,8 +85,19 @@ export OBJCOPY=$(PREFIX)objcopy
 export OBJDUMP=$(PREFIX)objdump
 export SIZE=$(PREFIX)size
 
+# The Alpha is a development platform, so set GCC optimization to a
+# level suitable for debugging.  Recent versions of GCC have a special
+# optimization setting -Og for exactly this purpose, so we use it, along
+# with the flag to enable gdb symbols.
+#
+# If you really want optimization without debugging support, try -O2 or
+# (maybe) -O3.
+
+#STM32_CFLAGS_OPTIMIZATION ?= -O2
+STM32_CFLAGS_OPTIMIZATION ?= -ggdb -Og
+
 # whew, that's a lot of cflags
-CFLAGS  = -ggdb -O2 -Wall -Warray-bounds #-Wextra
+CFLAGS  = $(STM32_CFLAGS_OPTIMIZATION) -Wall -Warray-bounds #-Wextra
 CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
@@ -159,15 +170,16 @@ bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 
 clean:
 	rm -f $(BOARD_OBJS)
+	$(MAKE) -C $(LIBHAL_BLD) clean
 	$(MAKE) -C projects/board-test clean
 	$(MAKE) -C projects/cli-test clean
 	$(MAKE) -C projects/rtos-test clean
 	$(MAKE) -C projects/libhal-test clean
 	$(MAKE) -C projects/hsm clean
+	$(MAKE) -C projects/bootloader clean
 
 distclean: clean
 	$(MAKE) -C $(MBED_DIR) clean
 	$(MAKE) -C $(RTOS_DIR) clean
-	$(MAKE) -C $(LIBHAL_BLD) clean
 	$(MAKE) -C $(LIBTFM_BLD) clean
 	$(MAKE) -C $(LIBCLI_BLD) clean
