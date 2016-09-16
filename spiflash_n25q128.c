@@ -298,7 +298,7 @@ inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
 }
 
 /* This function performs erasure if needed, and then writing of a number of pages to the flash memory */
-int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len)
+int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len, const int auto_erase)
 {
     uint32_t page;
 
@@ -306,8 +306,15 @@ int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t 
     if ((offset % N25Q128_PAGE_SIZE) != 0) return -1;
     if ((len % N25Q128_PAGE_SIZE) != 0) return -2;
 
-    if ((offset % N25Q128_SECTOR_SIZE) == 0) {
-	/* first page in sector, need to erase sector */
+    if (auto_erase && (offset % N25Q128_SECTOR_SIZE) == 0) {
+	/*
+	 * first page in sector, need to erase sector
+	 *
+	 * So why do we only do this when the buffer starts on the
+	 * sector, as opposed to performing this check for every page?
+	 * Also, might be better to do this by subsectors rather than
+	 * sectors.
+	 */
 
 	if (! _wait_while_wip(ctx, 1000)) return -3;
 

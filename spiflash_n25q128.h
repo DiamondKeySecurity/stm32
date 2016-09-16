@@ -45,6 +45,7 @@
 #define N25Q128_COMMAND_READ_STATUS	0x05
 #define N25Q128_COMMAND_WRITE_ENABLE	0x06
 #define N25Q128_COMMAND_ERASE_SECTOR	0xD8
+#define N25Q128_COMMAND_ERASE_SUBSECTOR	0x20
 #define N25Q128_COMMAND_PAGE_PROGRAM	0x02
 
 #define N25Q128_PAGE_SIZE		0x100		// 256
@@ -52,6 +53,9 @@
 
 #define N25Q128_SECTOR_SIZE		0x10000		// 65536
 #define N25Q128_NUM_SECTORS		0x100		// 256
+
+#define N25Q128_SUBSECTOR_SIZE		0x1000		// 4096
+#define N25Q128_NUM_SUBSECTORS		0x1000		// 4096
 
 #define N25Q128_SPI_TIMEOUT		1000
 
@@ -71,6 +75,6 @@ extern int n25q128_read_page(struct spiflash_ctx *ctx, uint32_t page_offset, uin
 extern int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uint8_t *page_buffer);
 extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
 
-extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
+extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len, const int auto_erase);
 extern int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);
 #endif /* __STM32_SPIFLASH_N25Q128_H */

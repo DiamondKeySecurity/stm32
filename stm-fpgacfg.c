@@ -48,7 +48,7 @@ int fpgacfg_check_id()
 
 int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
-    return n25q128_write_data(&fpgacfg_ctx, offset, buf, len);
+    return n25q128_write_data(&fpgacfg_ctx, offset, buf, len, 1);
 }
 
 void fpgacfg_access_control(enum fpgacfg_access_ctrl access)

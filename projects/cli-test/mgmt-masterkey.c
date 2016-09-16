@@ -48,9 +48,6 @@
 
 #include <stdlib.h>
 
-#define KEK_LENGTH (256 / 8)
-
-
 static char * _status2str(const hal_error_t status)
 {
     switch (status) {
