@@ -193,6 +193,12 @@ void USART2_IRQHandler(void)
     HAL_UART_IRQHandler(&huart_user);
 }
 
+/**
+  * @brief  Rx Transfer completed callbacks.
+  * @param  huart: pointer to a UART_HandleTypeDef structure that contains
+  *                the configuration information for the specified UART module.
+  * @retval None
+  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     extern void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart);
@@ -205,23 +211,49 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         HAL_UART2_RxCpltCallback(huart);
 }
 
-/**
-  * @brief  Rx Transfer completed callbacks.
-  * @param  huart: pointer to a UART_HandleTypeDef structure that contains
-  *                the configuration information for the specified UART module.
-  * @retval None
-  */
 __weak void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_UART_RxCpltCallback could be implemented in the user file
+           the HAL_UART1_RxCpltCallback could be implemented in the user file
    */
 }
 
 __weak void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_UART_TxCpltCallback could be implemented in the user file
+           the HAL_UART2_RxCpltCallback could be implemented in the user file
+   */
+}
+
+/**
+  * @brief  Rx Half Transfer completed callbacks.
+  * @param  huart: pointer to a UART_HandleTypeDef structure that contains
+  *                the configuration information for the specified UART module.
+  * @retval None
+  */
+void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+    extern void HAL_UART1_RxHalfCpltCallback(UART_HandleTypeDef *huart);
+    extern void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart);
+
+    if (huart->Instance == USART1)
+        HAL_UART1_RxHalfCpltCallback(huart);
+
+    else if (huart->Instance == USART2)
+        HAL_UART2_RxHalfCpltCallback(huart);
+}
+
+__weak void HAL_UART1_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_UART1_RxHalfCpltCallback could be implemented in the user file
+   */
+}
+
+__weak void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_UART2_RxHalfCpltCallback could be implemented in the user file
    */
 }
 

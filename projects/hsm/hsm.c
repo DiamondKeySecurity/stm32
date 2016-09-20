@@ -103,7 +103,7 @@ osMutexId  uart_mutex;
 osMutexDef(uart_mutex);
 #endif
 
-static volatile uint8_t uart_rx;	/* current character received from UART */
+static uint8_t uart_rx[2];	/* current character received from UART */
 
 /* Callback for HAL_UART_Receive_DMA().
  * With multiple worker threads, we can't do a blocking receive, because
@@ -113,7 +113,7 @@ static volatile uint8_t uart_rx;	/* current character received from UART */
  * Even with only one worker thread, context-switching to the CLI thread
  * causes HAL_UART_Receive to miss input.
  */
-void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
+static void RxCallback(uint8_t c)
 {
     /* current RPC input buffer */
     static rpc_buffer_t *ibuf = NULL;
@@ -125,7 +125,7 @@ void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
         ibuf->len = 0;
     }
 
-    if (hal_slip_recv_char(ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
+    if (hal_slip_process_char(c, ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
         Error_Handler();
 
     if (complete) {
@@ -135,17 +135,20 @@ void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
+void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+    RxCallback(uart_rx[0]);
+}
+
+void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    RxCallback(uart_rx[1]);
+}
+
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     /* I dunno, just trap it for now */
     Error_Handler();
-}
-
-hal_error_t hal_serial_recv_char(uint8_t *cp)
-{
-    /* return the character from HAL_UART_Receive_DMA */
-    *cp = uart_rx;
-    return LIBHAL_OK;
 }
 
 hal_error_t hal_serial_send_char(uint8_t c)
@@ -269,7 +272,7 @@ int main()
     }
 
     /* Start the UART receiver. */
-    if (HAL_UART_Receive_DMA(&huart_user, (uint8_t *)&uart_rx, 1) != CMSIS_HAL_OK)
+    if (HAL_UART_Receive_DMA(&huart_user, uart_rx, 2) != CMSIS_HAL_OK)
         Error_Handler();
 
     /* Launch other threads (csprng warm-up thread?)
