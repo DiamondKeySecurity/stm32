@@ -74,6 +74,7 @@ extern int n25q128_get_wip_flag(struct spiflash_ctx *ctx);
 extern int n25q128_read_page(struct spiflash_ctx *ctx, uint32_t page_offset, uint8_t *page_buffer);
 extern int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uint8_t *page_buffer);
 extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
+extern int n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset);
 
 extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len, const int auto_erase);
 extern int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);

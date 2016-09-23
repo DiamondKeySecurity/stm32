@@ -67,3 +67,23 @@ main()
     /* NOT REACHED */
     Error_Handler();
 }
+
+
+/*
+ * Dummy to solve link problem.  Not obvious to me that a program
+ * called "cli-test" should be duplicating all of the HSM keystore
+ * logic, let alone that it should be doing it badly, but, whatever.
+ *
+ * We could just copy the sdram_malloc() code from hsm.c, but since
+ * one of the other commands linked into cli-test goes merrily stomping
+ * all over the entire SDRAM chip, that might not work out so well.
+ *
+ * Issue deferred until somebody cares.
+ */
+
+#warning hal_allocate_static_memory() stubbed out in cli-test, see source code
+
+void *hal_allocate_static_memory(const size_t size)
+{
+    return NULL;
+}

@@ -217,6 +217,14 @@ static uint8_t *sdram_malloc(size_t size)
     return p;
 }
 
+/* Implement static memory allocation for libhal over sdram_malloc().
+ * Once again, there's only alloc, not free. */
+
+void *hal_allocate_static_memory(const size_t size)
+{
+    return sdram_malloc(size);
+}
+
 #if NUM_RPC_TASK > 1
 /* Critical section start/end, currently used just for hal_core_alloc/_free.
  */

@@ -43,6 +43,14 @@
 #define _n25q128_deselect(ctx)	HAL_GPIO_WritePin(ctx->cs_n_port, ctx->cs_n_pin, GPIO_PIN_SET);
 
 
+#define N25Q128_NUM_BYTES	(N25Q128_PAGE_SIZE * N25Q128_NUM_PAGES)
+
+#if N25Q128_SECTOR_SIZE    * N25Q128_NUM_SECTORS    != N25Q128_NUM_BYTES || \
+    N25Q128_SUBSECTOR_SIZE * N25Q128_NUM_SUBSECTORS != N25Q128_NUM_BYTES
+#error Inconsistant definitions for pages / sectors / subsectors
+#endif
+
+
 int _n25q128_get_wel_flag(struct spiflash_ctx *ctx);
 
 
@@ -209,16 +217,16 @@ int n25q128_get_wip_flag(struct spiflash_ctx *ctx)
 }
 
 
-int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset)
+static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, uint32_t byte_offset)
 {
+    // check offset
+    if (byte_offset >= N25Q128_NUM_BYTES) return 0;
+
     // tx buffer
     uint8_t spi_tx[4];
 
     // result
     HAL_StatusTypeDef ok;
-
-    // check offset
-    if (sector_offset >= N25Q128_NUM_SECTORS) return 0;
 
     // enable writing
     spi_tx[0] = N25Q128_COMMAND_WRITE_ENABLE;
@@ -236,14 +244,11 @@ int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset)
     int wel = _n25q128_get_wel_flag(ctx);
     if (wel != 1) return 0;
 
-    // calculate byte address
-    sector_offset *= N25Q128_SECTOR_SIZE;
-
-    // send ERASE SUBSECTOR command
-    spi_tx[0] = N25Q128_COMMAND_ERASE_SECTOR;
-    spi_tx[1] = (uint8_t)(sector_offset >> 16);
-    spi_tx[2] = (uint8_t)(sector_offset >>  8);
-    spi_tx[3] = (uint8_t)(sector_offset >>  0);
+    // send command (ERASE SECTOR or ERASE SUBSECTOR)
+    spi_tx[0] = command;
+    spi_tx[1] = (uint8_t)(byte_offset >> 16);
+    spi_tx[2] = (uint8_t)(byte_offset >>  8);
+    spi_tx[3] = (uint8_t)(byte_offset >>  0);
 
     // activate, send command, deselect
     _n25q128_select(ctx);
@@ -256,6 +261,20 @@ int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset)
 
     // done
     return 1;
+}
+
+
+int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset)
+{
+    return n25q128_erase_something(ctx, N25Q128_COMMAND_ERASE_SECTOR,
+				   sector_offset * N25Q128_SECTOR_SIZE);
+}
+
+
+int n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset)
+{
+    return n25q128_erase_something(ctx, N25Q128_COMMAND_ERASE_SUBSECTOR,
+				   subsector_offset * N25Q128_SUBSECTOR_SIZE);
 }
 
 
