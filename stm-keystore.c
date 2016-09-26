@@ -56,14 +56,14 @@ int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 }
 
 static int keystore_erase_something(uint32_t start, uint32_t stop, uint32_t limit,
-				    int (*eraser)(uint32_t, uint32_t))
+				    int (*eraser)(struct spiflash_ctx *, uint32_t))
 {
-    uint32_t someting;
+    uint32_t something;
 
     if (start > limit) return -2;
     if (stop > limit || stop < start) return -3;
 
-    for (someting = start; someting <= stop; someting++) {
+    for (something = start; something <= stop; something++) {
 	int timeout = 200; /* times 10ms = 2 seconds timeout */
 	while (timeout--) {
 	    int i = n25q128_get_wip_flag(&keystore_ctx);
@@ -73,7 +73,7 @@ static int keystore_erase_something(uint32_t start, uint32_t stop, uint32_t limi
 	}
 	if (! timeout) return 0;
 
-	if (! eraser(&keystore_ctx, someting)) {
+	if (! eraser(&keystore_ctx, something)) {
             return -1;
         }
     }
