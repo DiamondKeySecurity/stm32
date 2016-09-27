@@ -281,17 +281,18 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
 {
     int status;
 
-    if (argc != 1) {
+    if (argc != 1 || strcmp(argv[0], "YesIAmSure") != 0) {
 	cli_print(cli, "Syntax: keystore erase YesIAmSure");
 	return CLI_ERROR;
     }
 
-    if (strcmp(argv[0], "YesIAmSure") != 0)
-	cli_print(cli, "Keystore NOT erased");
-    else if ((status = keystore_erase_sectors(0, 1)) != 1)
-	cli_print(cli, "Failed erasing keystore: %i", status);
+    cli_print(cli, "OK, erasing keystore, this might take a while...");
+    if ((status = keystore_erase_sectors(0, KEYSTORE_NUM_SECTORS - 1)) != 1)
+        cli_print(cli, "Failed erasing keystore: %i", status);
     else
-        cli_print(cli, "Keystore erased (first two sectors at least)");
+        cli_print(cli, "Keystore erased");
+
+#warning Should notify libhal/ks_flash that we whacked the keystore
 
     return CLI_OK;
 }
