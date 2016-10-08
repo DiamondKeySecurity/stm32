@@ -164,9 +164,9 @@ hal_user_t user;
 
 static int check_auth(const char *username, const char *password)
 {
-    if (strcasecmp(username, "ct") != 0)
+    if (strcmp(username, "ct") != 0)
 	return CLI_ERROR;
-    if (strcasecmp(password, "ct") != 0)
+    if (strcmp(password, "ct") != 0)
 	return CLI_ERROR;
     return CLI_OK;
 }
