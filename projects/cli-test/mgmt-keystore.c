@@ -236,8 +236,9 @@ static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char
     hal_pkey_info_t keys[64];
     unsigned n;
     hal_error_t status;
+    hal_session_handle_t session = {HAL_HANDLE_NONE};
 
-    if ((status = hal_rpc_pkey_list(keys, &n, sizeof(keys)/sizeof(*keys), HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK) {
+    if ((status = hal_rpc_pkey_list(session, keys, &n, sizeof(keys)/sizeof(*keys), HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK) {
 	cli_print(cli, "Could not fetch key info: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
