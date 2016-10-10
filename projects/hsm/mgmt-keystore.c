@@ -209,9 +209,11 @@ static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char
     hal_pkey_info_t keys[64];
     unsigned n;
     hal_error_t status;
+    hal_client_handle_t client = {HAL_HANDLE_NONE};
     hal_session_handle_t session = {HAL_HANDLE_NONE};
 
-    if ((status = hal_rpc_pkey_list(session, keys, &n, sizeof(keys)/sizeof(*keys), 0)) != LIBHAL_OK) {
+    if ((status = hal_rpc_pkey_list(client, session, keys, &n, sizeof(keys)/sizeof(*keys),
+				    0)) != LIBHAL_OK) {
 	cli_print(cli, "Could not fetch memory key info: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
@@ -221,7 +223,8 @@ static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char
     if (show_keys(cli, keys, n) != CLI_OK)
 	return CLI_ERROR;
 
-    if ((status = hal_rpc_pkey_list(session, keys, &n, sizeof(keys)/sizeof(*keys), HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK) {
+    if ((status = hal_rpc_pkey_list(client, session, keys, &n, sizeof(keys)/sizeof(*keys),
+				    HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK) {
 	cli_print(cli, "Could not fetch token key info: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
