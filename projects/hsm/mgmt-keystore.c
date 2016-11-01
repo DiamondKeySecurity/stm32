@@ -139,7 +139,7 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
 
 static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    const hal_client_handle_t  client  = { HAL_HANDLE_NONE };
+    const hal_client_handle_t  client  = { -1 };
     const hal_session_handle_t session = { HAL_HANDLE_NONE };
     hal_pkey_handle_t pkey = { HAL_HANDLE_NONE };
     hal_error_t status;
@@ -156,8 +156,12 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
 	return CLI_ERROR;
     }
 
-    if ((status = hal_rpc_pkey_find(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK ||
-	(status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
+    status = hal_rpc_pkey_find(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN);
+
+    if (status == HAL_ERROR_KEY_NOT_FOUND)
+	status = hal_rpc_pkey_find(client, session, &pkey, &name, 0);
+
+    if (status != LIBHAL_OK || (status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
 	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
 	return CLI_ERROR;
     }
@@ -206,11 +210,11 @@ static int show_keys(struct cli_def *cli, const hal_pkey_info_t * const keys, co
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    hal_pkey_info_t keys[64];
+    hal_pkey_info_t keys[128];
     unsigned n;
     hal_error_t status;
-    hal_client_handle_t client = {HAL_HANDLE_NONE};
-    hal_session_handle_t session = {HAL_HANDLE_NONE};
+    hal_client_handle_t  client  = { -1 };
+    hal_session_handle_t session = { HAL_HANDLE_NONE };
 
     if ((status = hal_rpc_pkey_list(client, session, keys, &n, sizeof(keys)/sizeof(*keys),
 				    0)) != LIBHAL_OK) {
