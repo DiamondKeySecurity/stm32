@@ -356,6 +356,12 @@ int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t 
 	 */
     }
 
+    /*
+     * Wait until last write finishes.
+     */
+
+    if (! _wait_while_wip(ctx, 1000)) return -7;
+
     return 1;
 }
 
