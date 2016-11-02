@@ -216,6 +216,18 @@ int n25q128_get_wip_flag(struct spiflash_ctx *ctx)
     return (spi_rx[1] & 1);
 }
 
+/* Wait until the flash memory is done writing (wip = Write In Progress) */
+inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
+{
+    int i;
+    while (timeout--) {
+	i = n25q128_get_wip_flag(ctx);
+	if (i < 0) return 0;
+	if (! i) break;
+	HAL_Delay(10);
+    }
+    return 1;
+}
 
 static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, uint32_t byte_offset)
 {
@@ -259,6 +271,10 @@ static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, ui
     // check
     if (ok != HAL_OK) return 0;
 
+    // wait for erase to finish
+
+    if (! _wait_while_wip(ctx, 2000)) return 0;
+
     // done
     return 1;
 }
@@ -301,19 +317,6 @@ int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
 
     // done
     return ((spi_rx[1] >> 1) & 1);
-}
-
-/* Wait until the flash memory is done writing (wip = Write In Progress) */
-inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
-{
-    int i;
-    while (timeout--) {
-	i = n25q128_get_wip_flag(ctx);
-	if (i < 0) return 0;
-	if (! i) break;
-	HAL_Delay(10);
-    }
-    return 1;
 }
 
 /* This function performs erasure if needed, and then writing of a number of pages to the flash memory */
