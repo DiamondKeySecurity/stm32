@@ -156,10 +156,10 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
 	return CLI_ERROR;
     }
 
-    status = hal_rpc_pkey_find(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN);
+    status = hal_rpc_pkey_open(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN);
 
     if (status == HAL_ERROR_KEY_NOT_FOUND)
-	status = hal_rpc_pkey_find(client, session, &pkey, &name, 0);
+	status = hal_rpc_pkey_open(client, session, &pkey, &name, 0);
 
     if (status != LIBHAL_OK || (status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
 	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
