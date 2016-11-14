@@ -171,74 +171,96 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
     return CLI_OK;
 }
 
-static int show_keys(struct cli_def *cli, const hal_pkey_info_t * const keys, const unsigned n)
+static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags_t qflags)
 {
-    char name[HAL_UUID_TEXT_SIZE];
-    const char *type, *curve;
+    const hal_client_handle_t  client  = { -1 };
+    const hal_session_handle_t session = { HAL_HANDLE_NONE };
+    char key_name[HAL_UUID_TEXT_SIZE];
+    hal_uuid_t previous_uuid = {{0}};
+    hal_pkey_handle_t pkey;
+    hal_curve_name_t curve;
+    hal_key_flags_t flags;
+    hal_key_type_t type;
     hal_error_t status;
+    hal_uuid_t uuids[50];
+    unsigned n;
+    int done = 0;
 
-    for (int i = 0; i < n; i++) {
+    cli_print(cli, title);
 
-	switch (keys[i].type) {
-	case HAL_KEY_TYPE_RSA_PRIVATE:	type = "RSA private";	break;
-	case HAL_KEY_TYPE_RSA_PUBLIC:	type = "RSA public";	break;
-	case HAL_KEY_TYPE_EC_PRIVATE:	type = "EC private";	break;
-	case HAL_KEY_TYPE_EC_PUBLIC:	type = "EC public";	break;
-	default:			type = "unknown";	break;
+    while (!done) {
+
+	if ((status = hal_rpc_pkey_match(client, session, HAL_KEY_TYPE_NONE, HAL_CURVE_NONE,
+					 qflags, NULL, 0, uuids, &n, sizeof(uuids)/sizeof(*uuids),
+					 &previous_uuid)) != LIBHAL_OK) {
+	    cli_print(cli, "Could not fetch UUID list: %s", hal_error_string(status));
+	    return 0;
 	}
 
-	switch (keys[i].curve) {
-	case HAL_CURVE_NONE:		curve = "none";		break;
-	case HAL_CURVE_P256:		curve = "P-256";	break;
-	case HAL_CURVE_P384:		curve = "P-384";	break;
-	case HAL_CURVE_P521:		curve = "P-521";	break;
-	default:			curve = "unknown";	break;
+	done = n < sizeof(uuids)/sizeof(*uuids);
+
+	if (!done)
+	    previous_uuid = uuids[sizeof(uuids)/sizeof(*uuids) - 1];
+
+	for (int i = 0; i < n; i++) {
+
+	    if ((status = hal_uuid_format(&uuids[i], key_name, sizeof(key_name))) != LIBHAL_OK) {
+		cli_print(cli, "Could not convert key name: %s",
+			  hal_error_string(status));
+		return 0;
+	    }
+
+	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i], qflags)) != LIBHAL_OK) {
+	        cli_print(cli, "Could not open key %s: %s",
+			  key_name, hal_error_string(status));
+		return 0;
+	    }
+
+	    if ((status = hal_rpc_pkey_get_key_type(pkey, &type))   != LIBHAL_OK ||
+		(status = hal_rpc_pkey_get_key_curve(pkey, &curve)) != LIBHAL_OK ||
+		(status = hal_rpc_pkey_get_key_flags(pkey, &flags)) != LIBHAL_OK)
+	        cli_print(cli, "Could not fetch metadata for key %s: %s",
+			  key_name, hal_error_string(status));
+
+	    if (status == LIBHAL_OK)
+	        status = hal_rpc_pkey_close(pkey);
+	    else
+	        (void) hal_rpc_pkey_close(pkey);
+
+	    if (status != LIBHAL_OK)
+	        return 0;
+
+	    const char *type_name = "unknown";
+	    switch (type) {
+	    case HAL_KEY_TYPE_NONE:		type_name = "none";		break;
+	    case HAL_KEY_TYPE_RSA_PRIVATE:	type_name = "RSA private";	break;
+	    case HAL_KEY_TYPE_RSA_PUBLIC:	type_name = "RSA public";	break;
+	    case HAL_KEY_TYPE_EC_PRIVATE:	type_name = "EC private";	break;
+	    case HAL_KEY_TYPE_EC_PUBLIC:	type_name = "EC public";	break;
+	    }
+
+	    const char *curve_name = "unknown";
+	    switch (curve) {
+	    case HAL_CURVE_NONE:		curve_name = "none";		break;
+	    case HAL_CURVE_P256:		curve_name = "P-256";		break;
+	    case HAL_CURVE_P384:		curve_name = "P-384";		break;
+	    case HAL_CURVE_P521:		curve_name = "P-521";		break;
+	    }
+
+	    cli_print(cli, "Key %2i, name %s, type %s, curve %s, flags 0x%lx",
+		      i, key_name, type_name, curve_name, (unsigned long) flags);
 	}
-
-	if ((status = hal_uuid_format(&keys[i].name, name, sizeof(name))) != LIBHAL_OK) {
-	    cli_print(cli, "Could not convert key name: %s", hal_error_string(status));
-	    return CLI_ERROR;
-	}
-
-	cli_print(cli, "Key %2i, name %s, type %s, curve %s, flags 0x%lx",
-		  i, name, type, curve, (unsigned long) keys[i].flags);
-
     }
 
-    return CLI_OK;
+    return 1;
 }
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    hal_pkey_info_t keys[128];
-    unsigned n;
-    hal_error_t status;
-    hal_client_handle_t  client  = { -1 };
-    hal_session_handle_t session = { HAL_HANDLE_NONE };
-
-    if ((status = hal_rpc_pkey_list(client, session, keys, &n, sizeof(keys)/sizeof(*keys),
-				    0)) != LIBHAL_OK) {
-	cli_print(cli, "Could not fetch memory key info: %s", hal_error_string(status));
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "Memory keystore:");
-
-    if (show_keys(cli, keys, n) != CLI_OK)
-	return CLI_ERROR;
-
-    if ((status = hal_rpc_pkey_list(client, session, keys, &n, sizeof(keys)/sizeof(*keys),
-				    HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK) {
-	cli_print(cli, "Could not fetch token key info: %s", hal_error_string(status));
-	return CLI_ERROR;
-    }
-
-    cli_print(cli, "Token keystore:");
-
-    if (show_keys(cli, keys, n) != CLI_OK)
-	return CLI_ERROR;
-
-    return CLI_OK;
+    int ok = 1;
+    ok &= show_keys(cli, "Memory keystore:", 0);
+    ok &= show_keys(cli, "Token keystore:",  HAL_KEY_FLAG_TOKEN);
+    return ok ? CLI_OK : CLI_ERROR;
 }
 
 static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
