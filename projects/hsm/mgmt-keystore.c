@@ -265,6 +265,7 @@ static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char
 
 static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    hal_error_t err;
     int status;
 
     if (argc != 1 || strcmp(argv[0], "YesIAmSure") != 0) {
@@ -273,13 +274,22 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
     }
 
     cli_print(cli, "OK, erasing keystore, this might take a while...");
-    if ((status = keystore_erase_sectors(0, KEYSTORE_NUM_SECTORS - 1)) != 1)
-        cli_print(cli, "Failed erasing keystore: %i", status);
-    else
-        cli_print(cli, "Keystore erased");
+    if ((status = keystore_erase_sectors(0, KEYSTORE_NUM_SECTORS - 1)) != 1) {
+        cli_print(cli, "Failed erasing token keystore: %i", status);
+	return CLI_ERROR;
+    }
 
-#warning Should notify libhal/ks_flash that we whacked the keystore
+    if ((err = hal_ks_init(hal_ks_token_driver, 0)) != LIBHAL_OK) {
+        cli_print(cli, "Failed to reinitialize token keystore: %s", hal_error_string(err));
+	return CLI_ERROR;
+    }
 
+    if ((err = hal_ks_init(hal_ks_volatile_driver, 0)) != LIBHAL_OK) {
+        cli_print(cli, "Failed to reinitialize memory keystore: %s", hal_error_string(err));
+	return CLI_ERROR;
+    }
+
+    cli_print(cli, "Keystore erased");
     return CLI_OK;
 }
 
