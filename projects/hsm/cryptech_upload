@@ -105,16 +105,28 @@ def parse_args():
                         type = argparse.FileType("rb"),
                         help = "Explicit source image file for upload, overrides firmware tarball")
 
+    parser.add_argument("--separate-pins",
+                        action = "store_true",
+                        help = "Prompt separately for each PIN required during upload")
+
+    parser.add_argument("--debug",
+                        action = "store_true",
+                        help = "Enable debugging of upload protocol",
+                        )
+
     return parser.parse_args()
 
 
 def _write(dst, data):
+    numeric = isinstance(data, (int, long))
+    if numeric:
+        data = struct.pack("<I", data)
     dst.write(data)
-    #if len(data) == 4:
-    #    print("Wrote 0x{!s}".format(data.encode("hex")))
-    #else:
-    #    print("Wrote {!r}".format(data))
-
+    if args.debug:
+        if numeric:
+            print("Wrote 0x{!s}".format(data.encode("hex")))
+        else:
+            print("Wrote {!r}".format(data))
 
 def _read(dst):
     res = ""
@@ -124,7 +136,8 @@ def _read(dst):
     while x:
         res += x
         x = dst.read(1)
-    #print ("Read {!r}".format(res))
+    if args.debug:
+        print ("Read {!r}".format(res))
     return res
 
 pin = None
@@ -137,7 +150,7 @@ def _execute(dst, cmd):
         _write(dst, args.username + "\r")
         prompt = _read(dst)
         if prompt.endswith("Password: "):
-            if not pin:
+            if not pin or args.separate_pins:
                 pin = getpass.getpass("{} PIN: ".format(args.username))
             _write(dst, pin + "\r")
             prompt = _read(dst)
