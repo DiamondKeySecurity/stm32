@@ -72,14 +72,15 @@ uint32_t flash_sector_offsets[FLASH_NUM_SECTORS + 1] = {
 
 int stm_flash_sector_num(const uint32_t offset)
 {
-    int i = FLASH_NUM_SECTORS;
+    int i;
 
-    while (i-- >= 0) {
-	if (offset >= flash_sector_offsets[i] &&
-	    offset < flash_sector_offsets[i + 1]) {
+    if (offset < flash_sector_offsets[0])
+        return -1;
+
+    for (i = 0; i < FLASH_NUM_SECTORS; ++i)
+	if (offset < flash_sector_offsets[i + 1])
 	    return i;
-	}
-    }
+
     return -1;
 }
 

@@ -225,10 +225,8 @@ def send_file(src, size, args, dst):
     if args.fpga:
         # tell the fpga to read its new configuration
         _execute(dst, "fpga reset")
-
-    if args.fpga or args.bootloader:
         # log out of the CLI
-        # firmware upgrade reboots, doesn't need an exit
+        # (firmware/bootloader upgrades reboot, don't need an exit)
         _execute(dst, "exit")
 
     return True

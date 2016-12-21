@@ -52,7 +52,8 @@ static uint32_t dfu_offset;
 
 static int _flash_write_callback(uint8_t *buf, size_t len)
 {
-    stm_flash_write32(dfu_offset, (uint32_t *)buf, sizeof(buf)/4);
+    if (stm_flash_write32(dfu_offset, (uint32_t *)buf, (uint32_t)len/4) != 1)
+        return 0;
     dfu_offset += DFU_UPLOAD_CHUNK_SIZE;
     return 1;
 }
@@ -67,10 +68,12 @@ static int cmd_bootloader_upload(struct cli_def *cli, const char *command, char 
     uint8_t buf[DFU_UPLOAD_CHUNK_SIZE];
     dfu_offset = DFU_BOOTLOADER_ADDR;
 
-    cli_receive_data(cli, buf, sizeof(buf), _flash_write_callback);
-
-    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / DFU_UPLOAD_CHUNK_SIZE);
-    return CLI_OK;
+    int ret = cli_receive_data(cli, buf, sizeof(buf), _flash_write_callback);
+    if (ret == CLI_OK) {
+        cli_print(cli, "\nRebooting\n");
+        HAL_NVIC_SystemReset();
+    }
+    return ret;
 }
 
 void configure_cli_bootloader(struct cli_def *cli)
