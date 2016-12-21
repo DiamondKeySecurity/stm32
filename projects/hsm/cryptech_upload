@@ -191,32 +191,23 @@ def send_file(src, size, args, dst):
         return False
 
     # 2. Write file contents while calculating CRC-32
-    while True:
+    chunks = int((size + chunk_size - 1) / chunk_size)
+    for counter in xrange(chunks):
         data = src.read(chunk_size)
-        if not data:
-            break
         dst.write(data)
         dst.flush()
-        print("Wrote {!s} bytes (chunk {!s}/{!s})".format(len(data), counter, int(size / chunk_size)))
+        print("Wrote {!s} bytes (chunk {!s}/{!s})".format(len(data), counter + 1, chunks))
         # read ACK (a counter of number of 4k chunks received)
-        while True:
-            ack_bytes = dst.read(4)
-            if len(ack_bytes) == 4:
-                break
-            print("ERROR: Did not receive an ACK, got {!r}".format(ack_bytes))
-            dst.write("\r")  # eventually get back to the CLI prompt
-            dst.flush()
-        ack = struct.unpack("<I", ack_bytes)[0]
+        ack_bytes = ""
+        while len(ack_bytes) < 4:
+            ack_bytes += _read(dst)
+        ack = struct.unpack("<I", ack_bytes[:4])[0]
         if ack != counter + 1:
             print("ERROR: Did not receive the expected counter as ACK (got {!r}/{!r}, not {!r})".format(ack, ack_bytes, counter))
-            flush = dst.read(100)
-            print("FLUSH data: {!r}".format(flush))
             return False
         counter += 1
 
         crc = crc32(data, crc) & 0xffffffff
-
-    _read(dst)
 
     # 3. Write CRC-32 (4 bytes)
     _write(dst, struct.pack("<I", crc))
