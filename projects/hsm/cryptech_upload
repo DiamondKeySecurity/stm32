@@ -122,6 +122,7 @@ def _write(dst, data):
     if numeric:
         data = struct.pack("<I", data)
     dst.write(data)
+    dst.flush()
     if args.debug:
         if numeric:
             print("Wrote 0x{!s}".format(data.encode("hex")))
@@ -195,6 +196,7 @@ def send_file(src, size, args, dst):
         if not data:
             break
         dst.write(data)
+        dst.flush()
         print("Wrote {!s} bytes (chunk {!s}/{!s})".format(len(data), counter, int(size / chunk_size)))
         # read ACK (a counter of number of 4k chunks received)
         while True:
@@ -203,6 +205,7 @@ def send_file(src, size, args, dst):
                 break
             print("ERROR: Did not receive an ACK, got {!r}".format(ack_bytes))
             dst.write("\r")  # eventually get back to the CLI prompt
+            dst.flush()
         ack = struct.unpack("<I", ack_bytes)[0]
         if ack != counter + 1:
             print("ERROR: Did not receive the expected counter as ACK (got {!r}/{!r}, not {!r})".format(ack, ack_bytes, counter))
