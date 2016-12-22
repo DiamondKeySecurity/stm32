@@ -38,10 +38,11 @@
 #include "stm-led.h"
 #include "stm-uart.h"
 #include "stm-flash.h"
-
 #undef HAL_OK
+
 #define HAL_OK LIBHAL_OK
 #include "hal.h"
+#include "hal_internal.h"
 #undef HAL_OK
 
 #include <string.h>
@@ -98,6 +99,8 @@ static int do_login(void)
         return -1;
 
     uart_flush();
+
+    hal_ks_init_read_only_pins_only();
 
     if (hal_rpc_login(client, user, pin, n) != LIBHAL_OK) {
         uart_send_string2(STM_UART_MGMT, "\r\nAccess denied\r\n");
