@@ -183,8 +183,9 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
     hal_key_type_t type;
     hal_error_t status;
     hal_uuid_t uuids[50];
-    unsigned n;
+    int count = 0;
     int done = 0;
+    unsigned n;
 
     cli_print(cli, title);
 
@@ -248,7 +249,7 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 	    }
 
 	    cli_print(cli, "Key %2i, name %s, type %s, curve %s, flags 0x%lx",
-		      i, key_name, type_name, curve_name, (unsigned long) flags);
+		      count++, key_name, type_name, curve_name, (unsigned long) flags);
 	}
     }
 
