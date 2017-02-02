@@ -102,6 +102,7 @@ CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
 CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOOLCHAIN_GCC -D__FPU_PRESENT=1 -D$(BOARD)
+CFLAGS += -DENABLE_WEAK_FUNCTIONS
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=c99
 CFLAGS += -I$(TOPLEVEL)

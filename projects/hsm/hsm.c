@@ -103,6 +103,15 @@ osMutexId  uart_mutex;
 osMutexDef(uart_mutex);
 #endif
 
+#if NUM_RPC_TASK > 1
+/* A mutex to arbitrate concurrent access to the keystore.
+ */
+osMutexId  ks_mutex;
+osMutexDef(ks_mutex);
+void hal_ks_lock(void)   { osMutexWait(ks_mutex, osWaitForever); }
+void hal_ks_unlock(void) { osMutexRelease(ks_mutex); }
+#endif
+
 static uint8_t uart_rx[2];	/* current character received from UART */
 
 /* Callback for HAL_UART_Receive_DMA().
@@ -260,6 +269,8 @@ int main()
 
 #if NUM_RPC_TASK > 1
     if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL)
+	Error_Handler();
+    if ((ks_mutex = osMutexCreate(osMutex(ks_mutex))) == NULL)
 	Error_Handler();
 #endif
 
