@@ -6,7 +6,7 @@
  * The Alpha board has two of these SPI flash memorys, the FPGA config memory
  * and the keystore memory.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,9 +35,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm32f4xx_hal.h"
-#include "stm-fpgacfg.h"
-#include "stm-init.h"
+#include "spiflash_n25q128.h"
 
 #define _n25q128_select(ctx)	HAL_GPIO_WritePin(ctx->cs_n_port, ctx->cs_n_pin, GPIO_PIN_RESET);
 #define _n25q128_deselect(ctx)	HAL_GPIO_WritePin(ctx->cs_n_port, ctx->cs_n_pin, GPIO_PIN_SET);
@@ -222,7 +220,7 @@ inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
     int i;
     while (timeout--) {
 	i = n25q128_get_wip_flag(ctx);
-	if (i < 0) return 0;
+	if (i < 0) return 0;	// impossible
 	if (! i) break;
 	HAL_Delay(10);
     }
@@ -294,6 +292,54 @@ int n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset)
 }
 
 
+int n25q128_erase_bulk(struct spiflash_ctx *ctx)
+{
+    // tx buffer
+    uint8_t spi_tx[1];
+
+    // result
+    HAL_StatusTypeDef ok;
+
+    // enable writing
+    spi_tx[0] = N25Q128_COMMAND_WRITE_ENABLE;
+
+    // select, send command, deselect
+    _n25q128_select(ctx);
+    ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 1, N25Q128_SPI_TIMEOUT);
+    HAL_Delay(1);
+    _n25q128_deselect(ctx);
+
+    // check
+    if (ok != HAL_OK) return 0;
+
+    // make sure, that write enable did the job
+    int wel = _n25q128_get_wel_flag(ctx);
+    if (wel != 1) return 0;
+
+    // send command
+    spi_tx[0] = N25Q128_COMMAND_ERASE_BULK;
+
+    // activate, send command, deselect
+    _n25q128_select(ctx);
+    ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 1, N25Q128_SPI_TIMEOUT);
+    HAL_Delay(1);
+    _n25q128_deselect(ctx);
+
+    // check
+    if (ok != HAL_OK) return 0;
+
+    // wait for erase to finish
+
+    if (! _wait_while_wip(ctx, 60000)) return 0;
+
+    // done
+    return 1;
+}
+
+
+/*
+ * Read the Write Enable Latch bit in the status register.
+ */
 int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
 {
     // tx, rx buffers
@@ -318,6 +364,7 @@ int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
     // done
     return ((spi_rx[1] >> 1) & 1);
 }
+
 
 /* This function performs erasure if needed, and then writing of a number of pages to the flash memory */
 int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len, const int auto_erase)
