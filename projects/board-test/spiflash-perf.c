@@ -23,18 +23,6 @@ extern struct spiflash_ctx keystore_ctx;
 static struct spiflash_ctx *ctx = &keystore_ctx;
 
 /*
- * Based on _wait_while_wip in spiflash_n25q128.c, but can be more
- * aggressive about re-checking.
- */
-static inline void _wait_while_wip(uint32_t delay)
-{
-    while (n25q128_get_wip_flag(ctx) != HAL_OK) {
-        if (delay != 0)
-            HAL_Delay(delay);
-    }
-}
-
-/*
  * 1. Read the entire flash by pages, ignoring data.
  */
 static void test_read_page(void)
@@ -150,9 +138,24 @@ static void test_verify_erase(void)
 }
 
 /*
+ * Borrowed from spiflash_n25q128.c, since n25q128_write_page doesn't call it.
+ */
+inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
+{
+    int i;
+    while (timeout--) {
+	i = n25q128_get_wip_flag(ctx);
+	if (i < 0) return 0;
+	if (! i) break;
+	HAL_Delay(10);
+    }
+    return 1;
+}
+
+/*
  * 3a. Write the entire flash with a pattern.
  */
-static void test_write_page(uint32_t delay)
+static void test_write_page(void)
 {
     uint8_t write_buf[N25Q128_PAGE_SIZE];
     uint32_t i;
@@ -163,6 +166,8 @@ static void test_write_page(uint32_t delay)
 
     for (i = 0; i < N25Q128_NUM_PAGES; ++i) {
         err = n25q128_write_page(ctx, i, write_buf);
+        if (err == 1)
+            err = _wait_while_wip(ctx, 1000);
         if (err != 1) {
             uart_send_string("ERROR: n25q128_write_page returned ");
             uart_send_integer(err, 0);
@@ -171,7 +176,6 @@ static void test_write_page(uint32_t delay)
             uart_send_string("\r\n");
             break;
         }
-        _wait_while_wip(delay);
     }
 }
 
@@ -197,11 +201,17 @@ static void _time_check(char *label, const uint32_t t0, uint32_t n_rounds)
     uart_send_integer(t / 1000, 0);
     uart_send_char('.');
     uart_send_integer(t % 1000, 3);
-    uart_send_string(" sec for ");
-    uart_send_integer(n_rounds, 0);
-    uart_send_string(" rounds, ");
-    uart_send_integer((t + n_rounds/2) / n_rounds, 0);
-    uart_send_string(" ms each\r\n");
+    uart_send_string(" sec");
+    if (n_rounds > 1) {
+        uart_send_string(" for ");
+        uart_send_integer(n_rounds, 0);
+        uart_send_string(" rounds, ");
+        uart_send_integer(t / n_rounds, 0);
+        uart_send_char('.');
+        uart_send_integer(((t % n_rounds) * 100) / n_rounds, 2);
+        uart_send_string(" ms each");
+    }
+    uart_send_string("\r\n");
 }
 
 #define time_check(_label_, _expr_, _n_)	\
@@ -221,17 +231,15 @@ int main(void)
         return 0;
     }
 
-    uart_send_string("Starting...\r\n\r\n");
+    uart_send_string("Starting...\r\n");
 
-    time_check("read_page       ", test_read_page(),       N25Q128_NUM_PAGES);
-    time_check("erase_sector    ", test_erase_sector(),    N25Q128_NUM_SECTORS);
-    time_check("erase_subsector ", test_erase_subsector(), N25Q128_NUM_SUBSECTORS);
-    time_check("erase_bulk      ", test_erase_bulk(),      1);
-    time_check("verify_erase    ", test_verify_erase(),    N25Q128_NUM_PAGES);
-    time_check("write_page 0ms  ", test_write_page(0),     N25Q128_NUM_PAGES);
-    time_check("write_page 1ms  ", test_write_page(1),     N25Q128_NUM_PAGES);
-    time_check("write_page 10ms ", test_write_page(10),    N25Q128_NUM_PAGES);
-    time_check("verify_write    ", test_verify_write(),    N25Q128_NUM_PAGES);
+    time_check("read page       ", test_read_page(),       N25Q128_NUM_PAGES);
+    time_check("erase sector    ", test_erase_sector(),    N25Q128_NUM_SECTORS);
+    time_check("erase subsector ", test_erase_subsector(), N25Q128_NUM_SUBSECTORS);
+    time_check("erase bulk      ", test_erase_bulk(),      1);
+    time_check("verify erase    ", test_verify_erase(),    N25Q128_NUM_PAGES);
+    time_check("write page      ", test_write_page(),      N25Q128_NUM_PAGES);
+    time_check("verify write    ", test_verify_write(),    N25Q128_NUM_PAGES);
 
     uart_send_string("Done.\r\n\r\n");
     return 0;

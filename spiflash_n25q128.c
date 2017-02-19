@@ -220,7 +220,7 @@ inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
     int i;
     while (timeout--) {
 	i = n25q128_get_wip_flag(ctx);
-	if (i < 0) return 0;	// impossible
+	if (i < 0) return 0;
 	if (! i) break;
 	HAL_Delay(10);
     }
