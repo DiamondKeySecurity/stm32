@@ -40,7 +40,7 @@ SPI_HandleTypeDef hspi_keystore;
 
 struct spiflash_ctx keystore_ctx = {&hspi_keystore, KSM_PROM_CS_N_GPIO_Port, KSM_PROM_CS_N_Pin};
 
-int keystore_check_id()
+int keystore_check_id(void)
 {
     return n25q128_check_id(&keystore_ctx);
 }
@@ -64,15 +64,6 @@ static int keystore_erase_something(uint32_t start, uint32_t stop, uint32_t limi
     if (stop > limit || stop < start) return -3;
 
     for (something = start; something <= stop; something++) {
-	int timeout = 200; /* times 10ms = 2 seconds timeout */
-	while (timeout--) {
-	    int i = n25q128_get_wip_flag(&keystore_ctx);
-	    if (i < 0) return 0;
-	    if (! i) break;
-	    HAL_Delay(10);
-	}
-	if (! timeout) return 0;
-
 	if (! eraser(&keystore_ctx, something)) {
             return -1;
         }
@@ -90,4 +81,9 @@ int keystore_erase_subsectors(uint32_t start, uint32_t stop)
 {
     return keystore_erase_something(start, stop, N25Q128_NUM_SUBSECTORS,
 				    n25q128_erase_subsector);
+}
+
+int keystore_erase_bulk(void)
+{
+    return n25q128_erase_bulk(&keystore_ctx);
 }

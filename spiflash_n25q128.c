@@ -49,7 +49,8 @@
 #endif
 
 
-int _n25q128_get_wel_flag(struct spiflash_ctx *ctx);
+static int _n25q128_get_wel_flag(struct spiflash_ctx *ctx);
+static int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout);
 
 
 int n25q128_check_id(struct spiflash_ctx *ctx)
@@ -67,7 +68,6 @@ int n25q128_check_id(struct spiflash_ctx *ctx)
     // select, send command & read response, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_TransmitReceive(ctx->hspi, spi_tx, spi_rx, 4, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -108,7 +108,6 @@ int n25q128_read_page(struct spiflash_ctx *ctx, uint32_t page_offset, uint8_t *p
     // activate, send command
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 4, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
 
     // check
     if (ok != HAL_OK) {
@@ -118,7 +117,6 @@ int n25q128_read_page(struct spiflash_ctx *ctx, uint32_t page_offset, uint8_t *p
 
     // read response, deselect
     ok = HAL_SPI_Receive(ctx->hspi, page_buffer, N25Q128_PAGE_SIZE, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -146,7 +144,6 @@ int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uin
     // activate, send command, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 1, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -168,7 +165,6 @@ int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uin
     // activate, send command
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 4, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
 
     // check
     if (ok != HAL_OK) {
@@ -178,18 +174,20 @@ int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uin
 
     // send data, deselect
     ok = HAL_SPI_Transmit(ctx->hspi, (uint8_t *) page_buffer, N25Q128_PAGE_SIZE, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
     if (ok != HAL_OK) return 0;
+
+    // wait until write finishes
+    if (! _wait_while_wip(ctx, 1000)) return 0;
 
     // done
     return 1;
 }
 
 
-int n25q128_get_wip_flag(struct spiflash_ctx *ctx)
+static int n25q128_get_wip_flag(struct spiflash_ctx *ctx)
 {
     // tx, rx buffers
     uint8_t spi_tx[2];
@@ -204,7 +202,6 @@ int n25q128_get_wip_flag(struct spiflash_ctx *ctx)
     // send command, read response, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_TransmitReceive(ctx->hspi, spi_tx, spi_rx, 2, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -215,16 +212,18 @@ int n25q128_get_wip_flag(struct spiflash_ctx *ctx)
 }
 
 /* Wait until the flash memory is done writing (wip = Write In Progress) */
-inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
+static int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
 {
+    uint32_t tick_end = HAL_GetTick() + timeout;
     int i;
-    while (timeout--) {
+
+    do {
 	i = n25q128_get_wip_flag(ctx);
 	if (i < 0) return 0;
-	if (! i) break;
-	HAL_Delay(10);
-    }
-    return 1;
+	if (! i) return 1;
+    } while (HAL_GetTick() < tick_end);
+
+    return 0;
 }
 
 static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, uint32_t byte_offset)
@@ -244,7 +243,6 @@ static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, ui
     // select, send command, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 1, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -263,7 +261,6 @@ static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, ui
     // activate, send command, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 4, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -271,7 +268,7 @@ static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, ui
 
     // wait for erase to finish
 
-    if (! _wait_while_wip(ctx, 2000)) return 0;
+    if (! _wait_while_wip(ctx, 1000)) return 0;
 
     // done
     return 1;
@@ -306,7 +303,6 @@ int n25q128_erase_bulk(struct spiflash_ctx *ctx)
     // select, send command, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 1, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -322,7 +318,6 @@ int n25q128_erase_bulk(struct spiflash_ctx *ctx)
     // activate, send command, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_Transmit(ctx->hspi, spi_tx, 1, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -340,7 +335,7 @@ int n25q128_erase_bulk(struct spiflash_ctx *ctx)
 /*
  * Read the Write Enable Latch bit in the status register.
  */
-int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
+static int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
 {
     // tx, rx buffers
     uint8_t spi_tx[2];
@@ -355,7 +350,6 @@ int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
     // send command, read response, deselect
     _n25q128_select(ctx);
     ok = HAL_SPI_TransmitReceive(ctx->hspi, spi_tx, spi_rx, 2, N25Q128_SPI_TIMEOUT);
-    HAL_Delay(1);
     _n25q128_deselect(ctx);
 
     // check
@@ -385,16 +379,12 @@ int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t 
 	 * sectors.
 	 */
 
-	if (! _wait_while_wip(ctx, 1000)) return -3;
-
 	if (! n25q128_erase_sector(ctx, offset / N25Q128_SECTOR_SIZE)) {
 	    return -4;
 	}
     }
 
     for (page = 0; page < len / N25Q128_PAGE_SIZE; page++) {
-	if (! _wait_while_wip(ctx, 1000)) return -5;
-
 	if (! n25q128_write_page(ctx, offset / N25Q128_PAGE_SIZE, buf)) {
 	    return -6;
 	}
@@ -405,12 +395,6 @@ int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t 
 	 * to memory by verifying the contents of one page after erase?
 	 */
     }
-
-    /*
-     * Wait until last write finishes.
-     */
-
-    if (! _wait_while_wip(ctx, 1000)) return -7;
 
     return 1;
 }

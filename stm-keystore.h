@@ -62,5 +62,6 @@ extern int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len)
 extern int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
 extern int keystore_erase_sectors(uint32_t start, uint32_t stop);
 extern int keystore_erase_subsectors(uint32_t start, uint32_t stop);
+extern int keystore_erase_bulk(void);
 
 #endif /* __STM32_KEYSTORE_H */

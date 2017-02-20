@@ -187,8 +187,8 @@ int main(void)
     uart_send_string("Starting...\r\n");
 
     time_check("read data       ", test_read_data(),       KEYSTORE_NUM_SUBSECTORS);
-    time_check("erase sector    ", test_erase_sector(),    KEYSTORE_NUM_SECTORS);
     time_check("erase subsector ", test_erase_subsector(), KEYSTORE_NUM_SUBSECTORS);
+    time_check("erase sector    ", test_erase_sector(),    KEYSTORE_NUM_SECTORS);
     time_check("verify erase    ", test_verify_erase(),    KEYSTORE_NUM_SUBSECTORS);
     time_check("write data      ", test_write_data(),      KEYSTORE_NUM_SUBSECTORS);
     time_check("verify write    ", test_verify_write(),    KEYSTORE_NUM_SUBSECTORS);

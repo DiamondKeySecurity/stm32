@@ -138,21 +138,6 @@ static void test_verify_erase(void)
 }
 
 /*
- * Borrowed from spiflash_n25q128.c, since n25q128_write_page doesn't call it.
- */
-inline int _wait_while_wip(struct spiflash_ctx *ctx, uint32_t timeout)
-{
-    int i;
-    while (timeout--) {
-	i = n25q128_get_wip_flag(ctx);
-	if (i < 0) return 0;
-	if (! i) break;
-	HAL_Delay(10);
-    }
-    return 1;
-}
-
-/*
  * 3a. Write the entire flash with a pattern.
  */
 static void test_write_page(void)
@@ -166,8 +151,6 @@ static void test_write_page(void)
 
     for (i = 0; i < N25Q128_NUM_PAGES; ++i) {
         err = n25q128_write_page(ctx, i, write_buf);
-        if (err == 1)
-            err = _wait_while_wip(ctx, 1000);
         if (err != 1) {
             uart_send_string("ERROR: n25q128_write_page returned ");
             uart_send_integer(err, 0);
@@ -234,8 +217,8 @@ int main(void)
     uart_send_string("Starting...\r\n");
 
     time_check("read page       ", test_read_page(),       N25Q128_NUM_PAGES);
-    time_check("erase sector    ", test_erase_sector(),    N25Q128_NUM_SECTORS);
     time_check("erase subsector ", test_erase_subsector(), N25Q128_NUM_SUBSECTORS);
+    time_check("erase sector    ", test_erase_sector(),    N25Q128_NUM_SECTORS);
     time_check("erase bulk      ", test_erase_bulk(),      1);
     time_check("verify erase    ", test_verify_erase(),    N25Q128_NUM_PAGES);
     time_check("write page      ", test_write_page(),      N25Q128_NUM_PAGES);
