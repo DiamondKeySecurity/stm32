@@ -48,7 +48,12 @@ int fpgacfg_check_id()
 
 int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
-    return n25q128_write_data(&fpgacfg_ctx, offset, buf, len, 1);
+    if ((offset % N25Q128_SECTOR_SIZE) == 0)
+	// first page in sector, need to erase sector
+	if (! n25q128_erase_sector(&fpgacfg_ctx, offset / N25Q128_SECTOR_SIZE))
+	    return -4;
+
+    return n25q128_write_data(&fpgacfg_ctx, offset, buf, len);
 }
 
 void fpgacfg_access_control(enum fpgacfg_access_ctrl access)

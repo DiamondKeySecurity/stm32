@@ -360,29 +360,16 @@ static int _n25q128_get_wel_flag(struct spiflash_ctx *ctx)
 }
 
 
-/* This function performs erasure if needed, and then writing of a number of pages to the flash memory */
-int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len, const int auto_erase)
+/* This function writes of a number of pages to the flash memory.
+ * The caller is responsible for ensuring that the pages have been erased.
+ */
+int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
     uint32_t page;
 
     /* Ensure alignment */
     if ((offset % N25Q128_PAGE_SIZE) != 0) return -1;
     if ((len % N25Q128_PAGE_SIZE) != 0) return -2;
-
-    if (auto_erase && (offset % N25Q128_SECTOR_SIZE) == 0) {
-	/*
-	 * first page in sector, need to erase sector
-	 *
-	 * So why do we only do this when the buffer starts on the
-	 * sector, as opposed to performing this check for every page?
-	 * Also, might be better to do this by subsectors rather than
-	 * sectors.
-	 */
-
-	if (! n25q128_erase_sector(ctx, offset / N25Q128_SECTOR_SIZE)) {
-	    return -4;
-	}
-    }
 
     for (page = 0; page < len / N25Q128_PAGE_SIZE; page++) {
 	if (! n25q128_write_page(ctx, offset / N25Q128_PAGE_SIZE, buf)) {

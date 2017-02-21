@@ -77,6 +77,6 @@ extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset
 extern int n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset);
 extern int n25q128_erase_bulk(struct spiflash_ctx *ctx);
 
-extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len, const int auto_erase);
+extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
 extern int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);
 #endif /* __STM32_SPIFLASH_N25Q128_H */

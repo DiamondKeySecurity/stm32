@@ -52,7 +52,7 @@ int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len)
 
 int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
-    return n25q128_write_data(&keystore_ctx, offset, buf, len, 0);
+    return n25q128_write_data(&keystore_ctx, offset, buf, len);
 }
 
 static int keystore_erase_something(uint32_t start, uint32_t stop, uint32_t limit,
