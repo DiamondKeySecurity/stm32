@@ -3,7 +3,7 @@
  * ---------------
  * CLI 'keystore' commands.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -128,7 +128,7 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
 	return CLI_ERROR;
     }
 
-    status = hal_set_pin_default_iterations(client, strtol(argv[0], NULL, 0));
+    status = hal_set_pin_default_iterations(client, strtoul(argv[0], NULL, 0));
     if (status != LIBHAL_OK) {
 	cli_print(cli, "Failed setting iterations: %s", hal_error_string(status));
 	return CLI_ERROR;
@@ -195,7 +195,7 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 					 qflags, NULL, 0, uuids, &n, sizeof(uuids)/sizeof(*uuids),
 					 &previous_uuid)) != LIBHAL_OK) {
 	    cli_print(cli, "Could not fetch UUID list: %s", hal_error_string(status));
-	    return 0;
+	    return CLI_ERROR;
 	}
 
 	done = n < sizeof(uuids)/sizeof(*uuids);
@@ -208,13 +208,13 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 	    if ((status = hal_uuid_format(&uuids[i], key_name, sizeof(key_name))) != LIBHAL_OK) {
 		cli_print(cli, "Could not convert key name: %s",
 			  hal_error_string(status));
-		return 0;
+		return CLI_ERROR;
 	    }
 
 	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i], qflags)) != LIBHAL_OK) {
 	        cli_print(cli, "Could not open key %s: %s",
 			  key_name, hal_error_string(status));
-		return 0;
+		return CLI_ERROR;
 	    }
 
 	    if ((status = hal_rpc_pkey_get_key_type(pkey, &type))   != LIBHAL_OK ||
@@ -229,7 +229,7 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 	        (void) hal_rpc_pkey_close(pkey);
 
 	    if (status != LIBHAL_OK)
-	        return 0;
+	        return CLI_ERROR;
 
 	    const char *type_name = "unknown";
 	    switch (type) {
@@ -253,15 +253,38 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 	}
     }
 
-    return 1;
+    return CLI_OK;
+}
+
+static int show_pin(struct cli_def *cli, char *label, hal_user_t user)
+{
+    const hal_ks_pin_t *p;
+
+    if (hal_get_pin(user, &p) != HAL_OK)
+        return CLI_ERROR;
+
+    /*
+     * I'm not sure iterations is the most interesting thing to show, but
+     * it's what we had before.
+     */
+    
+    cli_print(cli, "%s iterations: 0x%lx", label, p->iterations);
+    return CLI_OK;
 }
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    int ok = 1;
-    ok &= show_keys(cli, "Memory keystore:", 0);
-    ok &= show_keys(cli, "Token keystore:",  HAL_KEY_FLAG_TOKEN);
-    return ok ? CLI_OK : CLI_ERROR;
+    int err = 0;
+
+    err |= show_keys(cli, "Memory keystore:", 0);
+    err |= show_keys(cli, "Token keystore:",  HAL_KEY_FLAG_TOKEN);
+
+    cli_print(cli, "\nPins:");
+    err |= show_pin(cli, "Wheel", HAL_USER_WHEEL);
+    err |= show_pin(cli, "SO   ", HAL_USER_SO);
+    err |= show_pin(cli, "User ", HAL_USER_NORMAL);
+
+    return err ? CLI_ERROR : CLI_OK;
 }
 
 static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
