@@ -334,7 +334,7 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
     }
 
     cli_print(cli, "OK, erasing keystore, this might take a while...");
-    if ((status = keystore_erase_sectors(0, KEYSTORE_NUM_SECTORS - 1)) != 1) {
+    if ((status = keystore_erase_bulk()) != 1) {
         cli_print(cli, "Failed erasing token keystore: %i", status);
 	return CLI_ERROR;
     }

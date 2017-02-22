@@ -47,7 +47,13 @@ static volatile uint32_t dfu_offset = 0;
 
 
 
-static int _flash_write_callback(uint8_t *buf, size_t len) {
+static int _flash_write_callback(uint8_t *buf, size_t len)
+{
+    if ((dfu_offset % FPGACFG_SECTOR_SIZE) == 0)
+	/* first page in sector, need to erase sector */
+	if (fpgacfg_erase_sector(dfu_offset / FPGACFG_SECTOR_SIZE) != 1)
+	    return CLI_ERROR;
+
     int res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE) == 1;
     dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
     return res;
@@ -91,7 +97,7 @@ static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, ch
      *
      * This command could be made to accept an argument indicating the whole memory should be erased.
      */
-    if (! fpgacfg_erase_sectors(1)) {
+    if (fpgacfg_erase_sector(0) != 0) {
 	cli_print(cli, "Erasing first sector in FPGA config memory failed");
 	return CLI_ERROR;
     }

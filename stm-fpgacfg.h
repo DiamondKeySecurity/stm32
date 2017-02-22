@@ -4,7 +4,7 @@
  * Functions and defines for accessing the FPGA config memory and controlling
  * the low-level status of the FPGA (reset registers/reboot etc.).
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,6 +38,8 @@
 
 #include "stm32f4xx_hal.h"
 #include "spiflash_n25q128.h"
+
+#define FPGACFG_SECTOR_SIZE		N25Q128_SECTOR_SIZE
 
 /* Pins connected to the FPGA config memory (SPI flash) */
 #define PROM_FPGA_DIS_Pin              GPIO_PIN_14
@@ -87,7 +89,7 @@ extern SPI_HandleTypeDef hspi_fpgacfg;
 
 extern int fpgacfg_check_id(void);
 extern int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int fpgacfg_erase_sectors(int num);
+extern int fpgacfg_erase_sector(uint32_t sector_offset);
 extern void fpgacfg_access_control(enum fpgacfg_access_ctrl access);
 /* Reset the FPGA */
 extern void fpgacfg_reset_fpga(enum fpgacfg_reset reset);

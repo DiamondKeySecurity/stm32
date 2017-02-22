@@ -72,9 +72,7 @@ static int cmd_dfu_erase(struct cli_def *cli, const char *command, char *argv[],
 {
     int status;
 
-    cli_print(cli, "Erasing flash sectors %i to %i (address %p to %p) - expect the CLI to crash now",
-	      stm_flash_sector_num((uint32_t) dfu_firmware),
-	      stm_flash_sector_num((uint32_t) dfu_firmware_end),
+    cli_print(cli, "Erasing flash address %p to %p - expect the CLI to crash now",
 	      dfu_firmware,
 	      dfu_firmware_end);
 

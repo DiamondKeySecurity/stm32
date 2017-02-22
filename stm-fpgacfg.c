@@ -4,7 +4,7 @@
  * Functions for accessing the FPGA config memory and controlling
  * the low-level status of the FPGA (reset registers/reboot etc.).
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -48,11 +48,6 @@ int fpgacfg_check_id()
 
 int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
-    if ((offset % N25Q128_SECTOR_SIZE) == 0)
-	// first page in sector, need to erase sector
-	if (! n25q128_erase_sector(&fpgacfg_ctx, offset / N25Q128_SECTOR_SIZE))
-	    return -4;
-
     return n25q128_write_data(&fpgacfg_ctx, offset, buf, len);
 }
 
@@ -97,14 +92,7 @@ int fpgacfg_check_done(void)
     return (status == GPIO_PIN_SET);
 }
 
-int fpgacfg_erase_sectors(int num)
+int fpgacfg_erase_sector(uint32_t sector_offset)
 {
-    if (num > N25Q128_NUM_SECTORS || num < 0) num = N25Q128_NUM_SECTORS;
-    while (num) {
-	if (! n25q128_erase_sector(&fpgacfg_ctx, num - 1)) {
-            return -1;
-        }
-	num--;
-    }
-    return 1;
+    return n25q128_erase_sector(&fpgacfg_ctx, sector_offset);
 }

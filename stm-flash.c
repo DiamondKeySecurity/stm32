@@ -70,7 +70,7 @@ uint32_t flash_sector_offsets[FLASH_NUM_SECTORS + 1] = {
     0x08200000  /* first address *after* flash */
 };
 
-int stm_flash_sector_num(const uint32_t offset)
+static int stm_flash_sector_num(const uint32_t offset)
 {
     int i;
 

@@ -64,7 +64,7 @@ static void test_erase_sector(void)
     int err;
 
     for (i = 0; i < KEYSTORE_NUM_SECTORS; ++i) {
-        err = keystore_erase_sectors(i, i);
+        err = keystore_erase_sector(i);
         if (err != 1) {
             uart_send_string("ERROR: keystore_erase_sector returned ");
             uart_send_integer(err, 0);
@@ -83,7 +83,7 @@ static void test_erase_subsector(void)
     int err;
 
     for (i = 0; i < KEYSTORE_NUM_SUBSECTORS; ++i) {
-        err = keystore_erase_subsectors(i, i);
+        err = keystore_erase_subsector(i);
         if (err != 1) {
             uart_send_string("ERROR: keystore_erase_subsector returned ");
             uart_send_integer(err, 0);

@@ -3,7 +3,7 @@
  * ---------
  * Functions and defines for accessing the keystore memory.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -60,8 +60,11 @@ extern SPI_HandleTypeDef hspi_keystore;
 extern int keystore_check_id(void);
 extern int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len);
 extern int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int keystore_erase_sectors(uint32_t start, uint32_t stop);
-extern int keystore_erase_subsectors(uint32_t start, uint32_t stop);
+extern int keystore_erase_subsector(uint32_t subsector_offset);
+extern int keystore_erase_sector(uint32_t sector_offset);
 extern int keystore_erase_bulk(void);
+
+/* Deprecated, will be removed. */
+extern int keystore_erase_subsectors(uint32_t start, uint32_t stop);
 
 #endif /* __STM32_KEYSTORE_H */

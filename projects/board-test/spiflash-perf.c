@@ -23,7 +23,7 @@ extern struct spiflash_ctx keystore_ctx;
 static struct spiflash_ctx *ctx = &keystore_ctx;
 
 /*
- * 1. Read the entire flash by pages, ignoring data.
+ * 1a. Read the entire flash by pages, ignoring data.
  */
 static void test_read_page(void)
 {
@@ -35,6 +35,26 @@ static void test_read_page(void)
         err = n25q128_read_page(ctx, i, read_buf);
         if (err != 1) {
             uart_send_string("ERROR: n25q128_read_page returned ");
+            uart_send_integer(err, 0);
+            uart_send_string("\r\n");
+            break;
+        }
+    }
+}
+
+/*
+ * 1b. Read the entire flash by subsectors, ignoring data.
+ */
+static void test_read_subsector(void)
+{
+    uint8_t read_buf[N25Q128_SUBSECTOR_SIZE];
+    uint32_t i;
+    int err;
+
+    for (i = 0; i < N25Q128_NUM_SUBSECTORS; ++i) {
+        err = n25q128_read_subsector(ctx, i, read_buf);
+        if (err != 1) {
+            uart_send_string("ERROR: n25q128_read_subsector returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
             break;
@@ -217,6 +237,7 @@ int main(void)
     uart_send_string("Starting...\r\n");
 
     time_check("read page       ", test_read_page(),       N25Q128_NUM_PAGES);
+    time_check("read subsector  ", test_read_subsector(),  N25Q128_NUM_SUBSECTORS);
     time_check("erase subsector ", test_erase_subsector(), N25Q128_NUM_SUBSECTORS);
     time_check("erase sector    ", test_erase_sector(),    N25Q128_NUM_SECTORS);
     time_check("erase bulk      ", test_erase_bulk(),      1);

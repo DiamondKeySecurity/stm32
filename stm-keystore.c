@@ -3,7 +3,7 @@
  * ----------
  * Functions for accessing the keystore memory.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -55,35 +55,31 @@ int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
     return n25q128_write_data(&keystore_ctx, offset, buf, len);
 }
 
-static int keystore_erase_something(uint32_t start, uint32_t stop, uint32_t limit,
-				    int (*eraser)(struct spiflash_ctx *, uint32_t))
+int keystore_erase_subsector(uint32_t subsector_offset)
 {
-    uint32_t something;
-
-    if (start > limit) return -2;
-    if (stop > limit || stop < start) return -3;
-
-    for (something = start; something <= stop; something++) {
-	if (! eraser(&keystore_ctx, something)) {
-            return -1;
-        }
-    }
-    return 1;
+    return n25q128_erase_subsector(&keystore_ctx, subsector_offset);
 }
 
-int keystore_erase_sectors(uint32_t start, uint32_t stop)
+int keystore_erase_sector(uint32_t sector_offset)
 {
-    return keystore_erase_something(start, stop, N25Q128_NUM_SECTORS,
-				    n25q128_erase_sector);
-}
-
-int keystore_erase_subsectors(uint32_t start, uint32_t stop)
-{
-    return keystore_erase_something(start, stop, N25Q128_NUM_SUBSECTORS,
-				    n25q128_erase_subsector);
+    return n25q128_erase_sector(&keystore_ctx, sector_offset);
 }
 
 int keystore_erase_bulk(void)
 {
     return n25q128_erase_bulk(&keystore_ctx);
+}
+
+/*
+ * Deprecated, will be removed when we fix libhal/ks_flash.c to use the
+ * new function. I love inter-dependent repos.
+ */
+
+int keystore_erase_subsectors(uint32_t start, uint32_t stop)
+{
+    for (int i = start; i <= stop; ++i) {
+        if (keystore_erase_subsector(i) != 1)
+            return 0;
+    }
+    return 1;
 }

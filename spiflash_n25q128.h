@@ -6,7 +6,7 @@
  * The Alpha board has two of these SPI flash memorys, the FPGA config memory
  * and the keystore memory.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,9 +40,9 @@
 
 #include "stm32f4xx_hal.h"
 
-#define N25Q128_COMMAND_READ_ID		0x9E
-#define N25Q128_COMMAND_READ_PAGE	0x03
+#define N25Q128_COMMAND_READ		0x03
 #define N25Q128_COMMAND_READ_STATUS	0x05
+#define N25Q128_COMMAND_READ_ID		0x9E
 #define N25Q128_COMMAND_WRITE_ENABLE	0x06
 #define N25Q128_COMMAND_ERASE_SECTOR	0xD8
 #define N25Q128_COMMAND_ERASE_SUBSECTOR	0x20
@@ -71,12 +71,16 @@ struct spiflash_ctx {
 };
 
 extern int n25q128_check_id(struct spiflash_ctx *ctx);
-extern int n25q128_read_page(struct spiflash_ctx *ctx, uint32_t page_offset, uint8_t *page_buffer);
+extern int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);
 extern int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uint8_t *page_buffer);
-extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
+extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
 extern int n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset);
+extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
 extern int n25q128_erase_bulk(struct spiflash_ctx *ctx);
 
-extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);
+#define n25q128_read_page(ctx, page_offset, page_buffer) \
+    n25q128_read_data(ctx, page_offset * N25Q128_PAGE_SIZE, page_buffer, N25Q128_PAGE_SIZE)
+#define n25q128_read_subsector(ctx, subsector_offset, subsector_buffer) \
+    n25q128_read_data(ctx, subsector_offset * N25Q128_SUBSECTOR_SIZE, subsector_buffer, N25Q128_SUBSECTOR_SIZE)
+
 #endif /* __STM32_SPIFLASH_N25Q128_H */

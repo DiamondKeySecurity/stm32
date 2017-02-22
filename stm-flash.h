@@ -35,7 +35,6 @@
 #ifndef __STM32_FLASH_H
 #define __STM32_FLASH_H
 
-extern int stm_flash_sector_num(const uint32_t offset);
 extern int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset);
 extern int stm_flash_write32(const uint32_t offset, const uint32_t *buf, const uint32_t elements);
 
