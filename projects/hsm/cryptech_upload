@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2016, NORDUnet A/S All rights reserved.
+# Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -82,6 +82,14 @@ def parse_args():
                         help = "Username to use when logging into the HSM",
                         )
 
+    parser.add_argument("--pin",
+                        help = "PIN to use when logging into the HSM",
+                        )
+
+    parser.add_argument("--separate-pins",
+                        action = "store_true",
+                        help = "Prompt separately for each PIN required during firmware upload")
+
     actions = parser.add_mutually_exclusive_group(required = True)
     actions.add_argument("--fpga",
                          action = "store_true",
@@ -105,13 +113,14 @@ def parse_args():
                         type = argparse.FileType("rb"),
                         help = "Explicit source image file for upload, overrides firmware tarball")
 
-    parser.add_argument("--separate-pins",
-                        action = "store_true",
-                        help = "Prompt separately for each PIN required during upload")
-
     parser.add_argument("--debug",
                         action = "store_true",
                         help = "Enable debugging of upload protocol",
+                        )
+
+    parser.add_argument("-q", "--quiet",
+                        action = "store_true",
+                        help = "Only report errors",
                         )
 
     return parser.parse_args()
@@ -141,19 +150,19 @@ def _read(dst):
         print ("Read {!r}".format(res))
     return res
 
-pin = None
-
 def _execute(dst, cmd):
-    global pin
+    global args
     _write(dst, "\r")
     prompt = _read(dst)
+    #if prompt.endswith("This is the bootloader speaking..."):
+    #    prompt = _read(dst)
     if prompt.endswith("Username: "):
         _write(dst, args.username + "\r")
         prompt = _read(dst)
         if prompt.endswith("Password: "):
-            if not pin or args.separate_pins:
-                pin = getpass.getpass("{} PIN: ".format(args.username))
-            _write(dst, pin + "\r")
+            if not args.pin or args.separate_pins:
+                args.pin = getpass.getpass("{} PIN: ".format(args.username))
+            _write(dst, args.pin + "\r")
             prompt = _read(dst)
     if not prompt.endswith(("> ", "# ")):
         print("Device does not seem to be ready for a file transfer (got {!r})".format(prompt))
@@ -197,7 +206,8 @@ def send_file(src, size, args, dst):
         data = src.read(chunk_size)
         dst.write(data)
         dst.flush()
-        print("Wrote {!s} bytes (chunk {!s}/{!s})".format(len(data), counter + 1, chunks))
+        if not args.quiet:
+            print("Wrote {!s} bytes (chunk {!s}/{!s})".format(len(data), counter + 1, chunks))
         # read ACK (a counter of number of 4k chunks received)
         ack_bytes = ""
         while len(ack_bytes) < 4:
@@ -213,7 +223,8 @@ def send_file(src, size, args, dst):
     # 3. Write CRC-32 (4 bytes)
     _write(dst, struct.pack("<I", crc))
     response = _read(dst)
-    print response
+    if not args.quiet:
+        print response
 
     src.close()
 
@@ -247,12 +258,13 @@ If you got here by accident, ^C now, without answering the PIN prompt.
 def main():
     global args
     args = parse_args()
-
-    if args.bootloader and not args.simon_says_whack_my_bootloader:
-        sys.exit("You didn't say \"Simon says\"")
+    
 
     if args.bootloader:
+        if not args.simon_says_whack_my_bootloader:
+            sys.exit("You didn't say \"Simon says\"")
         print dire_bootloader_warning
+        args.pin = None
 
     if args.explicit_image is None and args.firmware_tarball is None:
         sys.exit("No source file specified for upload and firmware tarball not found")
@@ -262,11 +274,13 @@ def main():
         size = os.fstat(src.fileno()).st_size
         if size == 0:                   # Flashing from stdin won't work, sorry
             sys.exit("Can't flash from a pipe or zero-length file")
-        print "Uploading from explicitly-specified file {}".format(args.explicit_image.name)
+        if not args.quiet:
+            print "Uploading from explicitly-specified file {}".format(args.explicit_image.name)
 
     else:
         tar = tarfile.open(fileobj = args.firmware_tarball)
-        print "Firmware tarball {} content:".format(args.firmware_tarball.name)
+        if not args.quiet:
+            print "Firmware tarball {} content:".format(args.firmware_tarball.name)
         tar.list(True)
         if args.fpga:
             name = "alpha_fmc.bit"
@@ -282,9 +296,11 @@ def main():
         except KeyError:
             sys.exit("Expected component {} missing from firmware tarball {}".format(name, args.firmware_tarball.name))
         src = tar.extractfile(name)
-        print "Uploading {} from {}".format(name, args.firmware_tarball.name)
+        if not args.quiet:
+            print "Uploading {} from {}".format(name, args.firmware_tarball.name)
 
-    print "Initializing serial port and synchronizing with HSM, this may take a few seconds"
+    if not args.quiet:
+        print "Initializing serial port and synchronizing with HSM, this may take a few seconds"
     dst  = serial.Serial(args.device, 921600, timeout = 1)
     send_file(src, size, args, dst)
     dst.close()
