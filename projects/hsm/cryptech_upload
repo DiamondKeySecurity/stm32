@@ -181,6 +181,7 @@ def send_file(src, size, args, dst):
         print("Device did not accept the upload command (got {!r})".format(response))
         return False
 
+    dst.timeout = 0.001
     crc = 0
     counter = 0
     # 1. Write size of file (4 bytes)
@@ -284,7 +285,7 @@ def main():
         print "Uploading {} from {}".format(name, args.firmware_tarball.name)
 
     print "Initializing serial port and synchronizing with HSM, this may take a few seconds"
-    dst  = serial.Serial(args.device, 921600, timeout = 2)
+    dst  = serial.Serial(args.device, 921600, timeout = 1)
     send_file(src, size, args, dst)
     dst.close()
 
