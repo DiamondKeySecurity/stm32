@@ -3,7 +3,7 @@
  * ----------------
  * Main module for the HSM project.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -94,13 +94,18 @@ typedef struct {
 /* A mail queue (memory pool + message queue) for RPC request messages.
  */
 osMailQId  ibuf_queue;
-osMailQDef(ibuf_queue, NUM_RPC_TASK, rpc_buffer_t);
+osMailQDef(ibuf_queue, NUM_RPC_TASK + 2, rpc_buffer_t);
 
 #if NUM_RPC_TASK > 1
 /* A mutex to arbitrate concurrent UART transmits, from RPC responses.
  */
 osMutexId  uart_mutex;
 osMutexDef(uart_mutex);
+static inline void uart_lock(void)   { osMutexWait(uart_mutex, osWaitForever); }
+static inline void uart_unlock(void) { osMutexRelease(uart_mutex); }
+#else
+static inline void uart_lock(void)   { }
+static inline void uart_unlock(void) { }
 #endif
 
 #if NUM_RPC_TASK > 1
@@ -130,7 +135,13 @@ static void RxCallback(uint8_t c)
 
     if (ibuf == NULL) {
         if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 0)) == NULL)
-            Error_Handler();
+            /* This could happen if all dispatch threads are busy, and
+             * there are NUM_RPC_TASK requests already queued. We'd like
+             * to to send a "server busy" error, but we've just received
+             * the first byte of the request, so we don't yet have enough
+             * context to craft a response.
+             */
+            return;
         ibuf->len = 0;
     }
 
@@ -185,7 +196,6 @@ void dispatch_thread(void const *args)
 	hal_error_t ret = hal_rpc_server_dispatch(ibuf->buf, ibuf->len, obuf->buf, &obuf->len);
         osMailFree(ibuf_queue, (void *)ibuf);
         if (ret != LIBHAL_OK) {
-            Error_Handler();
             /* If hal_rpc_server_dispatch failed with an XDR error, it
              * probably means the request packet was garbage. In any case, we
              * have nothing to transmit.
@@ -194,13 +204,9 @@ void dispatch_thread(void const *args)
 	}
 
         /* Send the response */
-#if NUM_RPC_TASK > 1
-        osMutexWait(uart_mutex, osWaitForever);
-#endif
+        uart_lock();
         ret = hal_rpc_sendto(obuf->buf, obuf->len, NULL);
-#if NUM_RPC_TASK > 1
-        osMutexRelease(uart_mutex);
-#endif
+        uart_unlock();
         if (ret != LIBHAL_OK)
             Error_Handler();
     }
