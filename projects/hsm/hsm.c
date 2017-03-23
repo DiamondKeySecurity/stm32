@@ -118,6 +118,7 @@ void hal_ks_unlock(void) { osMutexRelease(ks_mutex); }
 #endif
 
 static uint8_t uart_rx[2];	/* current character received from UART */
+static uint32_t uart_rx_idx = 0;
 
 /* Callback for HAL_UART_Receive_DMA().
  * With multiple worker threads, we can't do a blocking receive, because
@@ -157,12 +158,14 @@ static void RxCallback(uint8_t c)
 
 void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-    RxCallback(uart_rx[0]);
+    RxCallback(uart_rx[uart_rx_idx]);
+    uart_rx_idx ^= 1;
 }
 
 void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    RxCallback(uart_rx[1]);
+    RxCallback(uart_rx[uart_rx_idx]);
+    uart_rx_idx ^= 1;
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
