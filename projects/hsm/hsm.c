@@ -184,6 +184,7 @@ hal_error_t hal_serial_send_char(uint8_t c)
 void dispatch_thread(void const *args)
 {
     rpc_buffer_t obuf_s, *obuf = &obuf_s, *ibuf;
+    hal_crc32_t crc;
 
     while (1) {
         memset(obuf, 0, sizeof(*obuf));
@@ -194,6 +195,28 @@ void dispatch_thread(void const *args)
         if (evt.status != osEventMail)
             continue;
         ibuf = (rpc_buffer_t *)evt.value.p;
+
+	if (ibuf->len < 8)
+	    continue;
+
+	crc = hal_crc32_init();
+	/* Calculate CRC32 checksum of the contents, after SLIP decoding */
+	crc = hal_crc32_update(crc, ibuf->buf, ibuf->len);
+	crc = hal_crc32_finalize(crc);
+
+	if (crc != 0xffffffff) {
+	    /* XXX Full-stop on CRC errors is probably not the best long-term solution,
+	     * but it helps while we are sorting out any remaining issues.
+	     */
+	    led_on(LED_RED);
+	    /* Steal UART lock to stop all threads */
+	    uart_lock();
+	    Error_Handler();
+	}
+
+	/* Remove CRC from end of ibuf->buf */
+	ibuf->len -= 4;
+	ibuf->buf[ibuf->len] = 0xc0;
 
         /* Process the request */
 	hal_error_t ret = hal_rpc_server_dispatch(ibuf->buf, ibuf->len, obuf->buf, &obuf->len);
