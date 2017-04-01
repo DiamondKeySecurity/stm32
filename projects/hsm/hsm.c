@@ -117,59 +117,71 @@ void hal_ks_lock(void)   { osMutexWait(ks_mutex, osWaitForever); }
 void hal_ks_unlock(void) { osMutexRelease(ks_mutex); }
 #endif
 
-static uint8_t uart_rx[2];	/* current character received from UART */
-
-/* Callback for HAL_UART_Receive_DMA().
- * With multiple worker threads, we can't do a blocking receive, because
- * that prevents other threads from sending RPC responses (because they
- * both want to lock the UART - see stm32f4xx_hal_uart.c). So we have to
- * do a non-blocking receive with a callback routine.
- * Even with only one worker thread, context-switching to the CLI thread
- * causes HAL_UART_Receive to miss input.
+/* A ring buffer for the UART DMA receiver. In theory, it should get at most
+ * 92 characters per 1ms tick, but we're going to up-size it for safety.
  */
-static void RxCallback(uint8_t c)
+#ifndef RPC_UART_RECVBUF_SIZE
+#define RPC_UART_RECVBUF_SIZE  256  /* must be a power of 2 */
+#endif
+#define RPC_UART_RECVBUF_MASK  (RPC_UART_RECVBUF_SIZE - 1)
+
+typedef struct {
+    uint32_t ridx;
+    uint8_t buf[RPC_UART_RECVBUF_SIZE];
+} uart_ringbuf_t;
+
+volatile uart_ringbuf_t uart_ringbuf = {0, {0}};
+
+#define RINGBUF_RIDX(rb)       (rb.ridx & RPC_UART_RECVBUF_MASK)
+#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_user.hdmarx))
+#define RINGBUF_COUNT(rb)      ((unsigned)(RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)))
+#define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.ridx++;}
+
+/* Thread entry point for the UART DMA monitor.
+ */
+void uart_rx_thread(void const *args)
 {
     /* current RPC input buffer */
-    static rpc_buffer_t *ibuf = NULL;
-    int complete;
+    rpc_buffer_t *ibuf = NULL;
 
-    if (ibuf == NULL) {
-        if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 0)) == NULL)
-            /* This could happen if all dispatch threads are busy, and
-             * there are NUM_RPC_TASK requests already queued. We'd like
-             * to to send a "server busy" error, but we've just received
-             * the first byte of the request, so we don't yet have enough
-             * context to craft a response.
-             */
-            return;
-        ibuf->len = 0;
+    /* I wanted to call osThreadYield(), but the documentation is misleading,
+     * and it only yields to the next ready thread of the same priority, so
+     * this high-priority thread wouldn't let anything else run. osDelay(1)
+     * reschedules this thread for the next tick, which is what we want.
+     */
+    for ( ; ; osDelay(1)) {
+        if (ibuf == NULL) {
+            if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 0)) == NULL)
+                /* This could happen if all dispatch threads are busy, and
+                 * there are NUM_RPC_TASK requests already queued. We could
+                 * send a "server busy" error, or we could just try again on
+                 * the next tick.
+                 */
+                continue;
+            ibuf->len = 0;
+        }
+
+        while (RINGBUF_COUNT(uart_ringbuf)) {
+            uint8_t c;
+            int complete;
+
+            RINGBUF_READ(uart_ringbuf, c);
+            if (hal_slip_process_char(c, ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
+                Error_Handler();
+
+            if (complete) {
+                if (osMailPut(ibuf_queue, (void *)ibuf) != osOK)
+                    Error_Handler();
+                ibuf = NULL;
+                /* Yield, to allow one of the dispatch threads to pick up this
+                 * new request.
+                 */
+                break;
+            }
+        }
     }
-
-    if (hal_slip_process_char(c, ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
-        Error_Handler();
-
-    if (complete) {
-	if (osMailPut(ibuf_queue, (void *)ibuf) != osOK)
-            Error_Handler();
-        ibuf = NULL;
-    }
 }
-
-void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
-{
-    RxCallback(uart_rx[0]);
-}
-
-void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    RxCallback(uart_rx[1]);
-}
-
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
-{
-    /* I dunno, just trap it for now */
-    Error_Handler();
-}
+osThreadDef(uart_rx_thread, osPriorityHigh, DEFAULT_STACK_SIZE);
 
 hal_error_t hal_serial_send_char(uint8_t c)
 {
@@ -297,7 +309,9 @@ int main()
     }
 
     /* Start the UART receiver. */
-    if (HAL_UART_Receive_DMA(&huart_user, uart_rx, 2) != CMSIS_HAL_OK)
+    if (HAL_UART_Receive_DMA(&huart_user, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf)) != CMSIS_HAL_OK)
+        Error_Handler();
+    if (osThreadCreate(osThread(uart_rx_thread), NULL) == NULL)
         Error_Handler();
 
     /* Launch other threads (csprng warm-up thread?)

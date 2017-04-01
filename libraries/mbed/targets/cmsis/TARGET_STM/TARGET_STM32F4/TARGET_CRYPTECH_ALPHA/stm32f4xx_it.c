@@ -253,4 +253,10 @@ __weak void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
    */
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    /* I dunno, just trap it for now */
+    Error_Handler();
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
