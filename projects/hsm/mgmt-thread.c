@@ -78,7 +78,7 @@ static int cmd_thread_show(struct cli_def *cli, const char *command, char *argv[
                 name = "osTimerThread";
             else
                 name = "unknown";
-            
+
             cli_print(cli, "%d:\tptask\t%p\t%s", task_id, task->ptask, name);
             cli_print(cli, "\tstate\t%d\t\t%s", (int)task->state, task_state[task->state]);
             cli_print(cli, "\tprio\t%d", (int)task->prio);

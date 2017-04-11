@@ -156,13 +156,14 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
 	return CLI_ERROR;
     }
 
-    status = hal_rpc_pkey_open(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN);
+    if ((status = hal_rpc_pkey_open(client, session, &pkey, &name)) != LIBHAL_OK) {
+        cli_print(cli, "Couldn't find key: %s", hal_error_string(status));
+	return CLI_ERROR;
+    }
 
-    if (status == HAL_ERROR_KEY_NOT_FOUND)
-	status = hal_rpc_pkey_open(client, session, &pkey, &name, 0);
-
-    if (status != LIBHAL_OK || (status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
+    if ((status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
 	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
+	(void) hal_rpc_pkey_close(pkey);
 	return CLI_ERROR;
     }
 
@@ -171,7 +172,7 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
     return CLI_OK;
 }
 
-static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags_t qflags)
+static int show_keys(struct cli_def *cli, const char *title)
 {
     const hal_client_handle_t  client  = { -1 };
     const hal_session_handle_t session = { HAL_HANDLE_NONE };
@@ -180,19 +181,20 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
     hal_pkey_handle_t pkey;
     hal_curve_name_t curve;
     hal_key_flags_t flags;
+    unsigned n, state = 0;
+    hal_uuid_t uuids[50];
     hal_key_type_t type;
     hal_error_t status;
-    hal_uuid_t uuids[50];
     int count = 0;
     int done = 0;
-    unsigned n;
 
     cli_print(cli, title);
 
     while (!done) {
 
 	if ((status = hal_rpc_pkey_match(client, session, HAL_KEY_TYPE_NONE, HAL_CURVE_NONE,
-					 qflags, NULL, 0, uuids, &n, sizeof(uuids)/sizeof(*uuids),
+					 0, 0, NULL, 0, &state, uuids, &n,
+					 sizeof(uuids)/sizeof(*uuids),
 					 &previous_uuid)) != LIBHAL_OK) {
 	    cli_print(cli, "Could not fetch UUID list: %s", hal_error_string(status));
 	    return CLI_ERROR;
@@ -211,7 +213,7 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 		return CLI_ERROR;
 	    }
 
-	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i], qflags)) != LIBHAL_OK) {
+	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i])) != LIBHAL_OK) {
 	        cli_print(cli, "Could not open key %s: %s",
 			  key_name, hal_error_string(status));
 		return CLI_ERROR;
@@ -267,7 +269,7 @@ static int show_pin(struct cli_def *cli, char *label, hal_user_t user)
      * I'm not sure iterations is the most interesting thing to show, but
      * it's what we had before.
      */
-    
+
     cli_print(cli, "%s iterations: 0x%lx", label, p->iterations);
     return CLI_OK;
 }
@@ -276,8 +278,7 @@ static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char
 {
     int err = 0;
 
-    err |= show_keys(cli, "Memory keystore:", 0);
-    err |= show_keys(cli, "Token keystore:",  HAL_KEY_FLAG_TOKEN);
+    err |= show_keys(cli, "Keystore:");
 
     cli_print(cli, "\nPins:");
     err |= show_pin(cli, "Wheel", HAL_USER_WHEEL);

@@ -198,7 +198,7 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
 	return CLI_ERROR;
     }
 
-    if ((status = hal_rpc_pkey_open(client, session, &pkey, &name, HAL_KEY_FLAG_TOKEN)) != LIBHAL_OK ||
+    if ((status = hal_rpc_pkey_open(client, session, &pkey, &name)) != LIBHAL_OK ||
 	(status = hal_rpc_pkey_delete(pkey)) != LIBHAL_OK) {
 	cli_print(cli, "Failed deleting key: %s", hal_error_string(status));
 	return CLI_ERROR;
@@ -231,7 +231,7 @@ static int cmd_keystore_show_data(struct cli_def *cli, const char *command, char
     return CLI_OK;
 }
 
-static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags_t qflags)
+static int show_keys(struct cli_def *cli, const char *title)
 {
     const hal_client_handle_t  client  = { -1 };
     const hal_session_handle_t session = { HAL_HANDLE_NONE };
@@ -240,10 +240,10 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
     hal_pkey_handle_t pkey;
     hal_curve_name_t curve;
     hal_key_flags_t flags;
+    unsigned n, state = 0;
     hal_key_type_t type;
     hal_error_t status;
     hal_uuid_t uuids[50];
-    unsigned n;
     int done = 0;
 
     cli_print(cli, title);
@@ -251,7 +251,8 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
     while (!done) {
 
 	if ((status = hal_rpc_pkey_match(client, session, HAL_KEY_TYPE_NONE, HAL_CURVE_NONE,
-					 qflags, NULL, 0, uuids, &n, sizeof(uuids)/sizeof(*uuids),
+					 0, 0, NULL, 0, &state, uuids, &n,
+					 sizeof(uuids)/sizeof(*uuids),
 					 &previous_uuid)) != LIBHAL_OK) {
 	    cli_print(cli, "Could not fetch UUID list: %s", hal_error_string(status));
 	    return 0;
@@ -270,7 +271,7 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 		return 0;
 	    }
 
-	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i], qflags)) != LIBHAL_OK) {
+	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i])) != LIBHAL_OK) {
 	        cli_print(cli, "Could not open key %s: %s",
 			  key_name, hal_error_string(status));
 		return 0;
@@ -317,10 +318,10 @@ static int show_keys(struct cli_def *cli, const char *title, const hal_key_flags
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    int ok = 1;
-    ok &= show_keys(cli, "Memory keystore:", 0);
-    ok &= show_keys(cli, "Token keystore:",  HAL_KEY_FLAG_TOKEN);
-    return ok ? CLI_OK : CLI_ERROR;
+    if (show_keys(cli, "Keystore:"))
+        return CLI_OK;
+    else
+        return CLI_ERROR;
 }
 
 static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)

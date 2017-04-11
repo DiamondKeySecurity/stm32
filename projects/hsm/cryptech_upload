@@ -258,7 +258,7 @@ If you got here by accident, ^C now, without answering the PIN prompt.
 def main():
     global args
     args = parse_args()
-    
+
 
     if args.bootloader:
         if not args.simon_says_whack_my_bootloader:

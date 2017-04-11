@@ -40,6 +40,6 @@ import os
 default_port = os.getenv("CRYPTECH_CTY_CLIENT_SERIAL_DEVICE")
 default_baud = os.getenv("CRYPTECH_CTY_CLIENT_SERIAL_SPEED", 921600)
 
-sys.exit(serial.tools.miniterm.main(default_port     = default_port, 
+sys.exit(serial.tools.miniterm.main(default_port     = default_port,
                                     default_baudrate = int(default_baud)))
 
