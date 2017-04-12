@@ -208,21 +208,21 @@ static int show_keys(struct cli_def *cli, const char *title)
 	for (int i = 0; i < n; i++) {
 
 	    if ((status = hal_uuid_format(&uuids[i], key_name, sizeof(key_name))) != LIBHAL_OK) {
-		cli_print(cli, "Could not convert key name: %s",
+		cli_print(cli, "Could not convert key name, skipping: %s",
 			  hal_error_string(status));
-		return CLI_ERROR;
+		continue;
 	    }
 
 	    if ((status = hal_rpc_pkey_open(client, session, &pkey, &uuids[i])) != LIBHAL_OK) {
-	        cli_print(cli, "Could not open key %s: %s",
+	        cli_print(cli, "Could not open key %s, skipping: %s",
 			  key_name, hal_error_string(status));
-		return CLI_ERROR;
+		continue;
 	    }
 
 	    if ((status = hal_rpc_pkey_get_key_type(pkey, &type))   != LIBHAL_OK ||
 		(status = hal_rpc_pkey_get_key_curve(pkey, &curve)) != LIBHAL_OK ||
 		(status = hal_rpc_pkey_get_key_flags(pkey, &flags)) != LIBHAL_OK)
-	        cli_print(cli, "Could not fetch metadata for key %s: %s",
+	        cli_print(cli, "Could not fetch metadata for key %s, skipping: %s",
 			  key_name, hal_error_string(status));
 
 	    if (status == LIBHAL_OK)
@@ -231,7 +231,7 @@ static int show_keys(struct cli_def *cli, const char *title)
 	        (void) hal_rpc_pkey_close(pkey);
 
 	    if (status != LIBHAL_OK)
-	        return CLI_ERROR;
+	        continue;
 
 	    const char *type_name = "unknown";
 	    switch (type) {
