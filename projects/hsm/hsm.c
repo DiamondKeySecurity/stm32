@@ -257,6 +257,31 @@ void hal_critical_section_end(void)
 }
 #endif
 
+/* Logging */
+
+static hal_log_level_t current_log_level;
+
+void hal_log_set_level(const hal_log_level_t level)
+{
+  current_log_level = level;
+}
+
+void hal_log(const hal_log_level_t level, const char *format, ...)
+{
+  if (level < current_log_level)
+    return;
+
+  char buffer[2048];
+  va_list ap;
+
+  va_start(ap, format);
+  vsnprintf(buffer, sizeof(buffer), format, ap);
+  va_end(ap);
+
+  uart_send_string2(STM_UART_MGMT, buffer);
+  uart_send_string2(STM_UART_MGMT, "\r\n");
+}
+
 /* The main thread. This does all the setup, and the worker threads handle
  * the rest.
  */
