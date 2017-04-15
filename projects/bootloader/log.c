@@ -32,6 +32,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
+#include <stdarg.h>
+
 #define HAL_OK CMSIS_HAL_OK
 #include "stm-uart.h"
 #undef HAL_OK
