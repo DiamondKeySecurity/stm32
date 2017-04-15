@@ -9,7 +9,8 @@ OBJS = crc32.o \
 	mgmt-keystore.c \
 	mgmt-masterkey.c \
 	mgmt-misc.c \
-	mgmt-thread.c
+	mgmt-thread.c \
+	log.o
 
 BOARD_OBJS = \
 	$(TOPLEVEL)/stm-init.o \

@@ -1,6 +1,6 @@
 PROG = bootloader
 
-OBJS = crc32.o dfu.o
+OBJS = crc32.o dfu.o log.o
 
 BOARD_OBJS = \
 	./stm-init.o \

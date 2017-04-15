@@ -72,8 +72,7 @@ BOARD_OBJS += \
 	$(TOPLEVEL)/stm-fpgacfg.o \
 	$(TOPLEVEL)/stm-keystore.o \
 	$(TOPLEVEL)/stm-sdram.o \
-	$(TOPLEVEL)/stm-flash.o \
-	$(TOPLEVEL)/stm-log.o
+	$(TOPLEVEL)/stm-flash.o
 endif
 export BOARD_OBJS
 

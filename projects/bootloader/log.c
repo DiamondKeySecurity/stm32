@@ -1,6 +1,6 @@
 /*
- * stm-log.c
- * ----------------
+ * log.c
+ * -----
  * Implement libhal logging API on Alpha.
  *
  * Copyright (c) 2017, NORDUnet A/S All rights reserved.
