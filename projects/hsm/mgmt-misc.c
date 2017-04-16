@@ -32,21 +32,25 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define HAL_OK CMSIS_HAL_OK
 #include "stm-init.h"
 #include "stm-uart.h"
-
 #include "mgmt-cli.h"
 #include "mgmt-misc.h"
+#undef HAL_OK
+
+#define HAL_OK LIBHAL_OK
+#include "hal.h"
+#include "hal_internal.h"
+#undef HAL_OK
 
 #include <string.h>
 
 
-extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
-
-
 int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_callback data_callback)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0;
+    hal_crc32_t crc = 0, my_crc = hal_crc32_init();
+    uint32_t filesize = 0, counter = 0;
     size_t n = len;
 
     if (! control_mgmt_uart_dma_rx(DMA_RX_STOP)) {
@@ -56,7 +60,7 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 
     cli_print(cli, "OK, write size (4 bytes), data in %li byte chunks, CRC-32 (4 bytes)", (uint32_t) n);
 
-    if (uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 1000) != HAL_OK) {
+    if (uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, sizeof(filesize), 1000) != CMSIS_HAL_OK) {
 	cli_print(cli, "Receive timed out");
 	goto fail;
     }
@@ -71,12 +75,12 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 
 	if (filesize < n) n = filesize;
 
-	if (uart_receive_bytes(STM_UART_MGMT, (void *) buf, n, 1000) != HAL_OK) {
+	if (uart_receive_bytes(STM_UART_MGMT, (void *) buf, n, 1000) != CMSIS_HAL_OK) {
 	    cli_print(cli, "Receive timed out");
 	    goto fail;
 	}
 	filesize -= n;
-	my_crc = update_crc(my_crc, buf, n);
+	my_crc = hal_crc32_update(my_crc, buf, n);
 
 	/* After reception of a chunk but before ACKing we have "all" the time in the world to
 	 * calculate CRC and invoke the data_callback.
@@ -90,8 +94,9 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
     }
 
+    my_crc = hal_crc32_finalize(my_crc);
     cli_print(cli, "Send CRC-32");
-    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 1000);
+    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, sizeof(crc), 1000);
     cli_print(cli, "CRC-32 0x%x, calculated CRC 0x%x", (unsigned int) crc, (unsigned int) my_crc);
     if (crc == my_crc) {
 	cli_print(cli, "CRC checksum MATCHED");

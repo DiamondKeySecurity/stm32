@@ -1,8 +1,7 @@
 PROJ = hsm
 
 # objs in addition to $(PROJ).o
-OBJS = crc32.o \
-	mgmt-cli.o \
+OBJS =	mgmt-cli.o \
 	mgmt-firmware.c \
 	mgmt-bootloader.c \
 	mgmt-fpga.c \

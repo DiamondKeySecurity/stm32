@@ -47,8 +47,6 @@
 
 #include <string.h>
 
-extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
-
 static int getline(char *buf, int len)
 {
     int i;
@@ -111,8 +109,9 @@ static int do_login(void)
 
 int dfu_receive_firmware(void)
 {
-    uint32_t filesize = 0, crc = 0, my_crc = 0, counter = 0;
     uint32_t offset = DFU_FIRMWARE_ADDR, n = DFU_UPLOAD_CHUNK_SIZE;
+    hal_crc32_t crc = 0, my_crc = hal_crc32_init();
+    uint32_t filesize = 0, counter = 0;
     uint8_t buf[DFU_UPLOAD_CHUNK_SIZE];
 
     if (do_login() != 0)
@@ -133,7 +132,7 @@ int dfu_receive_firmware(void)
     uart_send_string2(STM_UART_MGMT, "OK, write size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)\r\n");
 
     /* Read file size (4 bytes) */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, 4, 10000);
+    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, sizeof(filesize), 10000);
     if (filesize < 512 || filesize > DFU_FIRMWARE_END_ADDR - DFU_FIRMWARE_ADDR) {
         uart_send_string2(STM_UART_MGMT, "Invalid filesize ");
         uart_send_number2(STM_UART_MGMT, filesize, 1, 10);
@@ -165,7 +164,7 @@ int dfu_receive_firmware(void)
 	/* After reception of a chunk but before ACKing we have "all" the time in the world to
 	 * calculate CRC and write it to flash.
 	 */
-	my_crc = update_crc(my_crc, buf, n);
+	my_crc = hal_crc32_update(my_crc, buf, n);
 	stm_flash_write32(offset, (uint32_t *)buf, sizeof(buf)/4);
 	offset += DFU_UPLOAD_CHUNK_SIZE;
 
@@ -175,12 +174,14 @@ int dfu_receive_firmware(void)
 	led_toggle(LED_BLUE);
     }
 
+    my_crc = hal_crc32_finalize(my_crc);
+
     HAL_FLASH_Lock();
 
     uart_send_string2(STM_UART_MGMT, "Send CRC-32\r\n");
 
     /* The sending side will now send its calculated CRC-32 */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, 4, 10000);
+    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, sizeof(crc), 10000);
 
     uart_send_string2(STM_UART_MGMT, "CRC-32 0x");
     uart_send_number2(STM_UART_MGMT, crc, 1, 16);

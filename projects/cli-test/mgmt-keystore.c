@@ -33,17 +33,17 @@
  */
 
 /* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
+
 #define HAL_OK CMSIS_HAL_OK
 #include "stm-init.h"
 #include "stm-keystore.h"
 #include "stm-fpgacfg.h"
 #include "stm-uart.h"
-
 #include "mgmt-cli.h"
 #include "mgmt-show.h"
-
 #undef HAL_OK
-#define LIBHAL_OK HAL_OK
+
+#define HAL_OK LIBHAL_OK
 #include "hal.h"
 #warning Really should not be including hal_internal.h here, fix API instead of bypassing it
 #include "hal_internal.h"

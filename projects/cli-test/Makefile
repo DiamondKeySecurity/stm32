@@ -1,7 +1,6 @@
 TEST = cli-test
 
 OBJS = \
-	crc32.o \
 	mgmt-cli.o \
 	mgmt-dfu.o \
 	mgmt-fpga.o \

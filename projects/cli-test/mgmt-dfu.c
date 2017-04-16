@@ -45,8 +45,6 @@
 #define DFU_UPLOAD_CHUNK_SIZE     256
 #define HARDWARE_EARLY_DFU_JUMP   0xBADABADA
 
-extern uint32_t update_crc(uint32_t crc, uint8_t *buf, int len);
-
 /* Linker symbols are strange in C. Make regular pointers for sanity. */
 __IO uint32_t *dfu_control = &CRYPTECH_DFU_CONTROL;
 __IO uint32_t *dfu_firmware = &CRYPTECH_FIRMWARE_START;
