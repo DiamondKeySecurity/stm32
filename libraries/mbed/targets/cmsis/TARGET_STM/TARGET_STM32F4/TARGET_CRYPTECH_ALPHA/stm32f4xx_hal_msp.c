@@ -44,16 +44,6 @@ void HAL_MspInit(void)
 
   /* USER CODE END MspInit 0 */
 
-  /* XXX
-   * Fredrik's HAL_MspInit sets this to NVIC_PRIORITYGROUP_4 (as just
-   * happened in HAL_Init), but then he resets it to NVIC_PRIORITYGROUP_0
-   * in stm_init. */
-  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
-
-  /* System interrupt init*/
-  /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
-
   /* USER CODE BEGIN MspInit 1 */
 
   /* USER CODE END MspInit 1 */
