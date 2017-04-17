@@ -151,13 +151,13 @@ void uart_rx_thread(void const *args)
      */
     for ( ; ; osDelay(1)) {
         if (ibuf == NULL) {
-            if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 0)) == NULL)
+            if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 1)) == NULL)
                 /* This could happen if all dispatch threads are busy, and
                  * there are NUM_RPC_TASK requests already queued. We could
                  * send a "server busy" error, or we could just try again on
                  * the next tick.
                  */
-                continue;
+                Error_Handler();
             ibuf->len = 0;
         }
 
