@@ -105,14 +105,15 @@ HAL_StatusTypeDef uart_send_string2(stm_uart_port_t port, const char *s)
 /* send raw bytes */
 HAL_StatusTypeDef uart_send_bytes(stm_uart_port_t port, uint8_t *buf, size_t len)
 {
-    uint32_t timeout = 100;
     UART_HandleTypeDef *uart = _which_uart(port);
 
     if (uart) {
-	while (HAL_UART_GetState(uart) != HAL_UART_STATE_READY && timeout--) { ; }
-	if (! timeout) return HAL_ERROR;
-
-        return HAL_UART_Transmit(uart, (uint8_t *) buf, (uint32_t) len, 0x1);
+        for (int timeout = 0; timeout < 100; ++timeout) {
+            HAL_UART_StateTypeDef status = HAL_UART_GetState(uart);
+            if (status == HAL_UART_STATE_READY ||
+                status == HAL_UART_STATE_BUSY_RX)
+                return HAL_UART_Transmit(uart, (uint8_t *) buf, (uint32_t) len, 0x1);
+        }
     }
 
     return HAL_ERROR;
