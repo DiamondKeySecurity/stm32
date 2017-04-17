@@ -67,6 +67,7 @@ static int cmd_thread_show(struct cli_def *cli, const char *command, char *argv[
     extern void main(void);
     extern void dispatch_thread(void);
     extern void osTimerThread(void);
+    extern void uart_rx_thread(void);
 
     for (task_id = 1; task_id <= os_maxtaskrun; ++ task_id) {
         if ((task = os_active_TCB[task_id-1]) != NULL) {
@@ -76,6 +77,8 @@ static int cmd_thread_show(struct cli_def *cli, const char *command, char *argv[
                 name = "dispatch_thread";
             else if (task->ptask == osTimerThread)
                 name = "osTimerThread";
+            else if (task->ptask == uart_rx_thread)
+                name = "uart_rx_thread";
             else
                 name = "unknown";
 
