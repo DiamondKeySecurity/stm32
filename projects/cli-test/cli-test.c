@@ -50,6 +50,8 @@
 /* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
 volatile uint8_t uart_rx;
 
+/* Delay on bad PINs */
+void hal_sleep(const unsigned seconds) { osDelay(seconds * 1000); }
 
 int
 main()

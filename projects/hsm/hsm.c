@@ -117,6 +117,10 @@ void hal_ks_lock(void)   { osMutexWait(ks_mutex, osWaitForever); }
 void hal_ks_unlock(void) { osMutexRelease(ks_mutex); }
 #endif
 
+/* Sleep for specified number of seconds.
+ */
+void hal_sleep(const unsigned seconds) { osDelay(seconds * 1000); }
+
 /* A ring buffer for the UART DMA receiver. In theory, it should get at most
  * 92 characters per 1ms tick, but we're going to up-size it for safety.
  */

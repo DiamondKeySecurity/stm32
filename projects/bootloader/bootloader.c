@@ -88,6 +88,9 @@ int should_dfu()
     return 0;
 }
 
+/* Sleep for specified number of seconds -- used after bad PIN. */
+void hal_sleep(const unsigned seconds) { HAL_Delay(seconds * 1000); }
+
 int
 main()
 {
