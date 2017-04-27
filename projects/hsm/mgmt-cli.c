@@ -3,7 +3,7 @@
  * ---------
  * Management CLI code.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -36,11 +36,10 @@
 
 /* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
-#include "cmsis_os.h"
-
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-led.h"
+#include "task.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-firmware.h"
@@ -49,7 +48,7 @@
 #include "mgmt-misc.h"
 #include "mgmt-keystore.h"
 #include "mgmt-masterkey.h"
-#include "mgmt-thread.h"
+#include "mgmt-task.h"
 
 #undef HAL_OK
 #define HAL_OK LIBHAL_OK
@@ -57,6 +56,8 @@
 #warning Refactor so we do not need to include hal_internal.h here
 #include "hal_internal.h"
 #undef HAL_OK
+
+static tcb_t *cli_task;
 
 #ifndef CLI_UART_RECVBUF_SIZE
 #define CLI_UART_RECVBUF_SIZE  256
@@ -98,17 +99,12 @@ static ringbuf_t uart_ringbuf;
 /* current character received from UART */
 static uint8_t uart_rx;
 
-/* Semaphore to inform uart_cli_read that there's a new character.
- */
-osSemaphoreId  uart_sem;
-osSemaphoreDef(uart_sem);
-
 /* Callback for HAL_UART_Receive_DMA().
  */
 void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     ringbuf_write_char(&uart_ringbuf, uart_rx);
-    osSemaphoreRelease(uart_sem);
+    task_wake(cli_task);
 }
 
 static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
@@ -122,7 +118,7 @@ static ssize_t uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void 
 {
     for (int i = 0; i < count; ++i) {
         while (ringbuf_read_char(&uart_ringbuf, (uint8_t *)(buf + i)) == 0)
-            osSemaphoreWait(uart_sem, osWaitForever);
+            task_sleep();
     }
     return (ssize_t)count;
 }
@@ -175,7 +171,7 @@ static int check_auth(const char *username, const char *password)
 
 int cli_main(void)
 {
-    uart_sem = osSemaphoreCreate(osSemaphore(uart_sem), 0);
+    cli_task = task_get_tcb();
 
     struct cli_def *cli;
     cli = cli_init();
@@ -198,7 +194,7 @@ int cli_main(void)
     configure_cli_firmware(cli);
     configure_cli_bootloader(cli);
     configure_cli_misc(cli);
-    configure_cli_thread(cli);
+    configure_cli_task(cli);
 
     while (1) {
         control_mgmt_uart_dma_rx(DMA_RX_START);

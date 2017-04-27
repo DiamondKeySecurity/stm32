@@ -1,9 +1,9 @@
 /*
- * mgmt-thread.h
+ * mgmt-task.c
  * -----------
- * Management CLI 'thread' functions.
+ * CLI 'task' functions.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -32,11 +32,47 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_THREAD_H
-#define __STM32_CLI_MGMT_THREAD_H
+/*
+ * Show the active tasks. This is mostly for debugging, and looks deeply
+ * into OS-level structures, but sometimes you just need to know...
+ */
 
-#include <libcli.h>
+#include "mgmt-cli.h"
+#include "mgmt-task.h"
+#include "task.h"
 
-extern void configure_cli_thread(struct cli_def *cli);
+static char *task_state[] = {
+    "INIT",
+    "WAITING",
+    "READY"
+};
 
-#endif /* __STM32_CLI_MGMT_THREAD_H */
+extern size_t request_queue_len(void);
+extern size_t request_queue_max(void);
+
+static int cmd_task_show(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "name            state           stack high water");
+    cli_print(cli, "--------        --------        ----------------");
+
+    for (tcb_t *t = task_iterate(NULL); t != NULL; t = task_iterate(t)) {
+        cli_print(cli, "%-15s %-15s %d",
+                  task_get_name(t),
+                  task_state[task_get_state(t)],
+                  task_get_stack_highwater(t));
+    }
+
+    cli_print(cli, " ");
+    cli_print(cli, "request queue current length: %d", request_queue_len());
+    cli_print(cli, "request queue maximum length: %d", request_queue_max());
+
+    return CLI_OK;
+}
+
+void configure_cli_task(struct cli_def *cli)
+{
+    struct cli_command *c = cli_register_command(cli, NULL, "task", NULL, 0, 0, NULL);
+
+    /* task show */
+    cli_register_command(cli, c, "show", cmd_task_show, 0, 0, "Show the active tasks");
+}

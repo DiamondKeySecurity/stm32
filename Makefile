@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2016, NORDUnet A/S
+# Copyright (c) 2015-2017, NORDUnet A/S
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,6 @@ export LIBS_DIR = $(TOPLEVEL)/libraries
 export MBED_DIR = $(LIBS_DIR)/mbed
 export CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
 export BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
-export RTOS_DIR = $(MBED_DIR)/rtos
 
 export LIBHAL_SRC = $(CRYPTECH_ROOT)/sw/libhal
 export LIBHAL_BLD = $(LIBS_DIR)/libhal
@@ -128,14 +127,8 @@ $(MBED_DIR)/libstmf4.a: .FORCE
 board-test: $(BOARD_OBJS) $(LIBS) .FORCE
 	$(MAKE) -C projects/board-test
 
-cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a  .FORCE
+cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/cli-test
-
-$(RTOS_DIR)/librtos.a: .FORCE
-	$(MAKE) -C $(RTOS_DIR)
-
-rtos-test: $(RTOS_OBJS) $(LIBS) $(RTOS_DIR)/librtos.a .FORCE
-	$(MAKE) -C projects/rtos-test
 
 $(LIBTFM_BLD)/libtfm.a: .FORCE
 	$(MAKE) -C $(LIBTFM_BLD) PREFIX=$(PREFIX)
@@ -149,7 +142,7 @@ $(LIBCLI_BLD)/libcli.a: .FORCE
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/libhal-test
 
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(RTOS_DIR)/librtos.a $(LIBCLI_BLD)/libcli.a .FORCE
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a .FORCE
 	$(MAKE) -C projects/hsm
 
 bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
@@ -158,7 +151,7 @@ bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 # don't automatically delete objects, to avoid a lot of unnecessary rebuilding
 .SECONDARY: $(BOARD_OBJS)
 
-.PHONY: board-test rtos-test libhal-test cli-test hsm bootloader
+.PHONY: board-test libhal-test cli-test hsm bootloader
 
 # We don't (and shouldn't) know enough about libraries and projects to
 # know whether they need rebuilding or not, so we let their Makefiles
@@ -174,13 +167,11 @@ clean:
 	$(MAKE) -C $(LIBHAL_BLD) clean
 	$(MAKE) -C projects/board-test clean
 	$(MAKE) -C projects/cli-test clean
-	$(MAKE) -C projects/rtos-test clean
 	$(MAKE) -C projects/libhal-test clean
 	$(MAKE) -C projects/hsm clean
 	$(MAKE) -C projects/bootloader clean
 
 distclean: clean
 	$(MAKE) -C $(MBED_DIR) clean
-	$(MAKE) -C $(RTOS_DIR) clean
 	$(MAKE) -C $(LIBTFM_BLD) clean
 	$(MAKE) -C $(LIBCLI_BLD) clean

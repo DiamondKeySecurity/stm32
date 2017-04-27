@@ -44,13 +44,12 @@
 
 /* Rename both CMSIS HAL_OK and libhal HAL_OK to disambiguate */
 #define HAL_OK CMSIS_HAL_OK
-#include "cmsis_os.h"
-
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-fmc.h"
 #include "stm-uart.h"
 #include "stm-sdram.h"
+#include "task.h"
 
 #include "mgmt-cli.h"
 
@@ -63,10 +62,9 @@
 #undef HAL_OK
 
 #ifndef NUM_RPC_TASK
-/* Just one RPC task for now. More will require active resource management
- * of at least the FPGA cores.
- */
 #define NUM_RPC_TASK 1
+#elif NUM_RPC_TASK < 1 || NUM_RPC_TASK > 10
+#error invalid NUM_RPC_TASK
 #endif
 
 #ifndef TASK_STACK_SIZE
@@ -77,6 +75,21 @@
 #define TASK_STACK_SIZE 200*1024
 #endif
 
+/* Stack for the busy task. This doesn't need to be very big.
+ */
+#ifndef BUSY_STACK_SIZE
+#define BUSY_STACK_SIZE 1*1024
+#endif
+static uint8_t busy_stack[BUSY_STACK_SIZE];
+
+/* Stack for the CLI task. This needs to be big enough to accept a
+ * 4096-byte block of an FPGA or bootloader image upload.
+ */
+#ifndef CLI_STACK_SIZE
+#define CLI_STACK_SIZE 8*1024
+#endif
+static uint8_t cli_stack[CLI_STACK_SIZE];
+
 #ifndef MAX_PKT_SIZE
 /* An arbitrary number, more or less driven by the 4096-bit RSA
  * keygen test.
@@ -84,146 +97,238 @@
 #define MAX_PKT_SIZE 4096
 #endif
 
-/* RPC buffers. For each active RPC, there will be two - input and output.
+/* RPC buffers. For each active request, there will be two - input and output.
  */
-typedef struct {
+typedef struct rpc_buffer_s {
     size_t len;
     uint8_t buf[MAX_PKT_SIZE];
+    struct rpc_buffer_s *next;  /* for ibuf queue linking */
 } rpc_buffer_t;
 
-/* A mail queue (memory pool + message queue) for RPC request messages.
- */
-osMailQId  ibuf_queue;
-osMailQDef(ibuf_queue, NUM_RPC_TASK + 2, rpc_buffer_t);
+/* RPC input (requst) buffers */
+static rpc_buffer_t ibufs[NUM_RPC_TASK];
 
-#if NUM_RPC_TASK > 1
-/* A mutex to arbitrate concurrent UART transmits, from RPC responses.
- */
-osMutexId  uart_mutex;
-osMutexDef(uart_mutex);
-static inline void uart_lock(void)   { osMutexWait(uart_mutex, osWaitForever); }
-static inline void uart_unlock(void) { osMutexRelease(uart_mutex); }
-#else
-static inline void uart_lock(void)   { }
-static inline void uart_unlock(void) { }
-#endif
-
-#if NUM_RPC_TASK > 1
-/* A mutex to arbitrate concurrent access to the keystore.
- */
-osMutexId  ks_mutex;
-osMutexDef(ks_mutex);
-void hal_ks_lock(void)   { osMutexWait(ks_mutex, osWaitForever); }
-void hal_ks_unlock(void) { osMutexRelease(ks_mutex); }
-#endif
-
-/* A ring buffer for the UART DMA receiver. In theory, it should get at most
- * 92 characters per 1ms tick, but we're going to up-size it for safety.
- */
-#ifndef RPC_UART_RECVBUF_SIZE
-#define RPC_UART_RECVBUF_SIZE  256  /* must be a power of 2 */
-#endif
-#define RPC_UART_RECVBUF_MASK  (RPC_UART_RECVBUF_SIZE - 1)
-
+/* ibuf queue structure */
 typedef struct {
-    uint32_t ridx;
-    uint8_t buf[RPC_UART_RECVBUF_SIZE];
-} uart_ringbuf_t;
+    rpc_buffer_t *head, *tail;
+    size_t len, max;            /* for reporting */
+} ibufq_t;
 
-volatile uart_ringbuf_t uart_ringbuf = {0, {0}};
-
-#define RINGBUF_RIDX(rb)       (rb.ridx & RPC_UART_RECVBUF_MASK)
-#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_user.hdmarx))
-#define RINGBUF_COUNT(rb)      ((unsigned)(RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)))
-#define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.ridx++;}
-
-/* Thread entry point for the UART DMA monitor.
+/* ibuf queues. These correspond roughly to task states - 'waiting' is for
+ * unallocated ibufs, while 'ready' is for requests that are ready to be
+ * processed.
  */
-void uart_rx_thread(void const *args)
+static ibufq_t ibuf_waiting, ibuf_ready;
+
+/* Get an ibuf from a queue. */
+static rpc_buffer_t *ibuf_get(ibufq_t *q)
 {
-    /* current RPC input buffer */
-    rpc_buffer_t *ibuf = NULL;
+    hal_critical_section_start();
+    rpc_buffer_t *ibuf = q->head;
+    if (ibuf) {
+        q->head = ibuf->next;
+        if (q->head == NULL)
+            q->tail = NULL;
+        ibuf->next = NULL;
+        --q->len;
+    }
+    hal_critical_section_end();
+    return ibuf;
+}
 
-    /* I wanted to call osThreadYield(), but the documentation is misleading,
-     * and it only yields to the next ready thread of the same priority, so
-     * this high-priority thread wouldn't let anything else run. osDelay(1)
-     * reschedules this thread for the next tick, which is what we want.
+/* Put an ibuf on a queue. */
+static void ibuf_put(ibufq_t *q, rpc_buffer_t *ibuf)
+{
+    hal_critical_section_start();
+    if (q->tail)
+        q->tail->next = ibuf;
+    else
+        q->head = ibuf;
+    q->tail = ibuf;
+    ibuf->next = NULL;
+    if (++q->len > q->max)
+        q->max = q->len;
+    hal_critical_section_end();
+}
+
+/* Get the current length of the 'ready' queue, for reporting in the CLI. */
+size_t request_queue_len(void)
+{
+    size_t n;
+
+    hal_critical_section_start();
+    n = ibuf_ready.len;
+    hal_critical_section_end();
+
+    return n;
+}
+
+/* Get the maximum length of the 'ready' queue, for reporting in the CLI. */
+size_t request_queue_max(void)
+{
+    size_t n;
+
+    hal_critical_section_start();
+    n = ibuf_ready.max;
+    hal_critical_section_end();
+
+    return n;
+}
+
+static void dispatch_task(void);
+static void busy_task(void);
+static tcb_t *busy_tcb;
+
+/* Select an available dispatch task. For simplicity, this doesn't try to
+ * allocate tasks in a round-robin fashion, so the lowest-numbered task
+ * will see the most action. OTOH, this lets us gauge the level of system
+ * activity in the CLI's 'task show' command.
+ */
+static tcb_t *task_next_waiting(void)
+{
+    for (tcb_t *t = task_iterate(NULL); t; t = task_iterate(t)) {
+        if (task_get_func(t) == dispatch_task &&
+            task_get_state(t) == TASK_WAITING)
+            return t;
+    }
+    return NULL;
+}
+
+static uint8_t *sdram_malloc(size_t size);
+
+/* Callback for HAL_UART_Receive_DMA().
+ */
+static void RxCallback(uint8_t c)
+{
+    int complete;
+    static rpc_buffer_t *ibuf = NULL;
+
+    /* If we couldn't previously get an ibuf, a task may have freed one up
+     * in the meantime. Otherwise, allocate one from SDRAM. In normal
+     * operation, the number of ibufs will expand to the number of remote
+     * clients (which we don't know and can't predict). It would take an
+     * active attempt to DOS the system to exhaust SDRAM, and there are
+     * easier ways to attack the device (don't release hash or pkey handles).
      */
-    for ( ; ; osDelay(1)) {
+    if (ibuf == NULL) {
+        ibuf = ibuf_get(&ibuf_waiting);
         if (ibuf == NULL) {
-            if ((ibuf = (rpc_buffer_t *)osMailAlloc(ibuf_queue, 1)) == NULL)
-                /* This could happen if all dispatch threads are busy, and
-                 * there are NUM_RPC_TASK requests already queued. We could
-                 * send a "server busy" error, or we could just try again on
-                 * the next tick.
-                 */
+            ibuf = (rpc_buffer_t *)sdram_malloc(sizeof(rpc_buffer_t));
+            if (ibuf == NULL)
                 Error_Handler();
+        }
+        ibuf->len = 0;
+    }
+
+    /* Process this character into the ibuf. */
+    if (hal_slip_process_char(c, ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
+        Error_Handler();
+
+    if (complete) {
+        /* Add the ibuf to the request queue, and try to get another ibuf.
+         */
+        ibuf_put(&ibuf_ready, ibuf);
+        ibuf = ibuf_get(&ibuf_waiting);
+        if (ibuf != NULL)
             ibuf->len = 0;
-        }
+        /* else all ibufs are busy, try again next time */
 
-        while (RINGBUF_COUNT(uart_ringbuf)) {
-            uint8_t c;
-            int complete;
-
-            RINGBUF_READ(uart_ringbuf, c);
-            if (hal_slip_process_char(c, ibuf->buf, &ibuf->len, sizeof(ibuf->buf), &complete) != LIBHAL_OK)
-                Error_Handler();
-
-            if (complete) {
-                if (osMailPut(ibuf_queue, (void *)ibuf) != osOK)
-                    Error_Handler();
-                ibuf = NULL;
-                /* Yield, to allow one of the dispatch threads to pick up this
-                 * new request.
-                 */
-                break;
-            }
-        }
+        /* Wake a dispatch task to deal with this request, or wake the
+         * busy task to re-try scheduling a dispatch task.
+         */
+        tcb_t *t = task_next_waiting();
+        if (t)
+            task_wake(t);
+        else
+            task_wake(busy_tcb);
     }
 }
-osThreadDef(uart_rx_thread, osPriorityHigh, DEFAULT_STACK_SIZE);
 
+static uint8_t uart_rx[2];      /* current character received from UART */
+static uint32_t uart_rx_idx = 0;
+
+/* UART DMA half-complete and complete callbacks. With a 2-character DMA
+ * buffer, one or the other of these will fire on each incoming character.
+ * Under heavy load, these will sometimes fire in the wrong order, but the
+ * data are in the right order in the DMA buffer, so we have a flip-flop
+ * buffer index that doesn't depend on the order of the callbacks.
+ */
+void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+    RxCallback(uart_rx[uart_rx_idx]);
+    uart_rx_idx ^= 1;
+}
+
+void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    RxCallback(uart_rx[uart_rx_idx]);
+    uart_rx_idx ^= 1;
+}
+
+/* Send one character over the UART. This is called from
+ * hal_slip_send_char().
+ */
 hal_error_t hal_serial_send_char(uint8_t c)
 {
     return (uart_send_char2(STM_UART_USER, c) == 0) ? LIBHAL_OK : HAL_ERROR_RPC_TRANSPORT;
 }
 
-/* Thread entry point for the RPC request handler.
+/* Task entry point for the RPC request handler.
  */
-void dispatch_thread(void const *args)
+static void dispatch_task(void)
 {
-    rpc_buffer_t obuf_s, *obuf = &obuf_s, *ibuf;
+    rpc_buffer_t obuf_s, *obuf = &obuf_s;
 
     while (1) {
+        /* Wait for a complete RPC request */
+        task_sleep();
+
+        rpc_buffer_t *ibuf = ibuf_get(&ibuf_ready);
+        if (ibuf == NULL)
+            /* probably an error, but go back to sleep */
+            continue;
+
         memset(obuf, 0, sizeof(*obuf));
         obuf->len = sizeof(obuf->buf);
 
-        /* Wait for a complete RPC request */
-        osEvent evt = osMailGet(ibuf_queue, osWaitForever);
-        if (evt.status != osEventMail)
-            continue;
-        ibuf = (rpc_buffer_t *)evt.value.p;
-
         /* Process the request */
-	hal_error_t ret = hal_rpc_server_dispatch(ibuf->buf, ibuf->len, obuf->buf, &obuf->len);
-        osMailFree(ibuf_queue, (void *)ibuf);
-        if (ret != LIBHAL_OK) {
-            /* If hal_rpc_server_dispatch failed with an XDR error, it
-             * probably means the request packet was garbage. In any case, we
-             * have nothing to transmit.
-             */
-            continue;
-	}
-
-        /* Send the response */
-        uart_lock();
-        ret = hal_rpc_sendto(obuf->buf, obuf->len, NULL);
-        uart_unlock();
-        if (ret != LIBHAL_OK)
-            Error_Handler();
+        hal_error_t ret = hal_rpc_server_dispatch(ibuf->buf, ibuf->len, obuf->buf, &obuf->len);
+        ibuf_put(&ibuf_waiting, ibuf);
+        if (ret == LIBHAL_OK) {
+            /* Send the response */
+            if (hal_rpc_sendto(obuf->buf, obuf->len, NULL) != LIBHAL_OK)
+                Error_Handler();
+        }
+        /* Else hal_rpc_server_dispatch failed with an XDR error, which
+         * probably means the request packet was garbage. In any case, we
+         * have nothing to transmit.
+         */
     }
 }
-osThreadDef_t thread_def[NUM_RPC_TASK];
+
+/* Task entry point for the task-rescheduling task.
+ */
+static void busy_task(void)
+{
+    while (1) {
+        /* Wake as many tasks as we have requests.
+         */
+        size_t n;
+        for (n = request_queue_len(); n > 0; --n) {
+            tcb_t *t;
+            if ((t = task_next_waiting()) != NULL)
+                task_wake(t);
+            else
+                break;
+        }
+        if (n == 0)
+            /* flushed the queue, our work here is done */
+            task_sleep();
+        else
+            /* more work to do, try again after some tasks have run */
+            task_yield();
+    }
+}
 
 /* Allocate memory from SDRAM1. There is only malloc, no free, so we don't
  * worry about fragmentation. */
@@ -255,8 +360,7 @@ void *hal_allocate_static_memory(const size_t size)
     return sdram_malloc(size);
 }
 
-#if NUM_RPC_TASK > 1
-/* Critical section start/end, currently used just for hal_core_alloc/_free.
+/* Critical section start/end - temporarily disable interrupts.
  */
 void hal_critical_section_start(void)
 {
@@ -267,12 +371,19 @@ void hal_critical_section_end(void)
 {
     __enable_irq();
 }
-#endif
 
-/* The main thread. This does all the setup, and the worker threads handle
+/* A genericized public interface to task_yield(), for calling from
+ * libhal.
+ */
+void hal_task_yield(void)
+{
+    task_yield();
+}
+
+/* The main task. This does all the setup, and the worker tasks handle
  * the rest.
  */
-int main()
+int main(void)
 {
     stm_init();
     uart_set_default(STM_UART_MGMT);
@@ -282,41 +393,43 @@ int main()
     fmc_init();
     sdram_init();
 
-    if ((ibuf_queue = osMailCreate(osMailQ(ibuf_queue), NULL)) == NULL)
+    if (hal_rpc_server_init() != LIBHAL_OK)
         Error_Handler();
 
-#if NUM_RPC_TASK > 1
-    if ((uart_mutex = osMutexCreate(osMutex(uart_mutex))) == NULL)
-	Error_Handler();
-    if ((ks_mutex = osMutexCreate(osMutex(ks_mutex))) == NULL)
-	Error_Handler();
-#endif
+    /* Initialize the ibuf queues. */
+    memset(&ibuf_waiting, 0, sizeof(ibuf_waiting));
+    memset(&ibuf_ready, 0, sizeof(ibuf_ready));
+    for (int i = 0; i < sizeof(ibufs)/sizeof(ibufs[0]); ++i)
+        ibuf_put(&ibuf_waiting, &ibufs[i]);
 
-    if (hal_rpc_server_init() != LIBHAL_OK)
-	Error_Handler();
-
-    /* Create the rpc dispatch worker threads. */
+    /* Create the rpc dispatch worker tasks. */
+    static char label[NUM_RPC_TASK][sizeof("dispatch0")];
     for (int i = 0; i < NUM_RPC_TASK; ++i) {
-        osThreadDef_t *ot = &thread_def[i];
-        ot->pthread = dispatch_thread;
-        ot->tpriority = osPriorityNormal;
-        ot->stacksize = TASK_STACK_SIZE;
-        ot->stack_pointer = (uint32_t *)(sdram_malloc(TASK_STACK_SIZE));
-        if (ot->stack_pointer == NULL)
+        sprintf(label[i], "dispatch%d", i);
+        void *stack = (void *)sdram_malloc(TASK_STACK_SIZE);
+        if (stack == NULL)
             Error_Handler();
-        if (osThreadCreate(ot, (void *)i) == NULL)
+        if (task_add(label[i], dispatch_task, &ibufs[i], stack, TASK_STACK_SIZE) == NULL)
             Error_Handler();
     }
 
-    /* Start the UART receiver. */
-    if (HAL_UART_Receive_DMA(&huart_user, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf)) != CMSIS_HAL_OK)
-        Error_Handler();
-    if (osThreadCreate(osThread(uart_rx_thread), NULL) == NULL)
+    /* Create the busy task. */
+    busy_tcb = task_add("busy", busy_task, NULL, busy_stack, sizeof(busy_stack));
+    if (busy_tcb == NULL)
         Error_Handler();
 
-    /* Launch other threads (csprng warm-up thread?)
+    /* Start the UART receiver. */
+    if (HAL_UART_Receive_DMA(&huart_user, uart_rx, 2) != CMSIS_HAL_OK)
+        Error_Handler();
+
+    /* Launch other tasks (csprng warm-up task?)
      * Wait for FPGA_DONE interrupt.
      */
 
-    return cli_main();
+    /* Create the CLI task. */
+    if (task_add("cli", (funcp_t)cli_main, NULL, cli_stack, sizeof(cli_stack)) == NULL)
+        Error_Handler();
+
+    /* Start the tasker */
+    task_yield();
 }
