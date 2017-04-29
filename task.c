@@ -316,3 +316,13 @@ tcb_t *task_iterate(tcb_t *t)
 
     return t->next;
 }
+
+/* Delay a number of 1ms ticks.
+ */
+void task_delay(uint32_t delay)
+{
+    uint32_t tickstart = HAL_GetTick();
+
+    while ((HAL_GetTick() - tickstart) < delay)
+	task_yield();
+}

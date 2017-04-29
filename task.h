@@ -49,6 +49,8 @@ typedef void (*funcp_t)(void);
 
 extern tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stack_len);
 
+extern void task_set_idle_hook(funcp_t func);
+
 extern void task_yield(void);
 extern void task_sleep(void);
 extern void task_wake(tcb_t *t);
@@ -63,6 +65,6 @@ extern size_t task_get_stack_highwater(tcb_t *t);
 
 extern tcb_t *task_iterate(tcb_t *t);
 
-extern void task_set_idle_hook(funcp_t func);
+extern void task_delay(uint32_t delay);
 
 #endif /* _TASK_H_ */
