@@ -50,6 +50,8 @@
 /* MGMT UART interrupt receive buffer (data will be put in a larger ring buffer) */
 volatile uint8_t uart_rx;
 
+/* Sleep for specified number of seconds -- used after bad PIN. */
+void hal_sleep(const unsigned seconds) { HAL_Delay(seconds * 1000); }
 
 int
 main()

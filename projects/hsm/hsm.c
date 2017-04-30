@@ -386,6 +386,10 @@ task_mutex_t ks_mutex = { 0 };
 void hal_ks_lock(void)   { task_mutex_lock(&ks_mutex); }
 void hal_ks_unlock(void) { task_mutex_unlock(&ks_mutex); }
 
+/* Sleep for specified number of seconds.
+ */
+void hal_sleep(const unsigned seconds) { task_delay(seconds * 1000); }
+
 /* The main task. This does all the setup, and the worker tasks handle
  * the rest.
  */
