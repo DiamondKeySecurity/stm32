@@ -39,7 +39,6 @@
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-led.h"
-#include "task.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-fpga.h"
@@ -53,8 +52,6 @@
 #define HAL_OK LIBHAL_OK
 #include "hal.h"
 #undef HAL_OK
-
-static tcb_t *cli_task;
 
 #ifndef CLI_UART_RECVBUF_SIZE
 #define CLI_UART_RECVBUF_SIZE  256
@@ -101,7 +98,6 @@ static uint8_t uart_rx;
 void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     ringbuf_write_char(&uart_ringbuf, uart_rx);
-    task_wake(cli_task);
 }
 
 static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
@@ -114,8 +110,8 @@ static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const c
 static ssize_t uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
     for (int i = 0; i < count; ++i) {
-        while (ringbuf_read_char(&uart_ringbuf, (uint8_t *)(buf + i)) == 0)
-            task_sleep();
+        while (ringbuf_read_char(&uart_ringbuf, (uint8_t *)(buf + i)) == 0) {
+	}
     }
     return (ssize_t)count;
 }
@@ -168,8 +164,6 @@ static int check_auth(const char *username, const char *password)
 
 int cli_main(void)
 {
-    cli_task = task_get_tcb();
-
     struct cli_def *cli;
     cli = mgmt_cli_init();
     cli_set_auth_callback(cli, check_auth);
