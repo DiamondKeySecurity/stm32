@@ -36,6 +36,7 @@
 #define _TASK_H_
 
 #include <sys/types.h>
+#include <stdint.h>
 
 typedef enum task_state {
     TASK_INIT,
