@@ -380,6 +380,12 @@ void hal_task_yield(void)
     task_yield();
 }
 
+/* A mutex to arbitrate concurrent access to the keystore.
+ */
+task_mutex_t ks_mutex = { 0 };
+void hal_ks_lock(void)   { task_mutex_lock(&ks_mutex); }
+void hal_ks_unlock(void) { task_mutex_unlock(&ks_mutex); }
+
 /* The main task. This does all the setup, and the worker tasks handle
  * the rest.
  */

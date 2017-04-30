@@ -45,6 +45,8 @@ typedef enum task_state {
 
 typedef struct task_cb tcb_t;
 
+typedef struct { unsigned locked; } task_mutex_t;
+
 typedef void (*funcp_t)(void);
 
 extern tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stack_len);
@@ -66,5 +68,8 @@ extern size_t task_get_stack_highwater(tcb_t *t);
 extern tcb_t *task_iterate(tcb_t *t);
 
 extern void task_delay(uint32_t delay);
+
+extern void task_mutex_lock(task_mutex_t *mutex);
+extern void task_mutex_unlock(task_mutex_t *mutex);
 
 #endif /* _TASK_H_ */

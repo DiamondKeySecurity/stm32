@@ -326,3 +326,16 @@ void task_delay(uint32_t delay)
     while ((HAL_GetTick() - tickstart) < delay)
 	task_yield();
 }
+
+void task_mutex_lock(task_mutex_t *mutex)
+{
+    while (mutex->locked)
+	task_yield();
+    mutex->locked = 1;
+}
+
+void task_mutex_unlock(task_mutex_t *mutex)
+{
+    if (mutex != NULL)
+	mutex->locked = 0;
+}
