@@ -108,14 +108,13 @@ tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stac
     if (tail == NULL) {
         /* Empty list; initialize it to this task. */
         t->next = t;
-        tail = t;
     }
     else {
         /* Otherwise insert at the end of the list. */
         t->next = tail->next;
         tail->next = t;
-        tail = t;
     }
+    tail = t;
 
     return t;
 }
@@ -124,6 +123,11 @@ tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stac
  *
  * This function is called repeatedly when the system is idle (there are
  * no runnable tasks).
+ *
+ * The idle function should NOT call task_delay or HAL_Delay, because that
+ * will cause fatal recursion. We could add a recursion guard to
+ * task_yield, but we're not currently using the idle hook, and I'm
+ * thinking about removing it entirely.
  */
 static void default_idle_hook(void) { }
 static funcp_t idle_hook = default_idle_hook;
@@ -169,6 +173,12 @@ static void check_stack(tcb_t *t)
 void task_yield(void)
 {
     tcb_t *next;
+
+    /* If there are no defined tasks, exit immediately so we don't get
+     * caught in the idle loop.
+     */
+    if (tail == NULL)
+	return;
 
     /* Find the next runnable task. Loop if every task is waiting. */
     while (1) {
@@ -326,7 +336,12 @@ void task_delay(uint32_t delay)
     while ((HAL_GetTick() - tickstart) < delay)
 	task_yield();
 }
+void HAL_Delay(uint32_t delay) __attribute__((alias("task_delay")));
 
+/* Simple mutex-like locks. A real mutex would require the unlocker to be
+ * the current owner, but then we have to define and return errors, when
+ * all we want at the moment is simple mutual exclusion.
+ */
 void task_mutex_lock(task_mutex_t *mutex)
 {
     while (mutex->locked)
