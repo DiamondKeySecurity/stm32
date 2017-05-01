@@ -37,7 +37,6 @@
 #include "stm-sdram.h"
 #include "stm-fmc.h"
 #include "stm-fpgacfg.h"
-#include "task.h"
 
 #include "mgmt-cli.h"
 #include "mgmt-test.h"
@@ -132,7 +131,7 @@ static int cmd_test_fmc(struct cli_def *cli, const char *command, char *argv[], 
     led_on(LED_BLUE);
     while (! fpgacfg_check_done()) {
 	for (i = 0; i < 4; i++) {
-	    task_delay(500);
+	    HAL_Delay(500);
 	    led_toggle(LED_BLUE);
 	}
     }

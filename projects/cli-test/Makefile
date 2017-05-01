@@ -13,8 +13,6 @@ OBJS = \
 	test-mkmif.o \
 	test_sdram.o
 
-BOARD_OBJS += $(TOPLEVEL)/task.o
-
 CFLAGS += -I$(LIBCLI_SRC) -I$(LIBHAL_SRC)
 CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
 
