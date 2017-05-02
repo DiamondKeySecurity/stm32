@@ -85,8 +85,7 @@ enum fpgacfg_reset {
     RESET_REGISTERS,
 };
 
-extern SPI_HandleTypeDef hspi_fpgacfg;
-
+extern void fpgacfg_init(void);
 extern int fpgacfg_check_id(void);
 extern int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
 extern int fpgacfg_erase_sector(uint32_t sector_offset);

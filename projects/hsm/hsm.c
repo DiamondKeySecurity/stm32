@@ -397,11 +397,7 @@ int main(void)
 {
     stm_init();
     uart_set_default(STM_UART_MGMT);
-
     led_on(LED_GREEN);
-    /* Prepare FMC interface. */
-    fmc_init();
-    sdram_init();
 
     if (hal_rpc_server_init() != LIBHAL_OK)
         Error_Handler();

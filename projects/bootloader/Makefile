@@ -7,7 +7,6 @@ BOARD_OBJS = \
 	$(TOPLEVEL)/stm-fmc.o \
 	$(TOPLEVEL)/stm-uart.o \
 	$(TOPLEVEL)/spiflash_n25q128.o \
-	$(TOPLEVEL)/stm-fpgacfg.o \
 	$(TOPLEVEL)/stm-keystore.o \
 	$(TOPLEVEL)/stm-flash.o \
 	$(TOPLEVEL)/syscalls.o \

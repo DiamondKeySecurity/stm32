@@ -33,9 +33,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm32f4xx_hal.h"
-#include "stm-flash.h"
 #include "stm-init.h"
+#include "stm-flash.h"
 
 
 /* Flash sector offsets from RM0090, Table 6. Flash module - 2 Mbyte dual bank organization */

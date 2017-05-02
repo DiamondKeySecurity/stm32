@@ -14,7 +14,6 @@ OBJS = \
 	test_sdram.o
 
 CFLAGS += -I$(LIBCLI_SRC) -I$(LIBHAL_SRC)
-CFLAGS += -I$(RTOS_DIR)/rtos -I$(RTOS_DIR)/rtx/TARGET_CORTEX_M
 
 LIBS += $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a $(LIBTFM_BLD)/libtfm.a
 

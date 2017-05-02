@@ -34,11 +34,11 @@
 //------------------------------------------------------------------------------
 // Headers
 //------------------------------------------------------------------------------
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-fmc.h"
 #include "stm-uart.h"
+#include "stm-fpgacfg.h"
 
 //------------------------------------------------------------------------------
 // Defines
@@ -88,7 +88,7 @@ int main(void)
 
   uart_send_string("Keep calm for FPGA bitstream loading...\r\n");
 
-  // Blink blue LED until the FPGA reports it has loaded it's bitstream
+  // Blink blue LED until the FPGA reports it has loaded its bitstream
   led_on(LED_BLUE);
   while (! fpgacfg_check_done()) {
       for (i = 0; i < 4; i++) {
@@ -99,9 +99,6 @@ int main(void)
 
   // initialize rng
   MX_RNG_Init();
-
-  // prepare fmc interface
-  fmc_init();
 
   // turn on green led, turn off other leds
   led_on(LED_GREEN);

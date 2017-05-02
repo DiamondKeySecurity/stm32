@@ -5,7 +5,6 @@
  * Toggles the BLUE LED slowly and the RED LED for every
  * character sent.
  */
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-uart.h"

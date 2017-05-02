@@ -1,7 +1,6 @@
 /*
  * Blink the four LEDs on the rev01 board in a pattern.
  */
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
 

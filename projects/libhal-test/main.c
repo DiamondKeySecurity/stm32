@@ -43,18 +43,7 @@ extern void __main(void);
 int main(void)
 {
     stm_init();
-
-#ifdef TARGET_CRYPTECH_DEV_BRIDGE
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    led_off(LED_BLUE);
-#endif
     led_on(LED_GREEN);
-    fmc_init();
 
     __main();
 

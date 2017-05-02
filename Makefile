@@ -27,32 +27,35 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# export all variables to child processes by default
+.EXPORT_ALL_VARIABLES:
+
 # absolute path, because we're going to be passing things to sub-makes
-export TOPLEVEL = $(abspath .)
-export CRYPTECH_ROOT = $(abspath ../..)
+TOPLEVEL = $(abspath .)
+CRYPTECH_ROOT = $(abspath ../..)
 
 # define board: dev-bridge or alpha
 BOARD = TARGET_CRYPTECH_ALPHA
 
-export LIBS_DIR = $(TOPLEVEL)/libraries
-export MBED_DIR = $(LIBS_DIR)/mbed
-export CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
-export BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
+LIBS_DIR = $(TOPLEVEL)/libraries
+MBED_DIR = $(LIBS_DIR)/mbed
+CMSIS_DIR = $(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
+BOARD_DIR = $(CMSIS_DIR)/$(BOARD)
 
-export LIBHAL_SRC = $(CRYPTECH_ROOT)/sw/libhal
-export LIBHAL_BLD = $(LIBS_DIR)/libhal
+LIBHAL_SRC = $(CRYPTECH_ROOT)/sw/libhal
+LIBHAL_BLD = $(LIBS_DIR)/libhal
 
-export LIBCLI_SRC = $(CRYPTECH_ROOT)/user/paul/libcli
-export LIBCLI_BLD = $(LIBS_DIR)/libcli
+LIBCLI_SRC = $(CRYPTECH_ROOT)/user/paul/libcli
+LIBCLI_BLD = $(LIBS_DIR)/libcli
 
-export LIBTFM_SRC = $(CRYPTECH_ROOT)/sw/thirdparty/libtfm
-export LIBTFM_BLD = $(LIBS_DIR)/libtfm
+LIBTFM_SRC = $(CRYPTECH_ROOT)/sw/thirdparty/libtfm
+LIBTFM_BLD = $(LIBS_DIR)/libtfm
 
-export LIBS = $(MBED_DIR)/libstmf4.a
+LIBS = $(MBED_DIR)/libstmf4.a
 
 # linker script
-export LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
-export BOOTLOADER_LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI_bootloader.ld
+LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI.ld
+BOOTLOADER_LDSCRIPT = $(BOARD_DIR)/TOOLCHAIN_GCC_ARM/STM32F429BI_bootloader.ld
 
 # board-specific objects, to link into every project
 BOARD_OBJS = \
@@ -73,16 +76,15 @@ BOARD_OBJS += \
 	$(TOPLEVEL)/stm-sdram.o \
 	$(TOPLEVEL)/stm-flash.o
 endif
-export BOARD_OBJS
 
 # cross-building tools
 PREFIX=arm-none-eabi-
-export CC=$(PREFIX)gcc
-export AS=$(PREFIX)as
-export AR=$(PREFIX)ar
-export OBJCOPY=$(PREFIX)objcopy
-export OBJDUMP=$(PREFIX)objdump
-export SIZE=$(PREFIX)size
+CC=$(PREFIX)gcc
+AS=$(PREFIX)as
+AR=$(PREFIX)ar
+OBJCOPY=$(PREFIX)objcopy
+OBJDUMP=$(PREFIX)objdump
+SIZE=$(PREFIX)size
 
 # The Alpha is a development platform, so set GCC optimization to a
 # level suitable for debugging.  Recent versions of GCC have a special
@@ -111,7 +113,6 @@ CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
 CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
 CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
 CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
-export CFLAGS
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

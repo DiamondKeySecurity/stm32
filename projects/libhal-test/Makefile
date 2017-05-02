@@ -17,9 +17,6 @@ vpath %.c $(LIBHAL_SRC)/tests $(LIBHAL_SRC)/utils
 	$(OBJCOPY) -O binary $*.elf $*.bin
 	$(SIZE) $*.elf
 
-# don't automatically delete objects, to avoid a lot of unnecessary rebuilding
-.SECONDARY: $(BOARD_OBJS) $(LIBC_OBJS)
-
 clean:
 	rm -f *.o *.mo
 	rm -f *.elf

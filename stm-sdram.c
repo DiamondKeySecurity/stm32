@@ -31,7 +31,6 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-sdram.h"
 #include "stm-fmc.h"
@@ -54,22 +53,17 @@
 #define SDRAM_MODEREG_WRITEBURST_MODE_PROGRAMMED ((uint16_t)0x0000)
 #define SDRAM_MODEREG_WRITEBURST_MODE_SINGLE     ((uint16_t)0x0200)
 
-SDRAM_HandleTypeDef hsdram1;
-SDRAM_HandleTypeDef hsdram2;
+static SDRAM_HandleTypeDef hsdram1;
+static SDRAM_HandleTypeDef hsdram2;
 
 static void _sdram_init_gpio(void);
-static HAL_StatusTypeDef _sdram_init_fmc(void);
-static HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTypeDef *sdram2);
+static void _sdram_init_fmc(void);
+static void _sdram_init_params(void);
 
-
-HAL_StatusTypeDef sdram_init(void)
+void sdram_init(void)
 {
-    HAL_StatusTypeDef status;
     static int initialized = 0;
-
-    if (initialized) {
-	return HAL_OK;
-    }
+    if (initialized) return;
     initialized = 1;
 
     /* We rely on several things being set up by fmc_init() instead of duplicating all
@@ -79,16 +73,12 @@ HAL_StatusTypeDef sdram_init(void)
      */
     fmc_init();
 
-    // configure FMC
+    /* configure FMC */
     _sdram_init_gpio();
-    status = _sdram_init_fmc();
-    if (status != HAL_OK) return status;
+    _sdram_init_fmc();
 
-    // configure SDRAM registers
-    status = _sdram_init_params(&hsdram1, &hsdram2);
-    if (status != HAL_OK) return status;
-
-    return HAL_OK;
+    /* configure SDRAM registers */
+    _sdram_init_params();
 }
 
 static void _sdram_init_gpio(void)
@@ -107,9 +97,39 @@ static void _sdram_init_gpio(void)
     fmc_af_gpio(GPIOI, GPIO_PIN_4 | GPIO_PIN_5);
 }
 
-static HAL_StatusTypeDef _sdram_init_fmc()
+static void _sdram_config_bank(SDRAM_HandleTypeDef *hsdram, uint32_t SDBank, FMC_SDRAM_TimingTypeDef *SdramTiming)
 {
-    HAL_StatusTypeDef status;
+    /* memory type */
+    hsdram->Instance = FMC_SDRAM_DEVICE;
+
+    /* bank */
+    hsdram->Init.SDBank = SDBank;
+
+    /* settings for IS42S32160F */
+    hsdram->Init.ColumnBitsNumber	= FMC_SDRAM_COLUMN_BITS_NUM_9;
+    hsdram->Init.RowBitsNumber		= FMC_SDRAM_ROW_BITS_NUM_13;
+    hsdram->Init.MemoryDataWidth	= FMC_SDRAM_MEM_BUS_WIDTH_32;
+    hsdram->Init.InternalBankNumber	= FMC_SDRAM_INTERN_BANKS_NUM_4;
+    hsdram->Init.CASLatency		= FMC_SDRAM_CAS_LATENCY_2;
+
+    /* write protection not needed */
+    hsdram->Init.WriteProtection = FMC_SDRAM_WRITE_PROTECTION_DISABLE;
+
+    /* memory clock is 90 MHz (HCLK / 2) */
+    hsdram->Init.SDClockPeriod = FMC_SDRAM_CLOCK_PERIOD_2;
+
+    /* read burst not needed */
+    hsdram->Init.ReadBurst = FMC_SDRAM_RBURST_DISABLE;
+
+    /* additional pipeline stages not neeed */
+    hsdram->Init.ReadPipeDelay = FMC_SDRAM_RPIPE_DELAY_0;
+
+    /* call HAL layer */
+    HAL_SDRAM_Init(hsdram, SdramTiming);
+}
+
+static void _sdram_init_fmc(void)
+{
     FMC_SDRAM_TimingTypeDef SdramTiming;
 
     /*
@@ -130,120 +150,42 @@ static HAL_StatusTypeDef _sdram_init_fmc()
     SdramTiming.RPDelay			= 2;	// tRP
     SdramTiming.RCDDelay		= 2;	// tRCD
 
-    /*
-     * configure the first bank
-     */
+    /* configure the first bank */
+    _sdram_config_bank(&hsdram1, FMC_SDRAM_BANK1, &SdramTiming);
 
-    // memory type
-    hsdram1.Instance = FMC_SDRAM_DEVICE;
-
-    // bank
-    hsdram1.Init.SDBank = FMC_SDRAM_BANK1;
-
-    // settings for IS42S32160F
-    hsdram1.Init.ColumnBitsNumber	= FMC_SDRAM_COLUMN_BITS_NUM_9;
-    hsdram1.Init.RowBitsNumber		= FMC_SDRAM_ROW_BITS_NUM_13;
-    hsdram1.Init.MemoryDataWidth	= FMC_SDRAM_MEM_BUS_WIDTH_32;
-    hsdram1.Init.InternalBankNumber	= FMC_SDRAM_INTERN_BANKS_NUM_4;
-    hsdram1.Init.CASLatency		= FMC_SDRAM_CAS_LATENCY_2;
-
-    // write protection not needed
-    hsdram1.Init.WriteProtection = FMC_SDRAM_WRITE_PROTECTION_DISABLE;
-
-    // memory clock is 90 MHz (HCLK / 2)
-    hsdram1.Init.SDClockPeriod = FMC_SDRAM_CLOCK_PERIOD_2;
-
-    // read burst not needed
-    hsdram1.Init.ReadBurst = FMC_SDRAM_RBURST_DISABLE;
-
-    // additional pipeline stages not neeed
-    hsdram1.Init.ReadPipeDelay = FMC_SDRAM_RPIPE_DELAY_0;
-
-    // call HAL layer
-    status = HAL_SDRAM_Init(&hsdram1, &SdramTiming);
-    if (status != HAL_OK) return status;
-
-    /*
-     * configure the second bank
-     */
-
-    // memory type
-    hsdram2.Instance = FMC_SDRAM_DEVICE;
-
-    // bank number
-    hsdram2.Init.SDBank = FMC_SDRAM_BANK2;
-
-    // settings for IS42S32160F
-    hsdram2.Init.ColumnBitsNumber	= FMC_SDRAM_COLUMN_BITS_NUM_9;
-    hsdram2.Init.RowBitsNumber		= FMC_SDRAM_ROW_BITS_NUM_13;
-    hsdram2.Init.MemoryDataWidth	= FMC_SDRAM_MEM_BUS_WIDTH_32;
-    hsdram2.Init.InternalBankNumber	= FMC_SDRAM_INTERN_BANKS_NUM_4;
-    hsdram2.Init.CASLatency		= FMC_SDRAM_CAS_LATENCY_2;
-
-    // write protection not needed
-    hsdram2.Init.WriteProtection = FMC_SDRAM_WRITE_PROTECTION_DISABLE;
-
-    // memory clock is 90 MHz (HCLK / 2)
-    hsdram2.Init.SDClockPeriod = FMC_SDRAM_CLOCK_PERIOD_2;
-
-    // read burst not needed
-    hsdram2.Init.ReadBurst = FMC_SDRAM_RBURST_DISABLE;
-
-    // additional pipeline stages not neeed
-    hsdram2.Init.ReadPipeDelay = FMC_SDRAM_RPIPE_DELAY_0;
-
-    // call HAL layer
-    return HAL_SDRAM_Init(&hsdram2, &SdramTiming);
+    /* configure the second bank */
+    _sdram_config_bank(&hsdram2, FMC_SDRAM_BANK2, &SdramTiming);
 }
 
-static HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_HandleTypeDef *sdram2)
+static void _sdram_init_params(void)
 {
-    HAL_StatusTypeDef ok;			// status
-    FMC_SDRAM_CommandTypeDef cmd;		// command
+    FMC_SDRAM_CommandTypeDef cmd;
 
-    /*
-     * enable clocking
-     */
+    /* enable clocking */
     cmd.CommandMode = FMC_SDRAM_CMD_CLK_ENABLE;
     cmd.CommandTarget = FMC_SDRAM_CMD_TARGET_BANK1_2;
     cmd.AutoRefreshNumber = 1;
     cmd.ModeRegisterDefinition = 0;
-
     HAL_Delay(1);
-    ok = HAL_SDRAM_SendCommand(sdram1, &cmd, 1);
-    if (ok != HAL_OK) return ok;
+    HAL_SDRAM_SendCommand(&hsdram1, &cmd, 1);
 
-    /*
-     * precharge all banks
-     */
+    /* precharge all banks */
     cmd.CommandMode = FMC_SDRAM_CMD_PALL;
     cmd.CommandTarget = FMC_SDRAM_CMD_TARGET_BANK1_2;
     cmd.AutoRefreshNumber = 1;
     cmd.ModeRegisterDefinition = 0;
-
     HAL_Delay(1);
-    ok = HAL_SDRAM_SendCommand(sdram1, &cmd, 1);
-    if (ok != HAL_OK) return ok;
+    HAL_SDRAM_SendCommand(&hsdram1, &cmd, 1);
 
-
-    /*
-     * send two auto-refresh commands in a row
-     */
+    /* send two auto-refresh commands in a row */
     cmd.CommandMode = FMC_SDRAM_CMD_AUTOREFRESH_MODE;
     cmd.CommandTarget = FMC_SDRAM_CMD_TARGET_BANK1_2;
     cmd.AutoRefreshNumber = 1;
     cmd.ModeRegisterDefinition = 0;
+    HAL_SDRAM_SendCommand(&hsdram1, &cmd, 1);
+    HAL_SDRAM_SendCommand(&hsdram1, &cmd, 1);
 
-    ok = HAL_SDRAM_SendCommand(sdram1, &cmd, 1);
-    if (ok != HAL_OK) return ok;
-
-    ok = HAL_SDRAM_SendCommand(sdram1, &cmd, 1);
-    if (ok != HAL_OK) return ok;
-
-
-    /*
-     * load mode register
-     */
+    /* load mode register */
     cmd.CommandMode = FMC_SDRAM_CMD_LOAD_MODE;
     cmd.CommandTarget = FMC_SDRAM_CMD_TARGET_BANK1_2;
     cmd.AutoRefreshNumber = 1;
@@ -253,10 +195,7 @@ static HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_H
 	SDRAM_MODEREG_CAS_LATENCY_2		|
 	SDRAM_MODEREG_OPERATING_MODE_STANDARD	|
 	SDRAM_MODEREG_WRITEBURST_MODE_SINGLE	;
-
-    ok = HAL_SDRAM_SendCommand(sdram1, &cmd, 1);
-    if (ok != HAL_OK) return ok;
-
+    HAL_SDRAM_SendCommand(&hsdram1, &cmd, 1);
 
     /*
      * set number of consequtive auto-refresh commands
@@ -271,14 +210,7 @@ static HAL_StatusTypeDef _sdram_init_params(SDRAM_HandleTypeDef *sdram1, SDRAM_H
      * refresh rate is 703 - 20 = 683.
      */
 
-    ok = HAL_SDRAM_SetAutoRefreshNumber(sdram1, 8);
-    if (ok != HAL_OK) return ok;
+    HAL_SDRAM_SetAutoRefreshNumber(&hsdram1, 8);
 
-    HAL_SDRAM_ProgramRefreshRate(sdram1, 683);
-    if (ok != HAL_OK) return ok;
-
-    /*
-     * done
-     */
-    return HAL_OK;
+    HAL_SDRAM_ProgramRefreshRate(&hsdram1, 683);
 }

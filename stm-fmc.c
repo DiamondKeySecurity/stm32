@@ -31,110 +31,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-fmc.h"
 
 
 static SRAM_HandleTypeDef _fmc_fpga_inst;
 
-static HAL_StatusTypeDef _fmc_init_params(void);
-
-HAL_StatusTypeDef fmc_init(void)
+void fmc_init(void)
 {
     static int initialized = 0;
-
-    if (initialized) {
-	return HAL_OK;
-    }
+    if (initialized) return;
     initialized = 1;
 
     // configure fmc pins
-    fmc_init_gpio();
 
-    // configure fmc registers
-    return _fmc_init_params();
-}
-
-
-static int _fmc_nwait_idle(void)
-{
-    int cnt;
-
-    // poll NWAIT (number of iterations is limited)
-    for (cnt=0; cnt<FMC_FPGA_NWAIT_MAX_POLL_TICKS; cnt++)
-    {
-        // read pin state
-        if (HAL_GPIO_ReadPin(FMC_GPIO_PORT_NWAIT, FMC_GPIO_PIN_NWAIT) == FMC_NWAIT_IDLE)
-            return 0;
-    }
-
-    return -1;
-}
-
-int fmc_write_32(uint32_t addr, uint32_t *data)
-{
-    // calculate target fpga address
-    uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
-
-    __disable_irq();
-
-    int status =
-        // write data to fpga
-        (HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
-        // wait for transaction to complete
-        _fmc_nwait_idle();
-
-    __enable_irq();
-
-    return status;
-}
-
-static inline int _fmc_read_32(uint32_t *ptr, uint32_t *data)
-{
-    return
-        // read data from fpga
-        (HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
-        // wait for transaction to complete
-        _fmc_nwait_idle();
-
-}
-
-int fmc_read_32(uint32_t addr, uint32_t *data)
-{
-    // calculate target fpga address
-    uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
-
-    /* Pavel says:
-     * The short story is like, on one hand STM32 has a dedicated FMC_NWAIT
-     * pin, that can be used in variable-latency data transfer mode. On the
-     * other hand STM32 also has a very nasty hardware bug associated with
-     * FMC_WAIT, that causes processor to freeze under certain conditions.
-     * Because of this FMC_NWAIT cannot be used and FPGA can't properly signal
-     * to STM32, when data transfer is done. Because of that we have to read
-     * two times.
-     */
-
-    /* Add some level of reentrancy protection. When running under a
-     * preemptive multitasker, with two threads banging on the fpga, we appear
-     * to sometimes read the wrong value. I think this is because the second
-     * read counts on the first read to put the correct value on the address
-     * bus.
-     */
-    __disable_irq();
-
-    int status =
-        _fmc_read_32((uint32_t *)ptr, data) ||
-        _fmc_read_32((uint32_t *)ptr, data);
-
-    __enable_irq();
-
-    return status;
-}
-
-
-void fmc_init_gpio(void)
-{
     GPIO_InitTypeDef GPIO_InitStruct;
 
     // enable fmc clock
@@ -168,11 +78,9 @@ void fmc_init_gpio(void)
 		| GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
     fmc_af_gpio(GPIOI, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
 		| GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_9 | GPIO_PIN_10);
-}
 
+    // configure fmc registers
 
-static HAL_StatusTypeDef _fmc_init_params(void)
-{
     /*
      * fill internal fields
      */
@@ -254,5 +162,81 @@ static HAL_StatusTypeDef _fmc_init_params(void)
     fmc_timing.AccessMode = FMC_ACCESS_MODE_A;
 
     // initialize fmc
-    return HAL_SRAM_Init(&_fmc_fpga_inst, &fmc_timing, NULL);
+    HAL_SRAM_Init(&_fmc_fpga_inst, &fmc_timing, NULL);
+}
+
+
+static int _fmc_nwait_idle(void)
+{
+    int cnt;
+
+    // poll NWAIT (number of iterations is limited)
+    for (cnt=0; cnt<FMC_FPGA_NWAIT_MAX_POLL_TICKS; cnt++)
+    {
+        // read pin state
+        if (HAL_GPIO_ReadPin(FMC_GPIO_PORT_NWAIT, FMC_GPIO_PIN_NWAIT) == FMC_NWAIT_IDLE)
+            return 0;
+    }
+
+    return -1;
+}
+
+int fmc_write_32(uint32_t addr, uint32_t *data)
+{
+    // calculate target fpga address
+    uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
+
+    __disable_irq();
+
+    int status =
+        // write data to fpga
+        (HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
+        // wait for transaction to complete
+        _fmc_nwait_idle();
+
+    __enable_irq();
+
+    return status;
+}
+
+static inline int _fmc_read_32(uint32_t *ptr, uint32_t *data)
+{
+    return
+        // read data from fpga
+        (HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
+        // wait for transaction to complete
+        _fmc_nwait_idle();
+
+}
+
+int fmc_read_32(uint32_t addr, uint32_t *data)
+{
+    // calculate target fpga address
+    uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
+
+    /* Pavel says:
+     * The short story is like, on one hand STM32 has a dedicated FMC_NWAIT
+     * pin, that can be used in variable-latency data transfer mode. On the
+     * other hand STM32 also has a very nasty hardware bug associated with
+     * FMC_WAIT, that causes processor to freeze under certain conditions.
+     * Because of this FMC_NWAIT cannot be used and FPGA can't properly signal
+     * to STM32, when data transfer is done. Because of that we have to read
+     * two times.
+     */
+
+    /* Add some level of reentrancy protection. When running under a
+     * preemptive multitasker, with two threads banging on the fpga, we appear
+     * to sometimes read the wrong value. I think this is because the second
+     * read counts on the first read to put the correct value on the address
+     * bus.
+     */
+    __disable_irq();
+
+    int status =
+        _fmc_read_32((uint32_t *)ptr, data) ||
+        _fmc_read_32((uint32_t *)ptr, data);
+
+    __enable_irq();
+
+    return status;
 }

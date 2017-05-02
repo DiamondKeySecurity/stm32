@@ -32,7 +32,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm32f4xx_hal.h"
+#include "stm-init.h"
 #include "stm-uart.h"
 
 #include <string.h>
@@ -44,6 +44,79 @@ DMA_HandleTypeDef hdma_usart_mgmt_rx;
 DMA_HandleTypeDef hdma_usart_user_rx;
 
 static stm_uart_port_t default_uart = STM_UART_USER;
+
+#ifdef HAL_DMA_MODULE_ENABLED
+/**
+ * Enable DMA controller clock
+ */
+static void MX_DMA_Init(void)
+{
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA2_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+    /* DMA interrupt init */
+
+    /* USER UART RX */
+    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+    /* MGMT UART RX */
+    HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+}
+#endif /* HAL_DMA_MODULE_ENABLED */
+
+/* USART1 init function */
+static void MX_USART1_UART_Init(void)
+{
+  huart_mgmt.Instance = USART1;
+  huart_mgmt.Init.BaudRate = USART_MGMT_BAUD_RATE;
+  huart_mgmt.Init.WordLength = UART_WORDLENGTH_8B;
+  huart_mgmt.Init.StopBits = UART_STOPBITS_1;
+  huart_mgmt.Init.Parity = UART_PARITY_NONE;
+  huart_mgmt.Init.Mode = UART_MODE_TX_RX;
+  huart_mgmt.Init.HwFlowCtl = UART_HWCONTROL_RTS_CTS;
+  huart_mgmt.Init.OverSampling = UART_OVERSAMPLING_16;
+
+#ifdef HAL_DMA_MODULE_ENABLED
+  __HAL_LINKDMA(&huart_mgmt, hdmarx, hdma_usart_mgmt_rx);
+#endif
+
+  if (HAL_UART_Init(&huart_mgmt) != HAL_OK) {
+    /* Initialization Error */
+    Error_Handler();
+  }
+}
+/* USART2 init function */
+static void MX_USART2_UART_Init(void)
+{
+  huart_user.Instance = USART2;
+  huart_user.Init.BaudRate = USART_USER_BAUD_RATE;
+  huart_user.Init.WordLength = UART_WORDLENGTH_8B;
+  huart_user.Init.StopBits = UART_STOPBITS_1;
+  huart_user.Init.Parity = UART_PARITY_NONE;
+  huart_user.Init.Mode = UART_MODE_TX_RX;
+  huart_user.Init.HwFlowCtl = UART_HWCONTROL_RTS_CTS;
+  huart_user.Init.OverSampling = UART_OVERSAMPLING_16;
+
+#ifdef HAL_DMA_MODULE_ENABLED
+  __HAL_LINKDMA(&huart_user, hdmarx, hdma_usart_user_rx);
+#endif
+
+  if (HAL_UART_Init(&huart_user) != HAL_OK) {
+    /* Initialization Error */
+    Error_Handler();
+  }
+}
+
+void uart_init(void)
+{
+#ifdef HAL_DMA_MODULE_ENABLED
+  MX_DMA_Init();
+#endif
+  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
+}
 
 void uart_set_default(stm_uart_port_t port)
 {

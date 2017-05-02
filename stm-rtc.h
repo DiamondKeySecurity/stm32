@@ -37,8 +37,7 @@
 
 #include "stm32f4xx_hal.h"
 
-extern I2C_HandleTypeDef hi2c_rtc;
-
+extern void rtc_init(void);
 extern HAL_StatusTypeDef rtc_device_ready(uint16_t i2c_addr);
 extern HAL_StatusTypeDef rtc_enable_oscillator();
 extern HAL_StatusTypeDef rtc_send_byte(const uint16_t i2c_addr, const uint8_t value, const uint16_t timeout);

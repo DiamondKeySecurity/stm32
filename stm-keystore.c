@@ -32,13 +32,35 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm32f4xx_hal.h"
-#include "stm-keystore.h"
 #include "stm-init.h"
+#include "stm-keystore.h"
 
-SPI_HandleTypeDef hspi_keystore;
+static SPI_HandleTypeDef hspi_keystore;
 
 struct spiflash_ctx keystore_ctx = {&hspi_keystore, KSM_PROM_CS_N_GPIO_Port, KSM_PROM_CS_N_Pin};
+
+/* SPI1 (keystore memory) init function */
+void keystore_init(void)
+{
+    /* Set up GPIOs for the keystore memory.
+     * KEYSTORE_GPIO_INIT is defined in stm-keystore.h.
+     */
+    KEYSTORE_GPIO_INIT();
+
+    hspi_keystore.Instance = SPI1;
+    hspi_keystore.Init.Mode = SPI_MODE_MASTER;
+    hspi_keystore.Init.Direction = SPI_DIRECTION_2LINES;
+    hspi_keystore.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi_keystore.Init.CLKPolarity = SPI_POLARITY_LOW;
+    hspi_keystore.Init.CLKPhase = SPI_PHASE_1EDGE;
+    hspi_keystore.Init.NSS = SPI_NSS_SOFT;
+    hspi_keystore.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+    hspi_keystore.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    hspi_keystore.Init.TIMode = SPI_TIMODE_DISABLE;
+    hspi_keystore.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    hspi_keystore.Init.CRCPolynomial = 10;
+    HAL_SPI_Init(&hspi_keystore);
+}
 
 int keystore_check_id(void)
 {

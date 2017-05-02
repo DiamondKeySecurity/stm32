@@ -2,13 +2,13 @@ PROJ = hsm
 
 # objs in addition to $(PROJ).o
 OBJS =	mgmt-cli.o \
-	mgmt-firmware.c \
-	mgmt-bootloader.c \
-	mgmt-fpga.c \
-	mgmt-keystore.c \
-	mgmt-masterkey.c \
-	mgmt-misc.c \
-	mgmt-task.c \
+	mgmt-firmware.o \
+	mgmt-bootloader.o \
+	mgmt-fpga.o \
+	mgmt-keystore.o \
+	mgmt-masterkey.o \
+	mgmt-misc.o \
+	mgmt-task.o \
 	log.o
 
 BOARD_OBJS += $(TOPLEVEL)/task.o

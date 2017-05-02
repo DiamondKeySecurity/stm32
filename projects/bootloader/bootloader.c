@@ -38,7 +38,9 @@
 #include "stm-fmc.h"
 #include "dfu.h"
 
-#undef HAL_Delay
+/* stub these out to avoid linker error */
+void fpgacfg_init(void) { }
+void sdram_init(void) { }
 
 /* Linker symbols are strange in C. Make regular pointers for sanity. */
 __IO uint32_t *dfu_control = &CRYPTECH_DFU_CONTROL;
@@ -91,13 +93,11 @@ int should_dfu()
 /* Sleep for specified number of seconds -- used after bad PIN. */
 void hal_sleep(const unsigned seconds) { HAL_Delay(seconds * 1000); }
 
-int
-main()
+int main(void)
 {
     int status;
 
     stm_init();
-    fmc_init();
 
     uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\nThis is the bootloader speaking...");
 

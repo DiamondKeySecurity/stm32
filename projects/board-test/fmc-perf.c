@@ -1,7 +1,6 @@
 /*
  * Test read/write performance of the fmc bus
  */
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-fmc.h"
@@ -99,22 +98,8 @@ static void test_write(void)
 int main(void)
 {
     stm_init();
-
-    uart_send_string("Keep calm for Novena boot...\r\n");
-
-    // Blink blue LED for six seconds to not upset the Novena at boot.
-    led_on(LED_BLUE);
-    for (int i = 0; i < 12; i++) {
-	HAL_Delay(500);
-	led_toggle(LED_BLUE);
-    }
-    led_off(LED_BLUE);
-
     // initialize rng
     MX_RNG_Init();
-
-    // prepare fmc interface
-    fmc_init();
 
     sanity();
 

@@ -32,10 +32,28 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stm32f4xx_hal.h"
+#include "stm-init.h"
 #include "stm-rtc.h"
 
 I2C_HandleTypeDef hi2c_rtc;
+
+/* I2C2 init function (external RTC chip) */
+void rtc_init(void)
+{
+    hi2c_rtc.Instance = I2C2;
+    hi2c_rtc.Init.ClockSpeed = 10000;
+    hi2c_rtc.Init.DutyCycle = I2C_DUTYCYCLE_2;
+    hi2c_rtc.Init.OwnAddress1 = 0;  /* Will operate as Master */
+    hi2c_rtc.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+    hi2c_rtc.Init.DualAddressMode = I2C_DUALADDRESS_DISABLED;
+    hi2c_rtc.Init.OwnAddress2 = 0;
+    hi2c_rtc.Init.GeneralCallMode = I2C_GENERALCALL_DISABLED;
+    hi2c_rtc.Init.NoStretchMode = I2C_NOSTRETCH_DISABLED;
+
+    if (HAL_I2C_Init(&hi2c_rtc) != HAL_OK) {
+        Error_Handler();
+    }
+}
 
 HAL_StatusTypeDef rtc_device_ready(uint16_t i2c_addr)
 {

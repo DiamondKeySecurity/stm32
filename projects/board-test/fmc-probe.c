@@ -2,7 +2,6 @@
  * in other cases, it will be the core name and version strings.
  */
 
-#include "stm32f4xx_hal.h"
 #include "stm-init.h"
 #include "stm-led.h"
 #include "stm-fmc.h"
@@ -32,27 +31,8 @@ static uint32_t read0(uint32_t addr)
 
 int main(void)
 {
-  int i;
-  
   stm_init();
-
-  uart_send_string("Keep calm for Novena boot...\r\n");
-
-  // Blink blue LED for six seconds to not upset the Novena at boot.
-  led_on(LED_BLUE);
-  for (i = 0; i < 12; i++) {
-    HAL_Delay(500);
-    led_toggle(LED_BLUE);
-  }
-
-  // prepare fmc interface
-  fmc_init();
-
-  // turn on green led, turn off other leds
   led_on(LED_GREEN);
-  led_off(LED_YELLOW);
-  led_off(LED_RED);
-  led_off(LED_BLUE);
 
   for (uint32_t addr = 0; addr < 0x00080000; addr += 4) {
       uint32_t data = read0(addr);

@@ -41,9 +41,6 @@
 /* Memory Size, 64 MBytes (512 Mbits) */
 #define SDRAM_SIZE				 0x4000000
 
-extern SDRAM_HandleTypeDef hsdram1;
-extern SDRAM_HandleTypeDef hsdram2;
-
-extern HAL_StatusTypeDef sdram_init(void);
+extern void sdram_init(void);
 
 #endif

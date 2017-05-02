@@ -51,6 +51,8 @@ extern UART_HandleTypeDef huart_user;
 extern DMA_HandleTypeDef hdma_usart_mgmt_rx;
 extern DMA_HandleTypeDef hdma_usart_user_rx;
 
+extern void uart_init(void);
+
 extern void uart_set_default(stm_uart_port_t port);
 
 extern HAL_StatusTypeDef uart_send_char(uint8_t ch);

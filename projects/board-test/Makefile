@@ -1,4 +1,7 @@
-TEST = led-test short-test uart-test fmc-test fmc-perf fmc-probe rtc-test spiflash-perf keystore-perf
+TEST = led-test short-test uart-test fmc-test fmc-perf fmc-probe
+ifeq (${BOARD},TARGET_CRYPTECH_ALPHA)
+TEST += rtc-test spiflash-perf keystore-perf
+endif
 
 all: $(TEST:=.elf)
 

@@ -56,9 +56,7 @@
     HAL_GPIO_Init(port, &GPIO_InitStruct)
 
 
-extern HAL_StatusTypeDef fmc_init(void);
-extern void fmc_init_gpio(void);
-
+extern void fmc_init(void);
 extern int fmc_write_32(uint32_t addr, uint32_t *data);
 extern int fmc_read_32(uint32_t addr, uint32_t *data);
 

@@ -50,20 +50,12 @@
 static int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     // run external memory initialization sequence
-    HAL_StatusTypeDef status;
     int ok, num_cycles = 1, i, test_completed;
 
     if (argc == 1) {
 	num_cycles = strtol(argv[0], NULL, 0);
 	if (num_cycles > 100) num_cycles = 100;
 	if (num_cycles < 1) num_cycles = 1;
-    }
-
-    cli_print(cli, "Initializing SDRAM");
-    status = sdram_init();
-    if (status != HAL_OK) {
-	cli_print(cli, "Failed initializing SDRAM: %i", (int) status);
-	return CLI_OK;
     }
 
     for (i = 1; i <= num_cycles; i++) {
@@ -135,10 +127,6 @@ static int cmd_test_fmc(struct cli_def *cli, const char *command, char *argv[], 
 	    led_toggle(LED_BLUE);
 	}
     }
-
-    // prepare fmc interface
-    cli_print(cli, "Initializing FMC interface");
-    fmc_init();
 
     // turn on green led, turn off other leds
     led_on(LED_GREEN);
