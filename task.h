@@ -73,4 +73,15 @@ extern void task_delay(uint32_t delay);
 extern void task_mutex_lock(task_mutex_t *mutex);
 extern void task_mutex_unlock(task_mutex_t *mutex);
 
+#ifdef TASK_METRICS
+#include <sys/time.h>
+
+struct task_metrics {
+    struct timeval avg, max;
+};
+
+void task_get_metrics(struct task_metrics *tm);
+void task_reset_metrics(void);
+#endif
+
 #endif /* _TASK_H_ */
