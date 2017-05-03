@@ -13,6 +13,8 @@ OBJS =	mgmt-cli.o \
 
 BOARD_OBJS += $(TOPLEVEL)/task.o
 
+CFLAGS += -DTASK_METRICS
+
 CFLAGS += -DNUM_RPC_TASK=4
 
 CFLAGS += -I$(LIBHAL_SRC)

@@ -69,10 +69,42 @@ static int cmd_task_show(struct cli_def *cli, const char *command, char *argv[],
     return CLI_OK;
 }
 
+#ifdef TASK_METRICS
+static int cmd_task_show_metrics(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    struct task_metrics tm;
+
+    task_get_metrics(&tm);
+
+    cli_print(cli, "avg time between yields: %ld.%06ld sec", tm.avg.tv_sec, tm.avg.tv_usec);
+    cli_print(cli, "max time between yields: %ld.%06ld sec", tm.max.tv_sec, tm.max.tv_usec);
+
+    return CLI_OK;
+}
+
+static int cmd_task_reset_metrics(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    task_reset_metrics();
+
+    return CLI_OK;
+}
+#endif
+
 void configure_cli_task(struct cli_def *cli)
 {
     struct cli_command *c = cli_register_command(cli, NULL, "task", NULL, 0, 0, NULL);
 
     /* task show */
-    cli_register_command(cli, c, "show", cmd_task_show, 0, 0, "Show the active tasks");
+    struct cli_command *c_show = cli_register_command(cli, c, "show", cmd_task_show, 0, 0, "Show the active tasks");
+
+#ifdef TASK_METRICS
+    /* task show metrics */
+    cli_register_command(cli, c_show, "metrics", cmd_task_show_metrics, 0, 0, "Show task metrics");
+
+    /* task reset */
+    struct cli_command *c_reset = cli_register_command(cli, c, "reset", NULL, 0, 0, NULL);
+
+    /* task reset metrics */
+    cli_register_command(cli, c_reset, "metrics", cmd_task_reset_metrics, 0, 0, "Reset task metrics");
+#endif
 }
