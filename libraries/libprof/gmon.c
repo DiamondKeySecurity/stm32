@@ -41,7 +41,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#define MINUS_ONE_P (-1)
 #define bzero(ptr,size) memset (ptr, 0, size);
 #define ERR(s) write(2, s, sizeof(s))
 
@@ -53,35 +52,22 @@ static int	s_scale;
 
 static void moncontrol(int mode);
 
-/* required for gcc ARM Embedded 4.9-2015-q2 */
-#if 0
-void *_sbrk(int incr) {
-  extern char __HeapLimit; /* Defined by the linker */
-  static char *heap_end = 0;
-  char *prev_heap_end;
-
-  if (heap_end==0) {
-    heap_end = &__HeapLimit;
-  }
-  prev_heap_end = heap_end;
-  heap_end += incr;
-  return (void *)prev_heap_end;
-}
-#endif
-
-static void *fake_sbrk(int size) {
-  void *rv = malloc(size);
-  if (rv) {
-    return rv;
-  } else {
-    return (void *) MINUS_ONE_P;
-  }
-}
-
 void monstartup (size_t lowpc, size_t highpc) {
 	register size_t o;
 	char *cp;
 	struct gmonparam *p = &_gmonparam;
+
+	if (already_setup) {
+            /* zero out cp as value will be added there */
+            bzero(p->tos, p->kcountsize + p->fromssize + p->tossize);
+            moncontrol(1); /* start */
+            return;
+        }
+        already_setup = 1;
+
+        /* enable semihosting, for eventual output */
+        extern void initialise_monitor_handles(void);
+        initialise_monitor_handles();
 
 	/*
 	 * round lowpc and highpc to multiples of the density we're using
@@ -89,7 +75,7 @@ void monstartup (size_t lowpc, size_t highpc) {
 	 */
 	p->lowpc = ROUNDDOWN(lowpc, HISTFRACTION * sizeof(HISTCOUNTER));
 	p->highpc = ROUNDUP(highpc, HISTFRACTION * sizeof(HISTCOUNTER));
-	p->textsize = p->highpc - p->lowpc;
+        p->textsize = p->highpc - p->lowpc + 0x20;
 	p->kcountsize = p->textsize / HISTFRACTION;
 	p->fromssize = p->textsize / HASHFRACTION;
 	p->tolimit = p->textsize * ARCDENSITY / 100;
@@ -100,8 +86,9 @@ void monstartup (size_t lowpc, size_t highpc) {
 	}
 	p->tossize = p->tolimit * sizeof(struct tostruct);
 
-	cp = fake_sbrk(p->kcountsize + p->fromssize + p->tossize);
-	if (cp == (char *)MINUS_ONE_P) {
+        extern void *hal_allocate_static_memory(const size_t size);
+        cp = hal_allocate_static_memory(p->kcountsize + p->fromssize + p->tossize);
+	if (cp == NULL) {
 		ERR("monstartup: out of memory\n");
 		return;
 	}
@@ -142,14 +129,13 @@ void monstartup (size_t lowpc, size_t highpc) {
 void _mcleanup(void) {
 	static const char gmon_out[] = "gmon.out";
 	int fd;
-	int hz;
 	int fromindex;
 	int endfrom;
 	size_t frompc;
 	int toindex;
 	struct rawarc rawarc;
 	struct gmonparam *p = &_gmonparam;
-	struct gmonhdr gmonhdr, *hdr;
+	struct gmonhdr gmonhdr = {0}, *hdr;
 	const char *proffile;
 #ifdef DEBUG
 	int log, len;
@@ -159,7 +145,6 @@ void _mcleanup(void) {
 	if (p->state == GMON_PROF_ERROR) {
 		ERR("_mcleanup: tos overflow\n");
 	}
-	hz = PROF_HZ;
 	moncontrol(0); /* stop */
 	proffile = gmon_out;
 	fd = open(proffile , O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666);
@@ -174,7 +159,7 @@ void _mcleanup(void) {
 		return;
 	}
 	len = sprintf(dbuf, "[mcleanup1] kcount 0x%x ssiz %d\n",
-	    p->kcount, p->kcountsize);
+                      (unsigned int)p->kcount, p->kcountsize);
 	write(log, dbuf, len);
 #endif
 	hdr = (struct gmonhdr *)&gmonhdr;
@@ -182,7 +167,8 @@ void _mcleanup(void) {
 	hdr->hpc = p->highpc;
 	hdr->ncnt = p->kcountsize + sizeof(gmonhdr);
 	hdr->version = GMONVERSION;
-	hdr->profrate = hz;
+	hdr->profrate = PROF_HZ;
+	hdr->spare[0] = hdr->spare[1] = hdr->spare[2] = 0;
 	write(fd, (char *)hdr, sizeof *hdr);
 	write(fd, p->kcount, p->kcountsize);
 	endfrom = p->fromssize / sizeof(*p->froms);
@@ -195,7 +181,7 @@ void _mcleanup(void) {
 		for (toindex = p->froms[fromindex]; toindex != 0; toindex = p->tos[toindex].link) {
 #ifdef DEBUG
 			len = sprintf(dbuf,
-			"[mcleanup2] frompc 0x%x selfpc 0x%x count %d\n" ,
+			"[mcleanup2] frompc 0x%x selfpc 0x%x count %ld\n" ,
 				frompc, p->tos[toindex].selfpc,
 				p->tos[toindex].count);
 			write(log, dbuf, len);
@@ -234,11 +220,6 @@ void _mcount_internal(uint32_t *frompcindex, uint32_t *selfpc) {
   register long			toindex;
   struct gmonparam *p = &_gmonparam;
 
-  if (!already_setup) {
-    extern char __etext; /* end of text/code symbol, defined by linker */
-    already_setup = 1;
-    monstartup(0x410, (uint32_t)&__etext);
-  }
   /*
    *	check that we are profiling
    *	and that we aren't recursively invoked.

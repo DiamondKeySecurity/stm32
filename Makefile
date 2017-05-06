@@ -51,6 +51,9 @@ LIBCLI_BLD = $(LIBS_DIR)/libcli
 LIBTFM_SRC = $(CRYPTECH_ROOT)/sw/thirdparty/libtfm
 LIBTFM_BLD = $(LIBS_DIR)/libtfm
 
+LIBPROF_SRC = $(LIBS_DIR)/libprof
+LIBPROF_BLD = $(LIBS_DIR)/libprof
+
 LIBS = $(MBED_DIR)/libstmf4.a
 
 # linker script
@@ -105,7 +108,7 @@ CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx
 CFLAGS += -D__CORTEX_M4 -DTARGET_STM -DTARGET_STM32F4 -DTARGET_STM32F429ZI -DTOOLCHAIN_GCC -D__FPU_PRESENT=1 -D$(BOARD)
 CFLAGS += -DENABLE_WEAK_FUNCTIONS
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
-CFLAGS += -std=c99
+CFLAGS += -std=gnu99
 CFLAGS += -I$(TOPLEVEL)
 CFLAGS += -I$(MBED_DIR)/api
 CFLAGS += -I$(MBED_DIR)/targets/cmsis
@@ -140,11 +143,20 @@ $(LIBHAL_BLD)/libhal.a: $(LIBTFM_BLD)/libtfm.a .FORCE
 $(LIBCLI_BLD)/libcli.a: .FORCE
 	$(MAKE) -C $(LIBCLI_BLD)
 
+$(LIBPROF_BLD)/libprof.a: .FORCE
+	$(MAKE) -C $(LIBPROF_BLD)
+
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/libhal-test
 
+ifdef DO_PROFILING
+CFLAGS += -pg -DDO_PROFILING
+hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a $(LIBPROF_BLD)/libprof.a .FORCE
+	$(MAKE) -C projects/hsm
+else
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a .FORCE
 	$(MAKE) -C projects/hsm
+endif
 
 bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/bootloader
@@ -176,3 +188,4 @@ distclean: clean
 	$(MAKE) -C $(MBED_DIR) clean
 	$(MAKE) -C $(LIBTFM_BLD) clean
 	$(MAKE) -C $(LIBCLI_BLD) clean
+	$(MAKE) -C $(LIBPROF_BLD) clean
