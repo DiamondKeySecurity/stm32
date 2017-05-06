@@ -30,7 +30,7 @@ extern void set_SysTick_hook(void (*hook)(void));
 
 /* sample the current program counter */
 static void SysTick_hook(void) {
-  size_t pc = (size_t)((uint32_t *)__get_MSP())[5];
+  size_t pc = (size_t)((uint32_t *)__get_MSP())[7];
   if (pc >= prof.lowpc && pc < prof.highpc) {
       size_t idx = PROFIDX (pc, prof.lowpc, prof.scale);
       prof.counter[idx]++;
