@@ -53,8 +53,8 @@ In the OpenOCD console, enable semihosting:
 In the CLI, type `profile start`, then start the unit test or whatever
 will be exercising the hsm. Afterwards, in the CLI, type `profile stop`.
 
-After invoking `profile stop`, it takes almost 2 minutes to write gmon.out
-over OpenOCD to the host.
+After invoking `profile stop`, it can take several minutes to write
+gmon.out over OpenOCD to the host.
 
 In the projects/hsm directory, run gprof to analyse the gmon.out file:
 
