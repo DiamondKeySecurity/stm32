@@ -113,6 +113,25 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
     return CLI_ERROR;
 }
 
+#ifdef DO_PROFILING
+static int cmd_profile_start(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    extern uint32_t CRYPTECH_FIRMWARE_START;
+    extern char __etext; /* end of text/code symbol, defined by linker */
+    extern void monstartup (size_t lowpc, size_t highpc);
+    monstartup((size_t)&CRYPTECH_FIRMWARE_START, (size_t)&__etext);
+    return CLI_OK;
+}
+
+static int cmd_profile_stop(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    extern void _mcleanup(void);
+    _mcleanup();
+    return CLI_OK;
+}
+
+#endif
+
 static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "\n\n\nRebooting\n\n\n");
@@ -124,6 +143,15 @@ static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], in
 
 void configure_cli_misc(struct cli_def *cli)
 {
+#ifdef DO_PROFILING
+    struct cli_command *c_profile = cli_register_command(cli, NULL, "profile", NULL, 0, 0, NULL);
+
+    /* profile start */
+    cli_register_command(cli, c_profile, "start", cmd_profile_start, 0, 0, "Start collecting profiling data");
+
+    /* profile stop */
+    cli_register_command(cli, c_profile, "stop", cmd_profile_stop, 0, 0, "Stop collecting profiling data");
+#endif    
     /* reboot */
     cli_register_command(cli, NULL, "reboot", cmd_reboot, 0, 0, "Reboot the STM32");
 }

@@ -9,7 +9,7 @@
    details. */
 
 /*
- * This file is taken from Cygwin distribution, adopted to be used for bare embeeded targets.
+ * This file is taken from Cygwin distribution, adapted to be used for bare embedded targets.
  */
 #include <stdio.h>
 #include <sys/types.h>
@@ -19,34 +19,34 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "stm32f4xx_hal.h"      /* __get_MSP */
+
 /* global profinfo for profil() call */
 static struct profinfo prof = {
   PROFILE_NOT_INIT, 0, 0, 0, 0
 };
 
-/* sample the current program counter */
-void SysTick_Handler(void) {
-  void OSA_SysTick_Handler(void);
-  static size_t pc, idx;
+extern void set_SysTick_hook(void (*hook)(void));
 
-  OSA_SysTick_Handler(); /* call normal Kinetis SDK SysTick handler */
-  if (prof.state==PROFILE_ON) {
-    pc = ((uint32_t*)(__builtin_frame_address(0)))[14]; /* get SP and use it to get the return address from stack */
-    if (pc >= prof.lowpc && pc < prof.highpc) {
-      idx = PROFIDX (pc, prof.lowpc, prof.scale);
+/* sample the current program counter */
+static void SysTick_hook(void) {
+  size_t pc = (size_t)((uint32_t *)__get_MSP())[5];
+  if (pc >= prof.lowpc && pc < prof.highpc) {
+      size_t idx = PROFIDX (pc, prof.lowpc, prof.scale);
       prof.counter[idx]++;
-    }
   }
 }
 
 /* Stop profiling to the profiling buffer pointed to by p. */
 static int profile_off (struct profinfo *p) {
+  set_SysTick_hook(NULL);
   p->state = PROFILE_OFF;
   return 0;
 }
 
 /* Create a timer thread and pass it a pointer P to the profiling buffer. */
 static int profile_on (struct profinfo *p) {
+  set_SysTick_hook(SysTick_hook);
   p->state = PROFILE_ON;
   return 0; /* ok */
 }

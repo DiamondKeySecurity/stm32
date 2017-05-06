@@ -64,6 +64,13 @@ void HardFault_Handler(void)
     while (1) { ; }
 }
 
+static void default_SysTick_hook(void) { };
+static void (*SysTick_hook)(void) = default_SysTick_hook;
+void set_SysTick_hook(void (*hook)(void))
+{
+    SysTick_hook = (hook == NULL) ? default_SysTick_hook : hook;
+}
+
 /**
  * @brief  This function handles SysTick Handler.
  * @param  None

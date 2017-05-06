@@ -23,10 +23,19 @@ CFLAGS += -I$(LIBCLI_SRC)
 LIBS += $(LIBHAL_BLD)/libhal.a $(LIBTFM_BLD)/libtfm.a
 LIBS += $(LIBCLI_BLD)/libcli.a
 
+LDFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
+LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+LDFLAGS += -Wl,--gc-sections
+
+ifdef DO_PROFILING
+LIBS += $(LIBPROF_BLD)/libprof.a
+LDFLAGS += --specs=rdimon.specs -lc -lrdimon
+endif
+
 all: $(PROJ:=.elf)
 
 %.elf: %.o $(BOARD_OBJS) $(OBJS) $(LIBS)
-	$(CC) $(CFLAGS) $^ -o $@ -T$(LDSCRIPT) -g -Wl,-Map=$*.map
+	$(CC) $(LDFLAGS) $^ -o $@ -T$(LDSCRIPT) -g -Wl,-Map=$*.map
 	$(OBJCOPY) -O binary $*.elf $*.bin
 	$(SIZE) $*.elf
 
