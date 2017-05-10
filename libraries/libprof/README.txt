@@ -50,6 +50,10 @@ In the OpenOCD console, enable semihosting:
 
     > arm semihosting enable
 
+In another window, start the debugger:
+
+    $ sw/stm32/bin/debug projects/hsm/hsm
+
 In the CLI, type `profile start`, then start the unit test or whatever
 will be exercising the hsm. Afterwards, in the CLI, type `profile stop`.
 

@@ -38,7 +38,6 @@
 #include <unistd.h>
 #include "gmon.h"
 #include "profil.h"
-#include <stdint.h>
 #include <string.h>
 
 #define bzero(ptr,size) memset (ptr, 0, size);
@@ -98,9 +97,9 @@ void monstartup (size_t lowpc, size_t highpc) {
 
 	p->tos = (struct tostruct *)cp;
 	cp += p->tossize;
-	p->kcount = (u_short *)cp;
+	p->kcount = (unsigned short *)cp;
 	cp += p->kcountsize;
-	p->froms = (u_short *)cp;
+	p->froms = (unsigned short *)cp;
 
 	p->tos[0].link = 0;
 
@@ -238,7 +237,7 @@ void _mcount_internal(uint32_t *frompcindex, uint32_t *selfpc) {
       goto done;
   }
   frompcindex = (uint32_t*)&p->froms[((long)frompcindex) / (HASHFRACTION * sizeof(*p->froms))];
-  toindex = *((u_short*)frompcindex); /* get froms[] value */
+  toindex = *((unsigned short*)frompcindex); /* get froms[] value */
   if (toindex == 0) {
     /*
     *	first time traversing this arc
@@ -247,7 +246,7 @@ void _mcount_internal(uint32_t *frompcindex, uint32_t *selfpc) {
     if (toindex >= p->tolimit) { /* more tos[] entries than we can handle! */
 	    goto overflow;
 	  }
-    *((u_short*)frompcindex) = (u_short)toindex; /* store new 'to' value into froms[] */
+    *((unsigned short*)frompcindex) = (unsigned short)toindex; /* store new 'to' value into froms[] */
     top = &p->tos[toindex];
     top->selfpc = (size_t)selfpc;
     top->count = 1;
@@ -283,8 +282,8 @@ void _mcount_internal(uint32_t *frompcindex, uint32_t *selfpc) {
       top = &p->tos[toindex];
       top->selfpc = (size_t)selfpc;
       top->count = 1;
-      top->link = *((u_short*)frompcindex);
-      *(u_short*)frompcindex = (u_short)toindex;
+      top->link = *((unsigned short*)frompcindex);
+      *(unsigned short*)frompcindex = (unsigned short)toindex;
       goto done;
     }
     /*
@@ -301,8 +300,8 @@ void _mcount_internal(uint32_t *frompcindex, uint32_t *selfpc) {
       top->count++;
       toindex = prevtop->link;
       prevtop->link = top->link;
-      top->link = *((u_short*)frompcindex);
-      *((u_short*)frompcindex) = (u_short)toindex;
+      top->link = *((unsigned short*)frompcindex);
+      *((unsigned short*)frompcindex) = (unsigned short)toindex;
       goto done;
     }
   }

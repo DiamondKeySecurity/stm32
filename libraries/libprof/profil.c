@@ -17,7 +17,6 @@
 #include <math.h>
 #include "profil.h"
 #include <string.h>
-#include <stdint.h>
 
 #include "stm32f4xx_hal.h"      /* __get_MSP */
 
@@ -30,7 +29,7 @@ extern void set_SysTick_hook(void (*hook)(void));
 
 /* sample the current program counter */
 static void SysTick_hook(void) {
-  size_t pc = (size_t)((uint32_t *)__get_MSP())[7];
+  size_t pc = (size_t)((uint32_t *)__get_MSP())[8];
   if (pc >= prof.lowpc && pc < prof.highpc) {
       size_t idx = PROFIDX (pc, prof.lowpc, prof.scale);
       prof.counter[idx]++;
@@ -55,7 +54,7 @@ static int profile_on (struct profinfo *p) {
  * start or stop profiling
  *
  * profiling goes into the SAMPLES buffer of size SIZE (which is treated
- * as an array of u_shorts of size size/2)
+ * as an array of unsigned shorts of size size/2)
  *
  * each bin represents a range of pc addresses from OFFSET.  The number
  * of pc addresses in a bin depends on SCALE.  (A scale of 65536 maps
@@ -63,7 +62,7 @@ static int profile_on (struct profinfo *p) {
  * a scale of 1 maps each bin to 128k address).  Scale may be 1 - 65536,
  * or zero to turn off profiling
  */
-int profile_ctl (struct profinfo *p, char *samples, size_t size, size_t offset, u_int scale) {
+int profile_ctl (struct profinfo *p, char *samples, size_t size, size_t offset, unsigned int scale) {
   size_t maxbin;
 
   if (scale > 65536) {
@@ -75,7 +74,7 @@ int profile_ctl (struct profinfo *p, char *samples, size_t size, size_t offset, 
     memset(samples, 0, size);
     memset(p, 0, sizeof *p);
     maxbin = size >> 1;
-    prof.counter = (u_short*)samples;
+    prof.counter = (unsigned short*)samples;
     prof.lowpc = offset;
     prof.highpc = PROFADDR(maxbin, offset, scale);
     prof.scale = scale;
@@ -88,7 +87,7 @@ int profile_ctl (struct profinfo *p, char *samples, size_t size, size_t offset, 
    Every SLEEPTIME interval, the user's program counter (PC) is examined:
    offset is subtracted and the result is multiplied by scale.
    The word pointed to by this address is incremented. */
-int profil (char *samples, size_t size, size_t offset, u_int scale) {
+int profil (char *samples, size_t size, size_t offset, unsigned int scale) {
   return profile_ctl (&prof, samples, size, offset, scale);
 }
 
