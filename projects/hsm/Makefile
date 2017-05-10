@@ -9,9 +9,8 @@ OBJS =	mgmt-cli.o \
 	mgmt-masterkey.o \
 	mgmt-misc.o \
 	mgmt-task.o \
-	log.o
-
-BOARD_OBJS += $(TOPLEVEL)/task.o
+	log.o \
+	$(TOPLEVEL)/task.o
 
 CFLAGS += -DTASK_METRICS
 
@@ -28,6 +27,7 @@ LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS += -Wl,--gc-sections
 
 ifdef DO_PROFILING
+OBJS += $(TOPLEVEL)/memfunc.o
 LIBS += $(LIBPROF_BLD)/libprof.a
 LDFLAGS += --specs=rdimon.specs -lc -lrdimon
 endif
@@ -35,7 +35,7 @@ endif
 all: $(PROJ:=.elf)
 
 %.elf: %.o $(BOARD_OBJS) $(OBJS) $(LIBS)
-	$(CC) $(LDFLAGS) $^ -o $@ -T$(LDSCRIPT) -g -Wl,-Map=$*.map
+	$(CC) $^ -o $@ -T$(LDSCRIPT) -g -Wl,-Map=$*.map $(LDFLAGS)
 	$(OBJCOPY) -O binary $*.elf $*.bin
 	$(SIZE) $*.elf
 

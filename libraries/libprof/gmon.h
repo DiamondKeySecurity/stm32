@@ -125,8 +125,8 @@ struct gmonhdr {
 struct tostruct {
 	size_t	selfpc; /* callee address/program counter. The caller address is in froms[] array which points to tos[] array */
 	long	count;    /* how many times it has been called */
-	u_short	link;   /* link to next entry in hash table. For tos[0] this points to the last used entry */
-	u_short pad;    /* additional padding bytes, to have entries 4byte aligned */
+	unsigned short link;   /* link to next entry in hash table. For tos[0] this points to the last used entry */
+	unsigned short pad;    /* additional padding bytes, to have entries 4byte aligned */
 };
 
 /*
@@ -150,13 +150,13 @@ struct rawarc {
  */
 struct gmonparam {
 	int		state;
-	u_short		*kcount;    /* histogram PC sample array */
+	unsigned short	*kcount;    /* histogram PC sample array */
 	size_t		kcountsize; /* size of kcount[] array in bytes */
-	u_short		*froms;     /* array of hashed 'from' addresses. The 16bit value is an index into the tos[] array */
+	unsigned short	*froms;     /* array of hashed 'from' addresses. The 16bit value is an index into the tos[] array */
 	size_t		fromssize;  /* size of froms[] array in bytes */
 	struct tostruct	*tos; /* to struct, contains histogram counter */
 	size_t		tossize;    /* size of tos[] array in bytes */
-	long		  tolimit;
+	long		tolimit;
 	size_t		lowpc;      /* low program counter of area */
 	size_t		highpc;     /* high program counter */
 	size_t		textsize;   /* code size */

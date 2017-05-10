@@ -48,13 +48,13 @@ typedef enum {
 } PROFILE_State;
 
 struct profinfo {
-  PROFILE_State state; /* profiling state */
-  u_short *counter;			/* profiling counters */
+  PROFILE_State state;		/* profiling state */
+  unsigned short *counter;	/* profiling counters */
   size_t lowpc, highpc;		/* range to be profiled */
-  u_int scale;			/* scale value of bins */
+  unsigned int scale;		/* scale value of bins */
 };
 
-int profile_ctl(struct profinfo *, char *, size_t, size_t, u_int);
-int profil(char *, size_t, size_t, u_int);
+int profile_ctl(struct profinfo *, char *, size_t, size_t, unsigned int);
+int profil(char *, size_t, size_t, unsigned int);
 
 #endif /* __PROFIL_H__ */
