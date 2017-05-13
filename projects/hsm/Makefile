@@ -30,6 +30,10 @@ LIBS += $(LIBPROF_BLD)/libprof.a
 LDFLAGS += --specs=rdimon.specs -lc -lrdimon
 endif
 
+ifdef DO_TASK_METRICS
+CFLAGS += -DDO_TASK_METRICS
+endif
+
 all: $(PROJ:=.elf)
 
 %.elf: %.o $(BOARD_OBJS) $(OBJS) $(LIBS)
