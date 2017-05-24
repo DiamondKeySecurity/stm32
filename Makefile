@@ -152,6 +152,9 @@ libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 
 ifdef DO_PROFILING
 CFLAGS += -pg -DDO_PROFILING
+endif
+ifdef DO_TASK_METRICS
+CFLAGS += -DDO_TASK_METRICS
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a $(LIBPROF_BLD)/libprof.a .FORCE
 	$(MAKE) -C projects/hsm
 else
