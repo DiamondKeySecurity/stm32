@@ -380,6 +380,11 @@ void hal_task_yield(void)
     task_yield();
 }
 
+void hal_task_yield_maybe(void)
+{
+    task_yield_maybe();
+}
+
 /* A mutex to arbitrate concurrent access to the keystore.
  */
 task_mutex_t ks_mutex = { 0 };

@@ -55,6 +55,7 @@ extern tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size
 extern void task_set_idle_hook(funcp_t func);
 
 extern void task_yield(void);
+extern void task_yield_maybe(void);
 extern void task_sleep(void);
 extern void task_wake(tcb_t *t);
 

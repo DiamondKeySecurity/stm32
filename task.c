@@ -83,10 +83,14 @@ static tcb_t *cur_task = NULL;
 
 #ifdef DO_TASK_METRICS
 static uint32_t tick_start = 0;
-static uint32_t tick_prev  = 0;
 static uint32_t tick_idle  = 0;
 static uint32_t tick_max   = 0;
 static uint32_t nyield     = 0;
+#endif
+
+static uint32_t tick_prev  = 0;
+#ifndef TASK_YIELD_THRESHOLD
+#define TASK_YIELD_THRESHOLD 100
 #endif
 
 /* Add a task.
@@ -221,6 +225,8 @@ void task_yield(void)
     }
     tick_prev = tick;
     ++nyield;
+#else
+    tick_prev = HAL_GetTick();
 #endif
 
     /* If there are no other runnable tasks (and cur_task is runnable),
@@ -254,6 +260,14 @@ void task_yield(void)
         __asm("pop {r0-r12, lr}");
         return;
     }
+}
+
+/* Yield if it's been "too long" since the last yield.
+ */
+void task_yield_maybe(void)
+{
+    if (HAL_GetTick() - tick_prev >= TASK_YIELD_THRESHOLD)
+        task_yield();
 }
 
 /* Put the current task to sleep (make it non-runnable).
