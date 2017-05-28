@@ -304,12 +304,12 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
 	return CLI_ERROR;
     }
 
-    if ((err = hal_ks_init(hal_ks_token_driver, 0)) != LIBHAL_OK) {
+    if ((err = hal_ks_init(hal_ks_token, 0)) != LIBHAL_OK) {
         cli_print(cli, "Failed to reinitialize token keystore: %s", hal_error_string(err));
 	return CLI_ERROR;
     }
 
-    if ((err = hal_ks_init(hal_ks_volatile_driver, 0)) != LIBHAL_OK) {
+    if ((err = hal_ks_init(hal_ks_volatile, 0)) != LIBHAL_OK) {
         cli_print(cli, "Failed to reinitialize memory keystore: %s", hal_error_string(err));
 	return CLI_ERROR;
     }
