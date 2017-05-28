@@ -41,6 +41,7 @@
 /* stub these out to avoid linker error */
 void fpgacfg_init(void) { }
 void sdram_init(void) { }
+void *hal_allocate_static_memory(const size_t size) { return 0; }
 
 /* Linker symbols are strange in C. Make regular pointers for sanity. */
 __IO uint32_t *dfu_control = &CRYPTECH_DFU_CONTROL;
