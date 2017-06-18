@@ -88,13 +88,14 @@ SIZE=$(PREFIX)size
 
 # The Alpha is a development platform, so set GCC optimization to a
 # level suitable for debugging.  Recent versions of GCC have a special
-# optimization setting -Og for exactly this purpose, so we use it, along
-# with the flag to enable gdb symbols.
+# optimization setting -Og for exactly this purpose, so we use it,
+# along with the flag to enable gdb symbols.  Note that some libraries
+# (in particular, libtfm) may need different optimization settings,
+# which is why this needs to remain a separate makefile variable.
 #
-# If you really want optimization without debugging support, try -O2 or
-# (maybe) -O3.
+# If you really want optimization without debugging support, try -O2
+# or -O3.
 
-#STM32_CFLAGS_OPTIMIZATION ?= -O2
 STM32_CFLAGS_OPTIMIZATION ?= -ggdb -Og
 
 # whew, that's a lot of cflags

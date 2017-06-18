@@ -10,10 +10,33 @@ BITS := 8192
 HDR  := ${LIBTFM_SRC}/tomsfastmath/src/headers/tfm.h
 LIB  := tomsfastmath/libtfm.a
 
-#CFLAGS	+= -DTFM_X86
-#CFLAGS	+= -DTFM_NO_ASM
+# See sw/thirdparty/libtfm/Makefile for compilation options.  Note
+# that libtfm platform-specific assembly code has opinions on the
+# optimization level (and appears to be best tested with -O3).
 
-CFLAGS	+= -fPIC -Wall -W -Wshadow -I${LIBTFM_SRC}/tomsfastmath/src/headers -g3 -DFP_MAX_SIZE="(${BITS}*2+(8*DIGIT_BIT))"
+# Using $(subst...) here is a kludge.  A cleaner approach might be for
+# sw/stm32/Makefile to build up the non-variant parts of CFLAGS in a
+# different variable before merging the variant and non-variant parts
+# into CFLAGS, which would give us a clean copy of the non-variant
+# parts to use when constructing our own CFLAGS.  Later.
+
+# The ARM assembly code in libtfm still generates a lot of warnings of the form:
+#
+#   warning: matching constraint does not allow a register [enabled by default]
+#
+# This is just a warning, the resulting library appears to work
+# correctly, and the fix appears to require a nasty intervention in
+# the guts of the libtfm assembly code, so we live with the warning
+# for now, at least until we confirm that it hasn't already been fixed
+# in a newer version of libtfm.
+
+STM32_LIBTFM_CFLAGS_OPTIMIZATION := -O3 -funroll-loops -fomit-frame-pointer
+
+CFLAGS := $(subst ${STM32_CFLAGS_OPTIMIZATION},${STM32_LIBTFM_CFLAGS_OPTIMIZATION},${CFLAGS})
+CFLAGS += -DTFM_ARM -Dasm=__asm__ -Wa,-mimplicit-it=thumb
+CFLAGS += -I${LIBTFM_SRC}/tomsfastmath/src/headers
+CFLAGS += -DFP_MAX_SIZE="(${BITS}*2+(8*DIGIT_BIT))"
+CFLAGS += -Wall -W -Wshadow
 
 TARGETS	:= $(notdir ${HDR} ${LIB})
 
