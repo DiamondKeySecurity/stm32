@@ -63,8 +63,12 @@ static int cmd_task_show(struct cli_def *cli, const char *command, char *argv[],
     }
 
     cli_print(cli, " ");
-    cli_print(cli, "request queue current length: %d", request_queue_len());
-    cli_print(cli, "request queue maximum length: %d", request_queue_max());
+    cli_print(cli, "RPC request queue current length: %u", request_queue_len());
+    cli_print(cli, "RPC request queue maximum length: %u", request_queue_max());
+
+    extern size_t uart_rx_max;
+    cli_print(cli, " ");
+    cli_print(cli, "UART receive queue maximum length: %u", uart_rx_max);
 
     return CLI_OK;
 }
