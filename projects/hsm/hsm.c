@@ -244,25 +244,38 @@ static void RxCallback(uint8_t c)
     }
 }
 
-static uint8_t uart_rx[2];      /* current character received from UART */
-static uint32_t uart_rx_idx = 0;
-
-/* UART DMA half-complete and complete callbacks. With a 2-character DMA
- * buffer, one or the other of these will fire on each incoming character.
- * Under heavy load, these will sometimes fire in the wrong order, but the
- * data are in the right order in the DMA buffer, so we have a flip-flop
- * buffer index that doesn't depend on the order of the callbacks.
+/* A ring buffer for the UART DMA receiver. In theory, it should get at most
+ * 92 characters per 1ms tick, but we're going to up-size it for safety.
  */
-void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
-{
-    RxCallback(uart_rx[uart_rx_idx]);
-    uart_rx_idx ^= 1;
-}
+#ifndef RPC_UART_RECVBUF_SIZE
+#define RPC_UART_RECVBUF_SIZE  1024  /* must be a power of 2 */
+#endif
+#define RPC_UART_RECVBUF_MASK  (RPC_UART_RECVBUF_SIZE - 1)
 
-void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
+typedef struct {
+    uint32_t ridx;
+    uint8_t buf[RPC_UART_RECVBUF_SIZE];
+} uart_ringbuf_t;
+
+volatile uart_ringbuf_t uart_ringbuf = {0, {0}};
+
+#define RINGBUF_RIDX(rb)       (rb.ridx & RPC_UART_RECVBUF_MASK)
+#define RINGBUF_WIDX(rb)       (sizeof(rb.buf) - __HAL_DMA_GET_COUNTER(huart_user.hdmarx))
+#define RINGBUF_COUNT(rb)      ((RINGBUF_WIDX(rb) - RINGBUF_RIDX(rb)) & RPC_UART_RECVBUF_MASK)
+#define RINGBUF_READ(rb, dst)  {dst = rb.buf[RINGBUF_RIDX(rb)]; rb.ridx++;}
+
+size_t uart_rx_max = 0;
+
+static void uart_rx_task(void)
 {
-    RxCallback(uart_rx[uart_rx_idx]);
-    uart_rx_idx ^= 1;
+    size_t count = RINGBUF_COUNT(uart_ringbuf);
+    if (uart_rx_max < count) uart_rx_max = count;
+
+    while (RINGBUF_COUNT(uart_ringbuf)) {
+        uint8_t c;
+        RINGBUF_READ(uart_ringbuf, c);
+        RxCallback(c);
+    }
 }
 
 /* Send one character over the UART. This is called from
@@ -425,7 +438,9 @@ int main(void)
         Error_Handler();
 
     /* Start the UART receiver. */
-    if (HAL_UART_Receive_DMA(&huart_user, uart_rx, 2) != CMSIS_HAL_OK)
+    extern void set_SysTick_hook(void (*hook)(void));
+    set_SysTick_hook(uart_rx_task);
+    if (HAL_UART_Receive_DMA(&huart_user, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf)) != CMSIS_HAL_OK)
         Error_Handler();
 
     /* Launch other tasks (csprng warm-up task?)
