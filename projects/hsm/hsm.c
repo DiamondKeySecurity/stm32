@@ -266,7 +266,7 @@ volatile uart_ringbuf_t uart_ringbuf = {0, {0}};
 
 size_t uart_rx_max = 0;
 
-static void uart_rx_task(void)
+void HAL_SYSTICK_Callback(void)
 {
     size_t count = RINGBUF_COUNT(uart_ringbuf);
     if (uart_rx_max < count) uart_rx_max = count;
@@ -438,8 +438,6 @@ int main(void)
         Error_Handler();
 
     /* Start the UART receiver. */
-    extern void set_SysTick_hook(void (*hook)(void));
-    set_SysTick_hook(uart_rx_task);
     if (HAL_UART_Receive_DMA(&huart_user, (uint8_t *) uart_ringbuf.buf, sizeof(uart_ringbuf.buf)) != CMSIS_HAL_OK)
         Error_Handler();
 
