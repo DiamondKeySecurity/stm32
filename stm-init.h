@@ -39,7 +39,7 @@
 
 /* Functions used to make GPIO pin setup (in stm-init.c) easier */
 
-inline void gpio_output(GPIO_TypeDef* output_port, uint16_t output_pins, GPIO_PinState output_level)
+static inline void gpio_output(GPIO_TypeDef* output_port, uint16_t output_pins, GPIO_PinState output_level)
 {
     GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -54,7 +54,7 @@ inline void gpio_output(GPIO_TypeDef* output_port, uint16_t output_pins, GPIO_Pi
     HAL_GPIO_Init(output_port, &GPIO_InitStruct);
 }
 
-inline void gpio_input(GPIO_TypeDef* input_port, uint16_t input_pin, GPIO_PinState input_pull)
+static inline void gpio_input(GPIO_TypeDef* input_port, uint16_t input_pin, GPIO_PinState input_pull)
 {
     GPIO_InitTypeDef GPIO_InitStruct;
 

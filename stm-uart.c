@@ -124,7 +124,7 @@ void uart_set_default(stm_uart_port_t port)
         default_uart = port;
 }
 
-inline UART_HandleTypeDef *_which_uart(stm_uart_port_t port)
+static inline UART_HandleTypeDef *_which_uart(stm_uart_port_t port)
 {
     if (port == STM_UART_USER) {
         return &huart_user;

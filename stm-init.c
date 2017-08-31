@@ -115,10 +115,6 @@ static void MX_GPIO_Init(void)
 }
 #endif
 
-#ifdef CMSIS_RTOS
-#include "cmsis_os.h"
-#endif
-
 /**
  * @brief  This function is executed in case of error occurrence.
  * @param  None
@@ -128,10 +124,6 @@ void Error_Handler(void)
 {
 #ifdef HAL_GPIO_MODULE_ENABLED
   HAL_GPIO_WritePin(LED_PORT, LED_RED, GPIO_PIN_SET);
-#endif
-#ifdef CMSIS_RTOS
-  //osThreadSetPriority(osThreadGetId(), osPriorityIdle);
-  osThreadTerminate(osThreadGetId());
 #endif
 
   while (1) { ; }
