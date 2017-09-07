@@ -12,8 +12,6 @@ OBJS =	mgmt-cli.o \
 	log.o \
 	$(TOPLEVEL)/task.o
 
-CFLAGS += -DTASK_METRICS
-
 CFLAGS += -DNUM_RPC_TASK=4
 
 CFLAGS += -I$(LIBHAL_SRC)
@@ -30,6 +28,10 @@ ifdef DO_PROFILING
 OBJS += $(TOPLEVEL)/memfunc.o
 LIBS += $(LIBPROF_BLD)/libprof.a
 LDFLAGS += --specs=rdimon.specs -lc -lrdimon
+endif
+
+ifdef DO_TASK_METRICS
+CFLAGS += -DDO_TASK_METRICS
 endif
 
 all: $(PROJ:=.elf)

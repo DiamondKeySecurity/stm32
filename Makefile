@@ -117,6 +117,9 @@ CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
 CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
 CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
 CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
+ifdef DO_TASK_METRICS
+CFLAGS += -DDO_TASK_METRICS
+endif
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -124,7 +127,11 @@ CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
 %.o : %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+ifdef DO_PROFILING
+all: hsm
+else
 all: board-test cli-test libhal-test hsm bootloader
+endif
 
 $(MBED_DIR)/libstmf4.a: .FORCE
 	$(MAKE) -C $(MBED_DIR)
@@ -152,9 +159,6 @@ libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 
 ifdef DO_PROFILING
 CFLAGS += -pg -DDO_PROFILING
-endif
-ifdef DO_TASK_METRICS
-CFLAGS += -DDO_TASK_METRICS
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a $(LIBPROF_BLD)/libprof.a .FORCE
 	$(MAKE) -C projects/hsm
 else

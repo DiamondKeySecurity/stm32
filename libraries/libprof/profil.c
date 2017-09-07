@@ -25,27 +25,30 @@ static struct profinfo prof = {
   PROFILE_NOT_INIT, 0, 0, 0, 0
 };
 
-extern void set_SysTick_hook(void (*hook)(void));
-
 /* sample the current program counter */
-static void SysTick_hook(void) {
-  size_t pc = (size_t)((uint32_t *)__get_MSP())[8];
-  if (pc >= prof.lowpc && pc < prof.highpc) {
+void profil_callback(void) {
+  if (prof.state == PROFILE_ON) {
+    /* The interrupt mechanism pushes xPSR, PC, LR, R12, and R3-R0 onto the
+     * stack, so PC is the 6th word from the top at that point. However, the
+     * normal function entry code pushes registers as well, so the stack
+     * offset right now depends on the call tree that got us here.
+     */
+    size_t pc = (size_t)((uint32_t *)__get_MSP())[6 + 6];
+    if (pc >= prof.lowpc && pc < prof.highpc) {
       size_t idx = PROFIDX (pc, prof.lowpc, prof.scale);
       prof.counter[idx]++;
+    }
   }
 }
 
 /* Stop profiling to the profiling buffer pointed to by p. */
 static int profile_off (struct profinfo *p) {
-  set_SysTick_hook(NULL);
   p->state = PROFILE_OFF;
   return 0;
 }
 
 /* Create a timer thread and pass it a pointer P to the profiling buffer. */
 static int profile_on (struct profinfo *p) {
-  set_SysTick_hook(SysTick_hook);
   p->state = PROFILE_ON;
   return 0; /* ok */
 }

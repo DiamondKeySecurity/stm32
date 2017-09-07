@@ -81,7 +81,7 @@ static tcb_t *cur_task = NULL;
 
 #define STACK_GUARD_WORD 0x55AA5A5A
 
-#ifdef TASK_METRICS
+#ifdef DO_TASK_METRICS
 static uint32_t tick_start = 0;
 static uint32_t tick_idle  = 0;
 static uint32_t tick_max   = 0;
@@ -192,7 +192,7 @@ void task_yield(void)
     if (tail == NULL)
 	return;
 
-#ifdef TASK_METRICS
+#ifdef DO_TASK_METRICS
     uint32_t tick0 = HAL_GetTick();
 #endif
 
@@ -213,7 +213,7 @@ void task_yield(void)
      * } while (next == NULL);
      */
 
-#ifdef TASK_METRICS
+#ifdef DO_TASK_METRICS
     uint32_t tick = HAL_GetTick();
     tick_idle += (tick - tick0);
     if (tick_start == 0)
@@ -395,7 +395,7 @@ void task_mutex_unlock(task_mutex_t *mutex)
 	mutex->locked = 0;
 }
 
-#ifdef TASK_METRICS
+#ifdef DO_TASK_METRICS
 void task_get_metrics(struct task_metrics *tm)
 {
     if (tm != NULL) {

@@ -268,6 +268,11 @@ size_t uart_rx_max = 0;
 
 void HAL_SYSTICK_Callback(void)
 {
+#ifdef DO_PROFILING
+    extern void profil_callback(void);
+    profil_callback();
+#endif
+
     size_t count = RINGBUF_COUNT(uart_ringbuf);
     if (uart_rx_max < count) uart_rx_max = count;
 

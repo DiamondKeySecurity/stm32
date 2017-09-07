@@ -74,7 +74,7 @@ extern void task_delay(uint32_t delay);
 extern void task_mutex_lock(task_mutex_t *mutex);
 extern void task_mutex_unlock(task_mutex_t *mutex);
 
-#ifdef TASK_METRICS
+#ifdef DO_TASK_METRICS
 #include <sys/time.h>
 
 struct task_metrics {
