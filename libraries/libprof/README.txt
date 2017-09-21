@@ -24,7 +24,7 @@ How to build
 
 From the top level, run
 
-    make DO_PROFILING=1 hsm
+    $ make DO_PROFILING=1 hsm
 
 By default, all code is profiled, *except* the profiling code itself,
 because that would cause fatal recursion.
@@ -38,24 +38,26 @@ before you try to use it as a remote file system.
 I recommend executing the following in the projects/hsm directory, so that
 gmon.out ends up in the same directory as hsm.elf.
 
-Start OpenOCD:
+Start the debugger:
 
-    $ openocd -f /usr/share/openocd/scripts/board/stm32f4discovery.cfg &
+    $ ../../bin/debug hsm
 
-Connect to OpenOCD:
+In another window, connect to OpenOCD:
 
     $ telnet localhost 4444
 
 In the OpenOCD console, enable semihosting:
 
     > arm semihosting enable
+    > exit
 
-In another window, start the debugger:
+Then connect to the Cryptech management console:
 
-    $ ../../bin/debug hsm
+    $ cryptech_console
 
-In the CLI, type `profile start`, then start the unit test or whatever
-will be exercising the hsm. Afterwards, in the CLI, type `profile stop`.
+In the Cryptech console, type `profile start`, then start the unit test or
+whatever will be exercising the hsm. Afterwards, in the console, type
+`profile stop`.
 
 After invoking `profile stop`, it can take several minutes to write
 gmon.out over OpenOCD to the host.

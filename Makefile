@@ -128,6 +128,8 @@ endif
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 ifdef DO_PROFILING
+CFLAGS += -pg -DDO_PROFILING
+LIBS += $(LIBPROF_BLD)/libprof.a
 all: hsm
 else
 all: board-test cli-test libhal-test hsm bootloader
@@ -157,14 +159,8 @@ $(LIBPROF_BLD)/libprof.a: .FORCE
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/libhal-test
 
-ifdef DO_PROFILING
-CFLAGS += -pg -DDO_PROFILING
-hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a $(LIBPROF_BLD)/libprof.a .FORCE
-	$(MAKE) -C projects/hsm
-else
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a .FORCE
 	$(MAKE) -C projects/hsm
-endif
 
 bootloader: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/bootloader

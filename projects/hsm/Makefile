@@ -26,7 +26,6 @@ LDFLAGS += -Wl,--gc-sections
 
 ifdef DO_PROFILING
 OBJS += $(TOPLEVEL)/memfunc.o
-LIBS += $(LIBPROF_BLD)/libprof.a
 LDFLAGS += --specs=rdimon.specs -lc -lrdimon
 endif
 

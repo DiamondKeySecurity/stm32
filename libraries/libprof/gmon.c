@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdint.h>
 #include "gmon.h"
 #include "profil.h"
 #include <string.h>
