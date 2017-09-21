@@ -4,8 +4,7 @@
 
 /*
  This requires a special bitstream with a special test register.
- See core/platform/novena/fmc/rtl/novena_fmc_top.v, sections marked
- `ifdef test:
+ See core/platform/alpha/rtl/alpha_fmc_test.v:
    //----------------------------------------------------------------
    // Dummy Register
    //
@@ -76,6 +75,7 @@ int test_fpga_address_bus(void);
 // Defines
 //------------------------------------------------------------------------------
 #define TEST_NUM_ROUNDS		100000
+#define VERBOSE			0
 
 
 //------------------------------------------------------------------------------
@@ -85,6 +85,7 @@ int main(void)
   int i;
   
   stm_init();
+  uart_set_default(STM_UART_MGMT);
 
   uart_send_string("Keep calm for FPGA bitstream loading...\r\n");
 
@@ -117,11 +118,15 @@ int main(void)
       // test address bus
       addr_test_ok = test_fpga_address_bus();
 
-      uart_send_string("Data: ");
-      uart_send_integer(data_test_ok, 6);
-      uart_send_string(", addr: ");
-      uart_send_integer(addr_test_ok, 6);
-      uart_send_string("\r\n");
+      if (VERBOSE ||
+          (data_test_ok != TEST_NUM_ROUNDS ||
+           addr_test_ok != TEST_NUM_ROUNDS)) {
+        uart_send_string("Data: ");
+        uart_send_integer(data_test_ok, 6);
+        uart_send_string(", addr: ");
+        uart_send_integer(addr_test_ok, 6);
+        uart_send_string("\r\n");
+      }
 
       if (data_test_ok == TEST_NUM_ROUNDS &&
 	  addr_test_ok == TEST_NUM_ROUNDS) {
@@ -140,8 +145,9 @@ int main(void)
       uart_send_integer(successful_runs, 0);
       uart_send_string(", fail ");
       uart_send_integer(failed_runs, 0);
-      uart_send_string("\r\n\r\n");
-
+      uart_send_string("\r\n");
+      if (VERBOSE)
+        uart_send_string("\r\n");
       HAL_Delay(sleep);
     }
 
@@ -194,13 +200,16 @@ int test_fpga_data_bus(void)
   data_diff = buf;
   data_diff ^= rnd;
 
-  uart_send_string("Sample of data bus test data: expected ");
-  uart_send_binary(rnd, 32);
-  uart_send_string(", got ");
-  uart_send_binary(buf, 32);
-  uart_send_string(", diff ");
-  uart_send_binary(data_diff, 32);
-  uart_send_string("\r\n");
+  if (VERBOSE || data_diff) {
+      uart_send_string("Sample of data bus test data: expected ");
+      uart_send_binary(rnd, 32);
+      uart_send_string(", got ");
+      uart_send_binary(buf, 32);
+      uart_send_string(", diff ");
+      uart_send_binary(data_diff, 32);
+      uart_send_string("\r\n");
+  }
+
   // return number of successful tests
   return c;
 }
@@ -263,13 +272,15 @@ int test_fpga_address_bus(void)
   addr_diff = buf;
   addr_diff ^= rnd;
 
-  uart_send_string("Sample of addr bus test data: expected ");
-  uart_send_binary(rnd, 32);
-  uart_send_string(", got ");
-  uart_send_binary(buf, 32);
-  uart_send_string(", diff ");
-  uart_send_binary(addr_diff, 32);
-  uart_send_string("\r\n");
+  if (VERBOSE || addr_diff) {
+      uart_send_string("Sample of addr bus test data: expected ");
+      uart_send_binary(rnd, 32);
+      uart_send_string(", got ");
+      uart_send_binary(buf, 32);
+      uart_send_string(", diff ");
+      uart_send_binary(addr_diff, 32);
+      uart_send_string("\r\n");
+  }
 
   return c;
 }
