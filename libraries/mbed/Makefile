@@ -1,6 +1,8 @@
 CC=arm-none-eabi-gcc
 AR=arm-none-eabi-ar
 
+CFLAGS += -Wno-unused-parameter
+
 ###########################################
 
 vpath %.c targets/cmsis/TARGET_STM/TARGET_STM32F4 targets/cmsis/TARGET_STM/TARGET_STM32F4/TARGET_CRYPTECH_DEV_BRIDGE

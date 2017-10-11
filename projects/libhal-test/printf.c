@@ -244,7 +244,7 @@ OK, I found my mistake. The math here is _always_ unsigned */
 				if (precision != 0)
 				{
 					width = max(width, precision);
-					if (precision > strlen(where))
+					if (precision > strlen((const char *)where))
 						flags |= PR_LZ;
 					precision = 0;
 				}
@@ -295,7 +295,7 @@ EMIT2:				if((flags & PR_LJ) == 0)
 					count++;
 				}
 /* emit string/char/converted number */
-				for(int i = (flags & PR_WS) ? 1 : 0;
+				for(unsigned i = (flags & PR_WS) ? 1 : 0;
 				    i < length; ++i)
 				{
 					fn(*where++, &ptr);

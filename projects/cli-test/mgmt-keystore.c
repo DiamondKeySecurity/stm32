@@ -263,7 +263,7 @@ static int show_keys(struct cli_def *cli, const char *title)
 	if (!done)
 	    previous_uuid = uuids[sizeof(uuids)/sizeof(*uuids) - 1];
 
-	for (int i = 0; i < n; i++) {
+	for (unsigned i = 0; i < n; i++) {
 
 	    if ((status = hal_uuid_format(&uuids[i], key_name, sizeof(key_name))) != LIBHAL_OK) {
 		cli_print(cli, "Could not convert key name: %s",

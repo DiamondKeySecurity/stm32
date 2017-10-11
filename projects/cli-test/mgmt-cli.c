@@ -58,8 +58,8 @@
 #endif
 
 typedef struct {
-    int ridx;
-    volatile int widx;
+    unsigned ridx;
+    unsigned widx;
     mgmt_cli_dma_state_t rx_state;
     uint8_t buf[CLI_UART_RECVBUF_SIZE];
 } ringbuf_t;
@@ -109,7 +109,7 @@ static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const c
 
 static ssize_t uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
 {
-    for (int i = 0; i < count; ++i) {
+    for (size_t i = 0; i < count; ++i) {
         while (ringbuf_read_char(&uart_ringbuf, (uint8_t *)(buf + i)) == 0) {
 	}
     }

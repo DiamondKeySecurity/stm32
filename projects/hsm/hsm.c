@@ -418,7 +418,7 @@ int main(void)
     /* Initialize the ibuf queues. */
     memset(&ibuf_waiting, 0, sizeof(ibuf_waiting));
     memset(&ibuf_ready, 0, sizeof(ibuf_ready));
-    for (int i = 0; i < sizeof(ibufs)/sizeof(ibufs[0]); ++i)
+    for (size_t i = 0; i < sizeof(ibufs)/sizeof(ibufs[0]); ++i)
         ibuf_put(&ibuf_waiting, &ibufs[i]);
 
     /* Create the rpc dispatch worker tasks. */

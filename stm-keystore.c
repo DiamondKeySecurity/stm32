@@ -99,7 +99,7 @@ int keystore_erase_bulk(void)
 
 int keystore_erase_subsectors(uint32_t start, uint32_t stop)
 {
-    for (int i = start; i <= stop; ++i) {
+    for (uint32_t i = start; i <= stop; ++i) {
         if (keystore_erase_subsector(i) != 1)
             return 0;
     }

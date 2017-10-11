@@ -105,7 +105,7 @@ int test_fpga_data_bus(struct cli_def *cli, uint32_t test_rounds)
     HAL_RNG_Init(&rng_inst);
 
     /* run some rounds of data bus test */
-    for (c = 0; c < test_rounds; c++) {
+    for (c = 0; c < (int)test_rounds; c++) {
 	data_diff = 0;
 	/* try to generate "random" number */
 	hal_result = HAL_RNG_GenerateRandomNumber(&rng_inst, &rnd);
@@ -163,7 +163,7 @@ int test_fpga_address_bus(struct cli_def *cli, uint32_t test_rounds)
     HAL_RNG_Init(&rng_inst);
 
     /* run some rounds of address bus test */
-    for (c = 0; c < test_rounds; c++) {
+    for (c = 0; c < (int)test_rounds; c++) {
 	addr_diff = 0;
 	/* try to generate "random" number */
 	hal_result = HAL_RNG_GenerateRandomNumber(&rng_inst, &addr);

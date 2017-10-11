@@ -12,6 +12,7 @@ CFLAGS += \
 	-DDO_SOCKET=0 \
 	-DDO_TAB_COMPLETION=1 \
 	-DDO_TELNET=0
+CFLAGS += -Wno-unused-parameter
 
 all: libcli.a
 
