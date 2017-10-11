@@ -91,7 +91,7 @@ int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offs
     uint32_t SectorError = 0;
 
     if (start_sector > end_sector) return -1;
-    if (start_sector < 0 || end_sector > FLASH_NUM_SECTORS) return -2;
+    if (end_sector > FLASH_NUM_SECTORS) return -2;
 
     FLASH_EraseInitStruct.Sector = start_sector;
     FLASH_EraseInitStruct.NbSectors = (end_sector - start_sector) + 1;
