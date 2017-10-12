@@ -115,6 +115,10 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 
 static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "\n\n\nRebooting\n\n\n");
     HAL_NVIC_SystemReset();
 

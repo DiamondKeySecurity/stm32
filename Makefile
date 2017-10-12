@@ -99,7 +99,7 @@ SIZE=$(PREFIX)size
 STM32_CFLAGS_OPTIMIZATION ?= -ggdb -Og
 
 # whew, that's a lot of cflags
-CFLAGS  = $(STM32_CFLAGS_OPTIMIZATION) -Wall -Warray-bounds #-Wextra
+CFLAGS  = $(STM32_CFLAGS_OPTIMIZATION) -Wall -Warray-bounds -Wextra
 CFLAGS += -mcpu=cortex-m4 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F4XX -DSTM32F429xx

@@ -59,6 +59,8 @@ static int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *
     hal_error_t status;
     hal_client_handle_t client = { -1 };
 
+    command = command;
+
     if (argc != 2) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore set pin <user|so|wheel> <pin>");
@@ -91,6 +93,8 @@ static int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char
     hal_error_t status;
     hal_client_handle_t client = { -1 };
 
+    command = command;
+
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore clear pin <user|so|wheel>");
@@ -121,6 +125,8 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
 {
     hal_error_t status;
     hal_client_handle_t client = { -1 };
+
+    command = command;
 
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
@@ -156,6 +162,8 @@ static int cmd_keystore_set_key(struct cli_def *cli, const char *command, char *
     hal_error_t status;
     int hint = 0;
 
+    command = command;
+
     if (argc != 2) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore set key <name> <der>");
@@ -187,6 +195,8 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
     hal_error_t status;
     hal_uuid_t name;
 
+    command = command;
+
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore delete key <name>");
@@ -213,6 +223,10 @@ static int cmd_keystore_show_data(struct cli_def *cli, const char *command, char
 {
     uint8_t buf[KEYSTORE_PAGE_SIZE];
     uint32_t i;
+
+    command = command;
+    argv = argv;
+    argc = argc;
 
     if (keystore_check_id() != 1) {
 	cli_print(cli, "ERROR: The keystore memory is not accessible.");
@@ -318,6 +332,10 @@ static int show_keys(struct cli_def *cli, const char *title)
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     if (show_keys(cli, "Keystore:"))
         return CLI_OK;
     else
@@ -328,6 +346,8 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
 {
     hal_error_t err;
     int status;
+
+    command = command;
 
     if (argc != 1 || strcmp(argv[0], "YesIAmSure") != 0) {
 	cli_print(cli, "Syntax: keystore erase YesIAmSure");

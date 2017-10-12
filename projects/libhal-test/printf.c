@@ -362,6 +362,8 @@ You must write your own putchar()
 *****************************************************************************/
 int vprintf_help(unsigned c, void **ptr)
 {
+	ptr = ptr;
+
 	putchar(c);
 	return 0 ;
 }

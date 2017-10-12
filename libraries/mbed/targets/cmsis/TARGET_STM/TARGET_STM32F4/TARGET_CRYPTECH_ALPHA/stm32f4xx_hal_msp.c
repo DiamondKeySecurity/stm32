@@ -87,19 +87,23 @@ void HAL_RNG_MspDeInit(RNG_HandleTypeDef* hrng)
 
 void HAL_SRAM_MspInit(SRAM_HandleTypeDef* hsram)
 {
+  hsram = hsram;
 }
 
 
 void HAL_SRAM_MspDeInit(SRAM_HandleTypeDef* hsram)
 {
+  hsram = hsram;
 }
 
 void HAL_SDRAM_MspInit(SDRAM_HandleTypeDef* hsdram)
 {
+  hsdram = hsdram;
 }
 
 void HAL_SDRAM_MspDeInit(SDRAM_HandleTypeDef* hsdram)
 {
+  hsdram = hsdram;
 }
 
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)

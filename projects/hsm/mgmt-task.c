@@ -52,6 +52,10 @@ extern size_t request_queue_max(void);
 
 static int cmd_task_show(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "name            state           stack high water");
     cli_print(cli, "--------        --------        ----------------");
 

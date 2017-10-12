@@ -101,6 +101,9 @@ int _write_r (struct _reent *r, int file, char * ptr, int len)
 
 int _close_r (struct _reent *r, int file)
 {
+  r = r;
+  file = file;
+
   return 0;
 }
 
@@ -114,6 +117,8 @@ caddr_t _sbrk_r (struct _reent *r, int incr)
   extern char   end __asm ("end"); /* Defined by the linker.  */
   static char * heap_end;
   char *        prev_heap_end;
+
+  r = r;
 
   if (heap_end == NULL)
     heap_end = & end;

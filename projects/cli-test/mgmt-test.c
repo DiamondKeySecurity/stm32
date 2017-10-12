@@ -52,6 +52,8 @@ static int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[]
     // run external memory initialization sequence
     int ok, num_cycles = 1, i, test_completed;
 
+    command = command;
+
     if (argc == 1) {
 	num_cycles = strtol(argv[0], NULL, 0);
 	if (num_cycles > 100) num_cycles = 100;
@@ -105,6 +107,8 @@ static int cmd_test_sdram(struct cli_def *cli, const char *command, char *argv[]
 static int cmd_test_fmc(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     int i, num_cycles = 1, num_rounds = 100000;
+
+    command = command;
 
     if (argc >= 1) {
 	num_cycles = strtol(argv[0], NULL, 0);

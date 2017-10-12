@@ -62,13 +62,17 @@ static int _flash_write_callback(uint8_t *buf, size_t len)
 	if (fpgacfg_erase_sector(dfu_offset / FPGACFG_SECTOR_SIZE) != 1)
 	    return CLI_ERROR;
 
-    int res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE) == 1;
-    dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
+    int res = fpgacfg_write_data(dfu_offset, buf, len) == 1;
+    dfu_offset += len;
     return res;
 }
 
 static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     if (user < HAL_USER_SO) {
         cli_print(cli, "Permission denied.");
         return CLI_ERROR;
@@ -96,6 +100,10 @@ static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, c
 
 static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     fpgacfg_access_control(ALLOW_ARM);
 
     cli_print(cli, "Checking if FPGA config memory is accessible");
@@ -123,6 +131,10 @@ static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, ch
 
 static int cmd_fpga_reset(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     fpgacfg_access_control(ALLOW_FPGA);
     fpgacfg_reset_fpga(RESET_FULL);
     hal_core_reset_table();
@@ -135,6 +147,10 @@ static int cmd_fpga_show_cores(struct cli_def *cli, const char *command, char *a
 {
     hal_core_t *core;
     const hal_core_info_t *info;
+
+    command = command;
+    argv = argv;
+    argc = argc;
 
     if (! fpgacfg_check_done()) {
         cli_print(cli, "FPGA has not loaded a bitstream");

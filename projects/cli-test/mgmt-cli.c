@@ -97,6 +97,8 @@ static uint8_t uart_rx;
  */
 void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+    huart = huart;
+
     ringbuf_write_char(&uart_ringbuf, uart_rx);
 }
 

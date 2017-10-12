@@ -142,6 +142,10 @@ int cmd_test_mkmif(struct cli_def *cli, const char *command, char *argv[], int a
     hal_core_t *core = hal_core_find(MKMIF_NAME, NULL);
     hal_error_t res;
 
+    command = command;
+    argv = argv;
+    argc = argc;
+
     if (core == NULL) {
         cli_print(cli, "MKMIF core not present, not testing.\n");
         return HAL_ERROR_CORE_NOT_FOUND;

@@ -96,7 +96,7 @@ HAL_StatusTypeDef rtc_read_bytes (const uint16_t i2c_addr, uint8_t *buf, const u
 {
     HAL_StatusTypeDef res;
 
-    while (HAL_I2C_Master_Receive (&hi2c_rtc, i2c_addr, buf, len, 1000) != HAL_OK) {
+    while (HAL_I2C_Master_Receive (&hi2c_rtc, i2c_addr, buf, len, timeout) != HAL_OK) {
 	res = HAL_I2C_GetError (&hi2c_rtc);
 	if (res != HAL_I2C_ERROR_AF) {
 	    return res;

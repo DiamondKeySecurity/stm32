@@ -249,7 +249,7 @@ HAL_StatusTypeDef uart_send_hexdump(stm_uart_port_t port, const uint8_t *buf,
 
     uart_send_string2(port, "00 -- ");
 
-    for (i = 0; i <= end_offset; i++) {
+    for (i = start_offset; i <= end_offset; i++) {
 	if (i && (! (i % 16))) {
 	    uart_send_string2(port, "\r\n");
 

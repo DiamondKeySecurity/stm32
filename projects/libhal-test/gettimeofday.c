@@ -56,6 +56,8 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
     uint32_t tick = HAL_GetTick();      /* uptime in ms */
 
+    tz = tz;
+
     tv->tv_sec = tick / 1000;
     tv->tv_usec = (tick % 1000) * 1000;
 

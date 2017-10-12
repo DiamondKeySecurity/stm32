@@ -49,6 +49,10 @@ extern hal_user_t user;
 
 static int cmd_firmware_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     if (user < HAL_USER_SO) {
         cli_print(cli, "Permission denied.");
         return CLI_ERROR;

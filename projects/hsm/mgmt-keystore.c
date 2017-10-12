@@ -59,6 +59,8 @@ static int cmd_keystore_set_pin(struct cli_def *cli, const char *command, char *
     hal_error_t status;
     hal_client_handle_t client = { -1 };
 
+    command = command;
+
     if (argc != 2) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore set pin <user|so|wheel> <pin>");
@@ -91,6 +93,8 @@ static int cmd_keystore_clear_pin(struct cli_def *cli, const char *command, char
     hal_error_t status;
     hal_client_handle_t client = { -1 };
 
+    command = command;
+
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore clear pin <user|so|wheel>");
@@ -122,6 +126,8 @@ static int cmd_keystore_set_pin_iterations(struct cli_def *cli, const char *comm
     hal_error_t status;
     hal_client_handle_t client = { -1 };
 
+    command = command;
+
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
 	cli_print(cli, "Syntax: keystore set pin iterations <number>");
@@ -144,6 +150,8 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
     hal_pkey_handle_t pkey = { HAL_HANDLE_NONE };
     hal_error_t status;
     hal_uuid_t name;
+
+    command = command;
 
     if (argc != 1) {
 	cli_print(cli, "Wrong number of arguments (%i).", argc);
@@ -276,6 +284,10 @@ static int show_pin(struct cli_def *cli, char *label, hal_user_t user)
 
 static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     int err = 0;
 
     err |= show_keys(cli, "Keystore:");
@@ -292,6 +304,8 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
 {
     hal_error_t err;
     int status;
+
+    command = command;
 
     if (argc != 1 || strcmp(argv[0], "YesIAmSure") != 0) {
 	cli_print(cli, "Syntax: keystore erase YesIAmSure");

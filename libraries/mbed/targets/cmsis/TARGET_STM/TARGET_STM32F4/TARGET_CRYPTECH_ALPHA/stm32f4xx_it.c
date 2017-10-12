@@ -143,6 +143,7 @@ __weak void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART1_RxCpltCallback could be implemented in the user file
    */
+    huart = huart;
 }
 
 __weak void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -150,6 +151,7 @@ __weak void HAL_UART2_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART2_RxCpltCallback could be implemented in the user file
    */
+    huart = huart;
 }
 
 /**
@@ -175,6 +177,7 @@ __weak void HAL_UART1_RxHalfCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART1_RxHalfCpltCallback could be implemented in the user file
    */
+    huart = huart;
 }
 
 __weak void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
@@ -182,10 +185,13 @@ __weak void HAL_UART2_RxHalfCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_UART2_RxHalfCpltCallback could be implemented in the user file
    */
+    huart = huart;
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
+    huart = huart;
+
     /* I dunno, just trap it for now */
     Error_Handler();
 }

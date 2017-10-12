@@ -120,6 +120,10 @@ static int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv
 {
     uint8_t buf[FILETRANSFER_UPLOAD_CHUNK_SIZE];
 
+    command = command;
+    argv = argv;
+    argc = argc;
+
     demo_crc = hal_crc32_init();
     cli_receive_data(cli, &buf[0], sizeof(buf), _count_bytes_callback);
     demo_crc = hal_crc32_finalize(demo_crc);
@@ -129,6 +133,10 @@ static int cmd_filetransfer(struct cli_def *cli, const char *command, char *argv
 
 static int cmd_reboot(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "\n\n\nRebooting\n\n\n");
     HAL_NVIC_SystemReset();
 

@@ -56,6 +56,10 @@ static int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *arg
 {
     volatile uint32_t hclk;
 
+    command = command;
+    argv = argv;
+    argc = argc;
+
     hclk = HAL_RCC_GetHCLKFreq();
     cli_print(cli, "HSE_VALUE:       %li", HSE_VALUE);
     cli_print(cli, "HCLK:            %li (%i MHz)", hclk, (int) hclk / 1000 / 1000);
@@ -65,6 +69,10 @@ static int cmd_show_cpuspeed(struct cli_def *cli, const char *command, char *arg
 
 static int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
     return CLI_OK;
 }
@@ -73,6 +81,10 @@ static int cmd_show_fpga_cores(struct cli_def *cli, const char *command, char *a
 {
     hal_core_t *core;
     const hal_core_info_t *info;
+
+    command = command;
+    argv = argv;
+    argc = argc;
 
     if (! fpgacfg_check_done()) {
         cli_print(cli, "FPGA has not loaded a bitstream");
@@ -90,6 +102,10 @@ static int cmd_show_fpga_cores(struct cli_def *cli, const char *command, char *a
 
 static int cmd_show_keystore_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "Keystore memory is %sonline", (keystore_check_id() != 1) ? "NOT ":"");
     return CLI_OK;
 }
@@ -98,6 +114,10 @@ static int cmd_show_keystore_data(struct cli_def *cli, const char *command, char
 {
     uint8_t buf[KEYSTORE_PAGE_SIZE];
     uint32_t i;
+
+    command = command;
+    argv = argv;
+    argc = argc;
 
     if (keystore_check_id() != 1) {
 	cli_print(cli, "ERROR: The keystore memory is not accessible.");

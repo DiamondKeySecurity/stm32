@@ -58,6 +58,10 @@ __IO uint32_t *dfu_code_ptr = &CRYPTECH_FIRMWARE_START + 1;
 
 static int cmd_dfu_dump(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "First 256 bytes from DFU application address %p:\r\n", dfu_firmware);
 
     uart_send_hexdump(STM_UART_MGMT, (uint8_t *) dfu_firmware, 0, 0xff);
@@ -69,6 +73,10 @@ static int cmd_dfu_dump(struct cli_def *cli, const char *command, char *argv[], 
 static int cmd_dfu_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     int status;
+
+    command = command;
+    argv = argv;
+    argc = argc;
 
     cli_print(cli, "Erasing flash address %p to %p - expect the CLI to crash now",
 	      dfu_firmware,
@@ -84,6 +92,11 @@ static int cmd_dfu_erase(struct cli_def *cli, const char *command, char *argv[],
 static int cmd_dfu_jump(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     uint32_t i;
+
+    command = command;
+    argv = argv;
+    argc = argc;
+
     /* Load first byte from the DFU_FIRMWARE_PTR to verify it contains an IVT before
      * jumping there.
      */

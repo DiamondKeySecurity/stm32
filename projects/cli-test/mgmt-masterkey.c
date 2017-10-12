@@ -83,6 +83,10 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
     hal_error_t status;
     uint8_t buf[KEK_LENGTH] = {0};
 
+    command = command;
+    argv = argv;
+    argc = argc;
+
     cli_print(cli, "Status of master key:\n");
 
     status = hal_mkm_volatile_read(NULL, 0);
@@ -122,6 +126,8 @@ static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *arg
     hal_error_t err;
     int i;
 
+    command = command;
+
     if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
 	cli_print(cli, "Failed parsing master key (%i)", i);
 	return CLI_OK;
@@ -143,6 +149,10 @@ static int cmd_masterkey_erase(struct cli_def *cli, const char *command, char *a
 {
     hal_error_t err;
 
+    command = command;
+    argv = argv;
+    argc = argc;
+
     if ((err = hal_mkm_volatile_erase(KEK_LENGTH)) == LIBHAL_OK) {
 	cli_print(cli, "Erased master key from volatile memory");
     } else {
@@ -156,6 +166,8 @@ static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, 
     uint8_t buf[KEK_LENGTH] = {0};
     hal_error_t err;
     int i;
+
+    command = command;
 
     if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
 	cli_print(cli, "Failed parsing master key (%i)", i);
@@ -177,6 +189,10 @@ static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, 
 static int cmd_masterkey_unsecure_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t err;
+
+    command = command;
+    argv = argv;
+    argc = argc;
 
     if ((err = hal_mkm_flash_erase(KEK_LENGTH)) == LIBHAL_OK) {
 	cli_print(cli, "Erased unsecure master key from flash");
