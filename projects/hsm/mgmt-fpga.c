@@ -55,14 +55,16 @@ extern hal_user_t user;
 static volatile uint32_t dfu_offset = 0;
 
 
-static int _flash_write_callback(uint8_t *buf, size_t len)
+static HAL_StatusTypeDef _flash_write_callback(uint8_t *buf, size_t len)
 {
+    HAL_StatusTypeDef res;
+
     if ((dfu_offset % FPGACFG_SECTOR_SIZE) == 0)
 	/* first page in sector, need to erase sector */
-	if (fpgacfg_erase_sector(dfu_offset / FPGACFG_SECTOR_SIZE) != 1)
-	    return CLI_ERROR;
+	if ((res = fpgacfg_erase_sector(dfu_offset / FPGACFG_SECTOR_SIZE)) != CMSIS_HAL_OK)
+	    return res;
 
-    int res = fpgacfg_write_data(dfu_offset, buf, len) == 1;
+    res = fpgacfg_write_data(dfu_offset, buf, len);
     dfu_offset += len;
     return res;
 }
@@ -85,7 +87,7 @@ static int cmd_fpga_bitstream_upload(struct cli_def *cli, const char *command, c
     fpgacfg_access_control(ALLOW_ARM);
 
     cli_print(cli, "Checking if FPGA config memory is accessible");
-    if (fpgacfg_check_id() != 1) {
+    if (fpgacfg_check_id() != CMSIS_HAL_OK) {
 	cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
 	return CLI_ERROR;
     }
@@ -107,7 +109,7 @@ static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, ch
     fpgacfg_access_control(ALLOW_ARM);
 
     cli_print(cli, "Checking if FPGA config memory is accessible");
-    if (fpgacfg_check_id() != 1) {
+    if (fpgacfg_check_id() != CMSIS_HAL_OK) {
 	cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
 	return CLI_ERROR;
     }
@@ -118,7 +120,7 @@ static int cmd_fpga_bitstream_erase(struct cli_def *cli, const char *command, ch
      *
      * This command could be made to accept an argument indicating the whole memory should be erased.
      */
-    if (fpgacfg_erase_sector(0) != 0) {
+    if (fpgacfg_erase_sector(0) != CMSIS_HAL_OK) {
 	cli_print(cli, "Erasing first sector in FPGA config memory failed");
 	return CLI_ERROR;
     }
@@ -152,7 +154,7 @@ static int cmd_fpga_show_cores(struct cli_def *cli, const char *command, char *a
     argv = argv;
     argc = argc;
 
-    if (! fpgacfg_check_done()) {
+    if (fpgacfg_check_done() != CMSIS_HAL_OK) {
         cli_print(cli, "FPGA has not loaded a bitstream");
         return CLI_OK;
     }

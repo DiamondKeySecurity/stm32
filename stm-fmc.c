@@ -166,7 +166,7 @@ void fmc_init(void)
 }
 
 
-static int _fmc_nwait_idle(void)
+static HAL_StatusTypeDef _fmc_nwait_idle(void)
 {
     int cnt;
 
@@ -175,41 +175,44 @@ static int _fmc_nwait_idle(void)
     {
         // read pin state
         if (HAL_GPIO_ReadPin(FMC_GPIO_PORT_NWAIT, FMC_GPIO_PIN_NWAIT) == FMC_NWAIT_IDLE)
-            return 0;
+            return HAL_OK;
     }
 
-    return -1;
+    return HAL_ERROR;
 }
 
-int fmc_write_32(uint32_t addr, uint32_t *data)
+HAL_StatusTypeDef fmc_write_32(uint32_t addr, uint32_t *data)
 {
     // calculate target fpga address
     uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
 
     __disable_irq();
 
-    int status =
+    HAL_StatusTypeDef status =
         // write data to fpga
-        (HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
+        HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
+    if (status == HAL_OK)
         // wait for transaction to complete
-        _fmc_nwait_idle();
+        status = _fmc_nwait_idle();
 
     __enable_irq();
 
     return status;
 }
 
-static inline int _fmc_read_32(uint32_t *ptr, uint32_t *data)
+static inline HAL_StatusTypeDef _fmc_read_32(uint32_t *ptr, uint32_t *data)
 {
-    return
+    HAL_StatusTypeDef status =
         // read data from fpga
-        (HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1) != HAL_OK) ||
+        HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
+    if (status == HAL_OK)
         // wait for transaction to complete
-        _fmc_nwait_idle();
+        status = _fmc_nwait_idle();
 
+    return status;
 }
 
-int fmc_read_32(uint32_t addr, uint32_t *data)
+HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data)
 {
     // calculate target fpga address
     uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
@@ -232,9 +235,10 @@ int fmc_read_32(uint32_t addr, uint32_t *data)
      */
     __disable_irq();
 
-    int status =
-        _fmc_read_32((uint32_t *)ptr, data) ||
+    HAL_StatusTypeDef status =
         _fmc_read_32((uint32_t *)ptr, data);
+    if (status == HAL_OK)
+        status = _fmc_read_32((uint32_t *)ptr, data);
 
     __enable_irq();
 

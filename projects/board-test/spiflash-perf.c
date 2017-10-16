@@ -33,7 +33,7 @@ static void test_read_page(void)
 
     for (i = 0; i < N25Q128_NUM_PAGES; ++i) {
         err = n25q128_read_page(ctx, i, read_buf);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: n25q128_read_page returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -53,7 +53,7 @@ static void test_read_subsector(void)
 
     for (i = 0; i < N25Q128_NUM_SUBSECTORS; ++i) {
         err = n25q128_read_subsector(ctx, i, read_buf);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: n25q128_read_subsector returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -75,7 +75,7 @@ static void _read_verify(uint8_t *vrfy_buf)
 
     for (i = 0; i < N25Q128_NUM_PAGES; ++i) {
         err = n25q128_read_page(ctx, i, read_buf);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: n25q128_read_page returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -100,7 +100,7 @@ static void test_erase_sector(void)
 
     for (i = 0; i < N25Q128_NUM_SECTORS; ++i) {
         err = n25q128_erase_sector(ctx, i);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: n25q128_erase_sector returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -119,7 +119,7 @@ static void test_erase_subsector(void)
 
     for (i = 0; i < N25Q128_NUM_SUBSECTORS; ++i) {
         err = n25q128_erase_subsector(ctx, i);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: n25q128_erase_subsector returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -136,7 +136,7 @@ static void test_erase_bulk(void)
     int err;
 
     err = n25q128_erase_bulk(ctx);
-    if (err != 1) {
+    if (err != HAL_OK) {
         uart_send_string("ERROR: n25q128_erase_bulk returned ");
         uart_send_integer(err, 0);
         uart_send_string("\r\n");
@@ -171,7 +171,7 @@ static void test_write_page(void)
 
     for (i = 0; i < N25Q128_NUM_PAGES; ++i) {
         err = n25q128_write_page(ctx, i, write_buf);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: n25q128_write_page returned ");
             uart_send_integer(err, 0);
             uart_send_string(" for page ");
@@ -229,7 +229,7 @@ int main(void)
     stm_init();
     uart_set_default(STM_UART_MGMT);
 
-    if (n25q128_check_id(ctx) != 1) {
+    if (n25q128_check_id(ctx) != HAL_OK) {
         uart_send_string("ERROR: n25q128_check_id failed\r\n");
         return 0;
     }

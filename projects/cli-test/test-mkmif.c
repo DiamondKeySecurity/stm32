@@ -32,18 +32,18 @@ static hal_error_t sclk_test(struct cli_def *cli, hal_core_t *core, const uint32
     uint32_t readback;
     hal_error_t err;
 
-    cli_print(cli, "Trying to adjust the clockspeed (divisor %x).\n", (unsigned int) divisor);
+    cli_print(cli, "Trying to adjust the clockspeed (divisor %x).", (unsigned int) divisor);
 
     if ((err = hal_mkmif_set_clockspeed(core, divisor)) != LIBHAL_OK) {
-        cli_print(cli, "hal_mkmif_set_clockspeed: %s\n", hal_error_string(err));
+        cli_print(cli, "hal_mkmif_set_clockspeed: %s", hal_error_string(err));
         return err;
     }
     if ((err = hal_mkmif_get_clockspeed(core, &readback)) != LIBHAL_OK) {
-        cli_print(cli, "hal_mkmif_get_clockspeed: %s\n", hal_error_string(err));
+        cli_print(cli, "hal_mkmif_get_clockspeed: %s", hal_error_string(err));
         return err;
     }
     if (readback != divisor) {
-        cli_print(cli, "expected %x, got %x\n", (unsigned int)divisor, (unsigned int)readback);
+        cli_print(cli, "expected %x, got %x", (unsigned int)divisor, (unsigned int)readback);
         return HAL_ERROR_IO_UNEXPECTED;
     }
     return LIBHAL_OK;
@@ -53,10 +53,10 @@ static hal_error_t init_test(struct cli_def *cli, hal_core_t *core)
 {
     hal_error_t err;
 
-    cli_print(cli, "Trying to init to the memory in continuous mode.\n");
+    cli_print(cli, "Trying to init to the memory in continuous mode.");
 
     if ((err = hal_mkmif_init(core)) != LIBHAL_OK) {
-        cli_print(cli, "hal_mkmif_init: %s\n", hal_error_string(err));
+        cli_print(cli, "hal_mkmif_init: %s", hal_error_string(err));
         return err;
     }
 
@@ -74,11 +74,11 @@ static hal_error_t write_test(struct cli_def *cli, hal_core_t *core)
          i < 0x10;
          write_data += 0x01010101, write_address += 4, ++i) {
 
-        cli_print(cli, "Trying to write 0x%08x to memory address 0x%08x.\n",
+        cli_print(cli, "Trying to write 0x%08x to memory address 0x%08x.",
                (unsigned int)write_data, (unsigned int)write_address);
 
         if ((err = hal_mkmif_write_word(core, write_address, write_data)) != LIBHAL_OK) {
-            cli_print(cli, "hal_mkmif_write: %s\n", hal_error_string(err));
+            cli_print(cli, "hal_mkmif_write: %s", hal_error_string(err));
             return err;
         }
     }
@@ -97,13 +97,13 @@ static hal_error_t read_test(struct cli_def *cli, hal_core_t *core)
          i < 0x10;
          read_address += 4, ++i) {
 
-        cli_print(cli, "Trying to read from memory address 0x%08x.\n", (unsigned int)read_address);
+        cli_print(cli, "Trying to read from memory address 0x%08x.", (unsigned int)read_address);
 
         if ((err = hal_mkmif_read_word(core, read_address, &read_data)) != LIBHAL_OK) {
-            cli_print(cli, "hal_mkmif_read: %s\n", hal_error_string(err));
+            cli_print(cli, "hal_mkmif_read: %s", hal_error_string(err));
             return err;
         }
-        cli_print(cli, "Data read: 0x%08x\n", (unsigned int)read_data);
+        cli_print(cli, "Data read: 0x%08x", (unsigned int)read_data);
     }
 
     return LIBHAL_OK;
@@ -115,22 +115,22 @@ static hal_error_t write_read_test(struct cli_def *cli, hal_core_t *core)
     uint32_t readback;
     hal_error_t err;
 
-    cli_print(cli, "Trying to write 0xdeadbeef to the memory and then read back.\n");
+    cli_print(cli, "Trying to write 0xdeadbeef to the memory and then read back.");
 
     data = 0xdeadbeef;
 
     if ((err = hal_mkmif_write_word(core, 0x00000000, data)) != LIBHAL_OK) {
-        cli_print(cli, "write error: %s\n", hal_error_string(err));
+        cli_print(cli, "write error: %s", hal_error_string(err));
         return err;
     }
 
     if ((err = hal_mkmif_read_word(core, 0x00000000, &readback)) != LIBHAL_OK) {
-        cli_print(cli, "read error: %s\n", hal_error_string(err));
+        cli_print(cli, "read error: %s", hal_error_string(err));
         return err;
     }
 
     if (readback != data) {
-        cli_print(cli, "read %08x, expected %08x\n", (unsigned int)readback, (unsigned int)data);
+        cli_print(cli, "read %08x, expected %08x", (unsigned int)readback, (unsigned int)data);
         return HAL_ERROR_IO_UNEXPECTED;
     }
 
@@ -147,7 +147,7 @@ int cmd_test_mkmif(struct cli_def *cli, const char *command, char *argv[], int a
     argc = argc;
 
     if (core == NULL) {
-        cli_print(cli, "MKMIF core not present, not testing.\n");
+        cli_print(cli, "MKMIF core not present, not testing.");
         return HAL_ERROR_CORE_NOT_FOUND;
     }
 

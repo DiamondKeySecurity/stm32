@@ -68,12 +68,12 @@ void fpgacfg_init(void)
     HAL_SPI_Init(&hspi_fpgacfg);
 }
 
-int fpgacfg_check_id(void)
+HAL_StatusTypeDef fpgacfg_check_id(void)
 {
     return n25q128_check_id(&fpgacfg_ctx);
 }
 
-int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
+HAL_StatusTypeDef fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
     return n25q128_write_data(&fpgacfg_ctx, offset, buf, len);
 }
@@ -113,13 +113,12 @@ void fpgacfg_reset_fpga(enum fpgacfg_reset reset)
     }
 }
 
-int fpgacfg_check_done(void)
+HAL_StatusTypeDef fpgacfg_check_done(void)
 {
-    GPIO_PinState status = HAL_GPIO_ReadPin(FPGA_DONE_Port, FPGA_DONE_Pin);
-    return (status == GPIO_PIN_SET);
+    return (HAL_GPIO_ReadPin(FPGA_DONE_Port, FPGA_DONE_Pin) == GPIO_PIN_SET) ? HAL_OK : HAL_ERROR;
 }
 
-int fpgacfg_erase_sector(uint32_t sector_offset)
+HAL_StatusTypeDef fpgacfg_erase_sector(uint32_t sector_offset)
 {
     return n25q128_erase_sector(&fpgacfg_ctx, sector_offset);
 }

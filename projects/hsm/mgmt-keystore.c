@@ -303,7 +303,7 @@ static int cmd_keystore_show_keys(struct cli_def *cli, const char *command, char
 static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t err;
-    int status;
+    HAL_StatusTypeDef status;
 
     command = command;
 
@@ -313,7 +313,7 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
     }
 
     cli_print(cli, "OK, erasing keystore, this will take about 45 seconds...");
-    if ((status = keystore_erase_bulk()) != 1) {
+    if ((status = keystore_erase_bulk()) != CMSIS_HAL_OK) {
         cli_print(cli, "Failed erasing token keystore: %i", status);
 	return CLI_ERROR;
     }

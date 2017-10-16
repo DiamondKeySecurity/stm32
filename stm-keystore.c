@@ -62,46 +62,32 @@ void keystore_init(void)
     HAL_SPI_Init(&hspi_keystore);
 }
 
-int keystore_check_id(void)
+HAL_StatusTypeDef keystore_check_id(void)
 {
     return n25q128_check_id(&keystore_ctx);
 }
 
-int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len)
+HAL_StatusTypeDef keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len)
 {
     return n25q128_read_data(&keystore_ctx, offset, buf, len);
 }
 
-int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
+HAL_StatusTypeDef keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len)
 {
     return n25q128_write_data(&keystore_ctx, offset, buf, len);
 }
 
-int keystore_erase_subsector(uint32_t subsector_offset)
+HAL_StatusTypeDef keystore_erase_subsector(uint32_t subsector_offset)
 {
     return n25q128_erase_subsector(&keystore_ctx, subsector_offset);
 }
 
-int keystore_erase_sector(uint32_t sector_offset)
+HAL_StatusTypeDef keystore_erase_sector(uint32_t sector_offset)
 {
     return n25q128_erase_sector(&keystore_ctx, sector_offset);
 }
 
-int keystore_erase_bulk(void)
+HAL_StatusTypeDef keystore_erase_bulk(void)
 {
     return n25q128_erase_bulk(&keystore_ctx);
-}
-
-/*
- * Deprecated, will be removed when we fix libhal/ks_flash.c to use the
- * new function. I love inter-dependent repos.
- */
-
-int keystore_erase_subsectors(uint32_t start, uint32_t stop)
-{
-    for (uint32_t i = start; i <= stop; ++i) {
-        if (keystore_erase_subsector(i) != 1)
-            return 0;
-    }
-    return 1;
 }

@@ -36,7 +36,6 @@
 #define HAL_OK CMSIS_HAL_OK
 #include "stm-init.h"
 #include "stm-uart.h"
-#include "stm-flash.h"
 
 #include "mgmt-cli.h"
 

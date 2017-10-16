@@ -16,11 +16,11 @@ static void test_read_data(void)
 {
     uint8_t read_buf[KEYSTORE_SUBSECTOR_SIZE];
     uint32_t i;
-    int err;
+    HAL_StatusTypeDef err;
 
     for (i = 0; i < KEYSTORE_NUM_SUBSECTORS; ++i) {
         err = keystore_read_data(i * KEYSTORE_SUBSECTOR_SIZE, read_buf, KEYSTORE_SUBSECTOR_SIZE);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_read_data returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -36,11 +36,11 @@ static void _read_verify(uint8_t *vrfy_buf)
 {
     uint8_t read_buf[KEYSTORE_SUBSECTOR_SIZE];
     uint32_t i;
-    int err;
+    HAL_StatusTypeDef err;
 
     for (i = 0; i < KEYSTORE_NUM_SUBSECTORS; ++i) {
         err = keystore_read_data(i * KEYSTORE_SUBSECTOR_SIZE, read_buf, KEYSTORE_SUBSECTOR_SIZE);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_read_data returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -61,11 +61,11 @@ static void _read_verify(uint8_t *vrfy_buf)
 static void test_erase_sector(void)
 {
     uint32_t i;
-    int err;
+    HAL_StatusTypeDef err;
 
     for (i = 0; i < KEYSTORE_NUM_SECTORS; ++i) {
         err = keystore_erase_sector(i);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_erase_sector returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -80,11 +80,11 @@ static void test_erase_sector(void)
 static void test_erase_subsector(void)
 {
     uint32_t i;
-    int err;
+    HAL_StatusTypeDef err;
 
     for (i = 0; i < KEYSTORE_NUM_SUBSECTORS; ++i) {
         err = keystore_erase_subsector(i);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_erase_subsector returned ");
             uart_send_integer(err, 0);
             uart_send_string("\r\n");
@@ -114,14 +114,14 @@ static void test_write_data(void)
 {
     uint8_t write_buf[KEYSTORE_SUBSECTOR_SIZE];
     uint32_t i;
-    int err;
+    HAL_StatusTypeDef err;
 
     for (i = 0; i < sizeof(write_buf); ++i)
         write_buf[i] = i & 0xFF;
 
     for (i = 0; i < KEYSTORE_NUM_SUBSECTORS; ++i) {
         err = keystore_write_data(i * KEYSTORE_SUBSECTOR_SIZE, write_buf, KEYSTORE_SUBSECTOR_SIZE);
-        if (err != 1) {
+        if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_write_data returned ");
             uart_send_integer(err, 0);
             uart_send_string(" for subsector ");
@@ -179,7 +179,7 @@ int main(void)
     stm_init();
     uart_set_default(STM_UART_MGMT);
 
-    if (keystore_check_id() != 1) {
+    if (keystore_check_id() != HAL_OK) {
         uart_send_string("ERROR: keystore_check_id failed\r\n");
         return 0;
     }

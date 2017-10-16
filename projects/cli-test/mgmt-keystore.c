@@ -228,12 +228,12 @@ static int cmd_keystore_show_data(struct cli_def *cli, const char *command, char
     argv = argv;
     argc = argc;
 
-    if (keystore_check_id() != 1) {
+    if (keystore_check_id() != CMSIS_HAL_OK) {
 	cli_print(cli, "ERROR: The keystore memory is not accessible.");
     }
 
     memset(buf, 0, sizeof(buf));
-    if ((i = keystore_read_data(0, buf, sizeof(buf))) != 1) {
+    if ((i = keystore_read_data(0, buf, sizeof(buf))) != CMSIS_HAL_OK) {
 	cli_print(cli, "Failed reading first page from keystore memory: %li", i);
 	return CLI_ERROR;
     }
@@ -355,7 +355,7 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
     }
 
     cli_print(cli, "OK, erasing keystore, this might take a while...");
-    if ((status = keystore_erase_bulk()) != 1) {
+    if ((status = keystore_erase_bulk()) != CMSIS_HAL_OK) {
         cli_print(cli, "Failed erasing token keystore: %i", status);
 	return CLI_ERROR;
     }

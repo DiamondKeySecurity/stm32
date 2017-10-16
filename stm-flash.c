@@ -69,29 +69,30 @@ uint32_t flash_sector_offsets[FLASH_NUM_SECTORS + 1] = {
     0x08200000  /* first address *after* flash */
 };
 
-static int stm_flash_sector_num(const uint32_t offset)
+static uint32_t stm_flash_sector_num(const uint32_t offset)
 {
-    int i;
+    uint32_t i;
 
     if (offset < flash_sector_offsets[0])
-        return -1;
+        return 0xFFFFFFFF;
 
     for (i = 0; i < FLASH_NUM_SECTORS; ++i)
 	if (offset < flash_sector_offsets[i + 1])
 	    return i;
 
-    return -1;
+    return 0xFFFFFFFF;
 }
 
-int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset)
+HAL_StatusTypeDef stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset)
 {
     uint32_t start_sector = stm_flash_sector_num(start_offset);
     uint32_t end_sector = stm_flash_sector_num(end_offset);
     FLASH_EraseInitTypeDef FLASH_EraseInitStruct;
     uint32_t SectorError = 0;
+    HAL_StatusTypeDef err;
 
-    if (start_sector > end_sector) return -1;
-    if (end_sector > FLASH_NUM_SECTORS) return -2;
+    if (start_sector > end_sector || end_sector > FLASH_NUM_SECTORS)
+        return HAL_ERROR;
 
     FLASH_EraseInitStruct.Sector = start_sector;
     FLASH_EraseInitStruct.NbSectors = (end_sector - start_sector) + 1;
@@ -99,40 +100,38 @@ int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offs
     FLASH_EraseInitStruct.VoltageRange = VOLTAGE_RANGE_3;
 
     HAL_FLASH_Unlock();
-
-    if (HAL_FLASHEx_Erase(&FLASH_EraseInitStruct, &SectorError) != HAL_OK) {
-	return -3;
-    }
-
+    err = HAL_FLASHEx_Erase(&FLASH_EraseInitStruct, &SectorError);
     HAL_FLASH_Lock();
 
-    if (SectorError == 0xFFFFFFFF) return 0;
+    if (err != HAL_OK || SectorError != 0xFFFFFFFF)
+        return HAL_ERROR;
 
-    return -3;
+    return HAL_OK;
 }
 
-int stm_flash_write32(uint32_t offset, const uint32_t *buf, const uint32_t elements)
+HAL_StatusTypeDef stm_flash_write32(uint32_t offset, const uint32_t *buf, const size_t elements)
 {
     uint32_t sector = stm_flash_sector_num(offset);
-    uint32_t i, j;
+    size_t i;
+    HAL_StatusTypeDef err = HAL_OK;
 
     if (offset == flash_sector_offsets[sector]) {
 	/* Request to write to beginning of a flash sector, erase it first. */
 	if (stm_flash_erase_sectors(offset, offset) != 0) {
-	    return -1;
+	    return HAL_ERROR;
 	}
     }
 
     HAL_FLASH_Unlock();
 
     for (i = 0; i < elements; i++) {
-	if ((j = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, offset, buf[i])) != HAL_OK) {
-	    return -2;
+	if ((err = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, offset, buf[i])) != HAL_OK) {
+	    break;
 	}
 	offset += 4;
     }
 
     HAL_FLASH_Lock();
 
-    return 1;
+    return err;
 }

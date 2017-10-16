@@ -60,7 +60,7 @@ HAL_StatusTypeDef rtc_device_ready(uint16_t i2c_addr)
     return HAL_I2C_IsDeviceReady (&hi2c_rtc, i2c_addr, 10, 1000);
 }
 
-HAL_StatusTypeDef rtc_enable_oscillator()
+HAL_StatusTypeDef rtc_enable_oscillator(void)
 {
     uint8_t buf[2];
     HAL_StatusTypeDef res;

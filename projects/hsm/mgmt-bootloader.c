@@ -50,12 +50,11 @@ extern hal_user_t user;
 
 static uint32_t dfu_offset;
 
-static int _flash_write_callback(uint8_t *buf, size_t len)
+static HAL_StatusTypeDef _flash_write_callback(uint8_t *buf, size_t len)
 {
-    if (stm_flash_write32(dfu_offset, (uint32_t *)buf, (uint32_t)len/4) != 1)
-        return 0;
+    HAL_StatusTypeDef status = stm_flash_write32(dfu_offset, (uint32_t *)buf, len/4);
     dfu_offset += DFU_UPLOAD_CHUNK_SIZE;
-    return 1;
+    return status;
 }
 
 static int cmd_bootloader_upload(struct cli_def *cli, const char *command, char *argv[], int argc)

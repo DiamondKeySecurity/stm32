@@ -85,7 +85,7 @@ int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_cal
 	/* After reception of a chunk but before ACKing we have "all" the time in the world to
 	 * calculate CRC and invoke the data_callback.
 	 */
-	if (data_callback != NULL && ! data_callback(buf, (size_t) n)) {
+	if (data_callback != NULL && data_callback(buf, n) != CMSIS_HAL_OK) {
 	    cli_print(cli, "Data processing failed");
 	    goto okay;
 	}

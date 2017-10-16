@@ -39,7 +39,7 @@
 
 #define FILETRANSFER_UPLOAD_CHUNK_SIZE 256
 
-typedef int (*cli_data_callback)(uint8_t *, size_t);
+typedef HAL_StatusTypeDef (*cli_data_callback)(uint8_t *, size_t);
 
 extern int cli_receive_data(struct cli_def *cli, uint8_t *buf, size_t len, cli_data_callback data_callback);
 

@@ -70,13 +70,13 @@ struct spiflash_ctx {
     uint16_t cs_n_pin;
 };
 
-extern int n25q128_check_id(struct spiflash_ctx *ctx);
-extern int n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);
-extern int n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uint8_t *page_buffer);
-extern int n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset);
-extern int n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
-extern int n25q128_erase_bulk(struct spiflash_ctx *ctx);
+extern HAL_StatusTypeDef n25q128_check_id(struct spiflash_ctx *ctx);
+extern HAL_StatusTypeDef n25q128_read_data(struct spiflash_ctx *ctx, uint32_t offset, uint8_t *buf, const uint32_t len);
+extern HAL_StatusTypeDef n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_offset, const uint8_t *page_buffer);
+extern HAL_StatusTypeDef n25q128_write_data(struct spiflash_ctx *ctx, uint32_t offset, const uint8_t *buf, const uint32_t len);
+extern HAL_StatusTypeDef n25q128_erase_subsector(struct spiflash_ctx *ctx, uint32_t subsector_offset);
+extern HAL_StatusTypeDef n25q128_erase_sector(struct spiflash_ctx *ctx, uint32_t sector_offset);
+extern HAL_StatusTypeDef n25q128_erase_bulk(struct spiflash_ctx *ctx);
 
 #define n25q128_read_page(ctx, page_offset, page_buffer) \
     n25q128_read_data(ctx, page_offset * N25Q128_PAGE_SIZE, page_buffer, N25Q128_PAGE_SIZE)

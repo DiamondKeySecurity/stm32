@@ -56,14 +56,11 @@
 
 
 extern void keystore_init(void);
-extern int keystore_check_id(void);
-extern int keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len);
-extern int keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int keystore_erase_subsector(uint32_t subsector_offset);
-extern int keystore_erase_sector(uint32_t sector_offset);
-extern int keystore_erase_bulk(void);
-
-/* Deprecated, will be removed. */
-extern int keystore_erase_subsectors(uint32_t start, uint32_t stop);
+extern HAL_StatusTypeDef keystore_check_id(void);
+extern HAL_StatusTypeDef keystore_read_data(uint32_t offset, uint8_t *buf, const uint32_t len);
+extern HAL_StatusTypeDef keystore_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
+extern HAL_StatusTypeDef keystore_erase_subsector(uint32_t subsector_offset);
+extern HAL_StatusTypeDef keystore_erase_sector(uint32_t sector_offset);
+extern HAL_StatusTypeDef keystore_erase_bulk(void);
 
 #endif /* __STM32_KEYSTORE_H */

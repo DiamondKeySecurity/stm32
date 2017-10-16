@@ -86,13 +86,13 @@ enum fpgacfg_reset {
 };
 
 extern void fpgacfg_init(void);
-extern int fpgacfg_check_id(void);
-extern int fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
-extern int fpgacfg_erase_sector(uint32_t sector_offset);
+extern HAL_StatusTypeDef fpgacfg_check_id(void);
+extern HAL_StatusTypeDef fpgacfg_write_data(uint32_t offset, const uint8_t *buf, const uint32_t len);
+extern HAL_StatusTypeDef fpgacfg_erase_sector(uint32_t sector_offset);
 extern void fpgacfg_access_control(enum fpgacfg_access_ctrl access);
 /* Reset the FPGA */
 extern void fpgacfg_reset_fpga(enum fpgacfg_reset reset);
 /* Check status of FPGA bitstream loading */
-extern int fpgacfg_check_done(void);
+extern HAL_StatusTypeDef fpgacfg_check_done(void);
 
 #endif /* __STM32_FPGACFG_H */

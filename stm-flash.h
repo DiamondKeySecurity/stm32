@@ -1,7 +1,8 @@
 /*
  * stm-flash.h
  * -----------
- * Functions and defines for accessing the flash memory.
+ * Functions for writing/erasing the STM32 internal flash memory.
+ * The flash is memory mapped, so no code is needed here to read it.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -35,7 +36,7 @@
 #ifndef __STM32_FLASH_H
 #define __STM32_FLASH_H
 
-extern int stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset);
-extern int stm_flash_write32(const uint32_t offset, const uint32_t *buf, const uint32_t elements);
+extern HAL_StatusTypeDef stm_flash_erase_sectors(const uint32_t start_offset, const uint32_t end_offset);
+extern HAL_StatusTypeDef stm_flash_write32(const uint32_t offset, const uint32_t *buf, const size_t elements);
 
 #endif /* __STM32_FLASH_H */

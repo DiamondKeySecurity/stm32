@@ -57,7 +57,7 @@
 
 
 extern void fmc_init(void);
-extern int fmc_write_32(uint32_t addr, uint32_t *data);
-extern int fmc_read_32(uint32_t addr, uint32_t *data);
+extern HAL_StatusTypeDef fmc_write_32(uint32_t addr, uint32_t *data);
+extern HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data);
 
 #endif /* __STM_FMC_H */

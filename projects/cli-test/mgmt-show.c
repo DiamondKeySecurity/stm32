@@ -73,7 +73,7 @@ static int cmd_show_fpga_status(struct cli_def *cli, const char *command, char *
     argv = argv;
     argc = argc;
 
-    cli_print(cli, "FPGA has %sloaded a bitstream", fpgacfg_check_done() ? "":"NOT ");
+    cli_print(cli, "FPGA has %sloaded a bitstream", (fpgacfg_check_done() == CMSIS_HAL_OK) ? "":"NOT ");
     return CLI_OK;
 }
 
@@ -86,7 +86,7 @@ static int cmd_show_fpga_cores(struct cli_def *cli, const char *command, char *a
     argv = argv;
     argc = argc;
 
-    if (! fpgacfg_check_done()) {
+    if (fpgacfg_check_done() != CMSIS_HAL_OK) {
         cli_print(cli, "FPGA has not loaded a bitstream");
         return CLI_OK;
     }
@@ -106,7 +106,7 @@ static int cmd_show_keystore_status(struct cli_def *cli, const char *command, ch
     argv = argv;
     argc = argc;
 
-    cli_print(cli, "Keystore memory is %sonline", (keystore_check_id() != 1) ? "NOT ":"");
+    cli_print(cli, "Keystore memory is %sonline", (keystore_check_id() == CMSIS_HAL_OK) ? "":"NOT ");
     return CLI_OK;
 }
 
@@ -119,12 +119,12 @@ static int cmd_show_keystore_data(struct cli_def *cli, const char *command, char
     argv = argv;
     argc = argc;
 
-    if (keystore_check_id() != 1) {
+    if (keystore_check_id() != CMSIS_HAL_OK) {
 	cli_print(cli, "ERROR: The keystore memory is not accessible.");
     }
 
     memset(buf, 0, sizeof(buf));
-    if ((i = keystore_read_data(0, buf, sizeof(buf))) != 1) {
+    if ((i = keystore_read_data(0, buf, sizeof(buf))) != CMSIS_HAL_OK) {
 	cli_print(cli, "Failed reading first page from keystore memory: %li", i);
 	return CLI_ERROR;
     }
@@ -145,14 +145,14 @@ static int cmd_show_keystore_data(struct cli_def *cli, const char *command, char
 	if (buf[i] == 0xff) {
 	    cli_print(cli, "Tombstoning byte %li", i);
 	    buf[i] = 0x55;
-	    if ((i = keystore_write_data(0, buf, sizeof(buf))) != 1) {
+	    if ((i = keystore_write_data(0, buf, sizeof(buf))) != CMSIS_HAL_OK) {
 		cli_print(cli, "Failed writing data at offset 0: %li", i);
 		return CLI_ERROR;
 	    }
 	}
     } else {
 	cli_print(cli, "Erasing first sector since all the first 8 bytes are tombstones");
-	if ((i = keystore_erase_sector(0)) != 1) {
+	if ((i = keystore_erase_sector(0)) != CMSIS_HAL_OK) {
 	    cli_print(cli, "Failed erasing the first sector: %li", i);
 	    return CLI_ERROR;
 	}
