@@ -111,7 +111,7 @@ static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
             return CLI_ERROR;
         }
         cli_print(cli, "Random key:\n");
-        uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+        uart_send_hexdump(buf, 0, sizeof(buf) - 1);
         cli_print(cli, "\n");
     }
 
@@ -122,7 +122,7 @@ static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
         }
 
         cli_print(cli, "Parsed key:\n");
-        uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+        uart_send_hexdump(buf, 0, sizeof(buf) - 1);
         cli_print(cli, "\n");
     }
 

@@ -85,7 +85,6 @@ int main(void)
   int i;
   
   stm_init();
-  uart_set_default(STM_UART_MGMT);
 
   uart_send_string("Keep calm for FPGA bitstream loading...\r\n");
 
@@ -142,9 +141,9 @@ int main(void)
       }
 
       uart_send_string("Success ");
-      uart_send_integer(successful_runs, 0);
+      uart_send_integer(successful_runs, 1);
       uart_send_string(", fail ");
-      uart_send_integer(failed_runs, 0);
+      uart_send_integer(failed_runs, 1);
       uart_send_string("\r\n");
       if (VERBOSE)
         uart_send_string("\r\n");

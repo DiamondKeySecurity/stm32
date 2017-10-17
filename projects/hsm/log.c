@@ -63,6 +63,6 @@ void hal_log(const hal_log_level_t level, const char *format, ...)
   vsnprintf(buffer, sizeof(buffer), format, ap);
   va_end(ap);
 
-  uart_send_string2(STM_UART_MGMT, buffer);
-  uart_send_string2(STM_UART_MGMT, "\r\n");
+  uart_send_string(buffer);
+  uart_send_string("\r\n");
 }

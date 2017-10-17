@@ -84,7 +84,7 @@ int should_dfu()
     for (i = 0; i < 50; i++) {
 	HAL_Delay(100);
 	led_toggle(LED_BLUE);
-	if (uart_recv_char2(STM_UART_MGMT, &rx, 0) == HAL_OK) {
+	if (uart_recv_char(&rx, 0) == HAL_OK) {
 	    if (rx == 13) return 1;
 	}
     }
@@ -100,7 +100,7 @@ int main(void)
 
     stm_init();
 
-    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\nThis is the bootloader speaking...");
+    uart_send_string("\r\n\r\nThis is the bootloader speaking...");
 
     if (should_dfu()) {
 	led_off(LED_BLUE);
@@ -110,9 +110,9 @@ int main(void)
 	     */
 	    led_off(LED_BLUE);
 	    led_on(LED_RED);
-	    uart_send_string2(STM_UART_MGMT, (char *) "dfu_receive_firmware failed: ");
-	    uart_send_number2(STM_UART_MGMT, status, 3, 16);
-	    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\nRebooting in three seconds\r\n");
+	    uart_send_string("dfu_receive_firmware failed: ");
+	    uart_send_hex(status, 2);
+	    uart_send_string("\r\n\r\nRebooting in three seconds\r\n");
 	    HAL_Delay(3000);
 	    HAL_NVIC_SystemReset();
 	    while (1) {};
@@ -124,7 +124,7 @@ int main(void)
      */
     *dfu_control = HARDWARE_EARLY_DFU_JUMP;
 
-    uart_send_string2(STM_UART_MGMT, (char *) "loading firmware\r\n\r\n");
+    uart_send_string("loading firmware\r\n\r\n");
 
     /* De-initialize hardware by rebooting */
     HAL_NVIC_SystemReset();

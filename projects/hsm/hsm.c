@@ -409,7 +409,6 @@ void hal_sleep(const unsigned seconds) { task_delay(seconds * 1000); }
 int main(void)
 {
     stm_init();
-    uart_set_default(STM_UART_MGMT);
     led_on(LED_GREEN);
 
     if (hal_rpc_server_init() != LIBHAL_OK)

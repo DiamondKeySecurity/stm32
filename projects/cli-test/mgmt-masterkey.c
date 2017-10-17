@@ -102,7 +102,7 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
     status = hal_mkm_volatile_read(&buf[0], sizeof(buf));
     if (status == LIBHAL_OK || status == HAL_ERROR_MASTERKEY_NOT_SET) {
 	cli_print(cli, "\nVolatile read-out:\n");
-	uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+	uart_send_hexdump(buf, 0, sizeof(buf) - 1);
 	cli_print(cli, "\n");
     } else {
 	cli_print(cli, "Failed reading from volatile memory: %s", hal_error_string(status));
@@ -111,7 +111,7 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
     status = hal_mkm_flash_read(&buf[0], sizeof(buf));
     if (status == LIBHAL_OK || status == HAL_ERROR_MASTERKEY_NOT_SET) {
 	cli_print(cli, "\nFlash read-out:\n");
-	uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+	uart_send_hexdump(buf, 0, sizeof(buf) - 1);
 	cli_print(cli, "\n");
     } else {
 	cli_print(cli, "Failed reading from flash: %s", hal_error_string(status));
@@ -134,7 +134,7 @@ static int cmd_masterkey_set(struct cli_def *cli, const char *command, char *arg
     }
 
     cli_print(cli, "Parsed key:\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+    uart_send_hexdump(buf, 0, sizeof(buf) - 1);
     cli_print(cli, "\n");
 
     if ((err = hal_mkm_volatile_write(buf, sizeof(buf))) == LIBHAL_OK) {
@@ -175,7 +175,7 @@ static int cmd_masterkey_unsecure_set(struct cli_def *cli, const char *command, 
     }
 
     cli_print(cli, "Parsed key:\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
+    uart_send_hexdump(buf, 0, sizeof(buf) - 1);
     cli_print(cli, "\n");
 
     if ((err = hal_mkm_flash_write(buf, sizeof(buf))) == LIBHAL_OK) {

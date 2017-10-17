@@ -239,8 +239,8 @@ static int cmd_keystore_show_data(struct cli_def *cli, const char *command, char
     }
 
     cli_print(cli, "First page from keystore memory:\r\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, sizeof(buf) - 1);
-    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\n");
+    uart_send_hexdump(buf, 0, sizeof(buf) - 1);
+    cli_print(cli, "\n");
 
     return CLI_OK;
 }

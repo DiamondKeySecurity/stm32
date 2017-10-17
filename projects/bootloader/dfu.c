@@ -53,7 +53,7 @@ static int getline(char *buf, int len)
     uint8_t c;
 
     for (i = 0; i < len; ++i) {
-        if (uart_recv_char2(STM_UART_MGMT, &c, HAL_MAX_DELAY) != CMSIS_HAL_OK)
+        if (uart_recv_char(&c, HAL_MAX_DELAY) != CMSIS_HAL_OK)
             return -1;
         if (c == '\r') {
             buf[i] = '\0';
@@ -67,7 +67,7 @@ static int getline(char *buf, int len)
 static void uart_flush(void)
 {
     uint8_t c;
-    while (uart_recv_char2(STM_UART_MGMT, &c, 0) == CMSIS_HAL_OK) { ; }
+    while (uart_recv_char(&c, 0) == CMSIS_HAL_OK) { ; }
 }
 
 static int do_login(void)
@@ -79,7 +79,7 @@ static int do_login(void)
     int n;
 
     uart_flush();
-    uart_send_string2(STM_UART_MGMT, "\r\nUsername: ");
+    uart_send_string("\r\nUsername: ");
     if (getline(username, sizeof(username)) <= 0)
         return -1;
     if (strcmp(username, "wheel") == 0)
@@ -92,7 +92,7 @@ static int do_login(void)
         user = HAL_USER_NONE;
 
     uart_flush();
-    uart_send_string2(STM_UART_MGMT, "\r\nPassword: ");
+    uart_send_string("\r\nPassword: ");
     if ((n = getline(pin, sizeof(pin))) <= 0)
         return -1;
 
@@ -101,7 +101,7 @@ static int do_login(void)
     hal_ks_init_read_only_pins_only();
 
     if (hal_rpc_login(client, user, pin, n) != LIBHAL_OK) {
-        uart_send_string2(STM_UART_MGMT, "\r\nAccess denied\r\n");
+        uart_send_string("\r\nAccess denied\r\n");
         return -1;
     }
     return 0;
@@ -118,33 +118,33 @@ int dfu_receive_firmware(void)
         return -1;
 
     /* Fake the CLI */
-    uart_send_string2(STM_UART_MGMT, "\r\ncryptech> ");
+    uart_send_string("\r\ncryptech> ");
     char cmd[64];
     if (getline(cmd, sizeof(cmd)) <= 0)
         return -1;
     if (strcmp(cmd, "firmware upload") != 0) {
-        uart_send_string2(STM_UART_MGMT, "\r\nInvalid command \"");
-        uart_send_string2(STM_UART_MGMT, cmd);
-        uart_send_string2(STM_UART_MGMT, "\"\r\n");
+        uart_send_string("\r\nInvalid command \"");
+        uart_send_string(cmd);
+        uart_send_string("\"\r\n");
         return -1;
     }
 
-    uart_send_string2(STM_UART_MGMT, "OK, write size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)\r\n");
+    uart_send_string("OK, write size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)\r\n");
 
     /* Read file size (4 bytes) */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &filesize, sizeof(filesize), 10000);
+    uart_receive_bytes((void *) &filesize, sizeof(filesize), 10000);
     if (filesize < 512 || filesize > DFU_FIRMWARE_END_ADDR - DFU_FIRMWARE_ADDR) {
-        uart_send_string2(STM_UART_MGMT, "Invalid filesize ");
-        uart_send_number2(STM_UART_MGMT, filesize, 1, 10);
-        uart_send_string2(STM_UART_MGMT, "\r\n");
+        uart_send_string("Invalid filesize ");
+        uart_send_integer(filesize, 1);
+        uart_send_string("\r\n");
 	return -1;
     }
 
     HAL_FLASH_Unlock();
 
-    uart_send_string2(STM_UART_MGMT, "Send ");
-    uart_send_number2(STM_UART_MGMT, filesize, 1, 10);
-    uart_send_string2(STM_UART_MGMT, " bytes of data\r\n");
+    uart_send_string("Send ");
+    uart_send_integer(filesize, 1);
+    uart_send_string(" bytes of data\r\n");
 
     while (filesize) {
 	/* By initializing buf to the same value that erased flash has (0xff), we don't
@@ -156,7 +156,7 @@ int dfu_receive_firmware(void)
 	    n = filesize;
 	}
 
-	if (uart_receive_bytes(STM_UART_MGMT, (void *) buf, n, 10000) != CMSIS_HAL_OK) {
+	if (uart_receive_bytes((void *) buf, n, 10000) != CMSIS_HAL_OK) {
 	    return -2;
 	}
 	filesize -= n;
@@ -170,7 +170,7 @@ int dfu_receive_firmware(void)
 
 	/* ACK this chunk by sending the current chunk counter (4 bytes) */
 	counter++;
-	uart_send_bytes(STM_UART_MGMT, (void *) &counter, 4);
+	uart_send_bytes((void *) &counter, 4);
 	led_toggle(LED_BLUE);
     }
 
@@ -178,20 +178,20 @@ int dfu_receive_firmware(void)
 
     HAL_FLASH_Lock();
 
-    uart_send_string2(STM_UART_MGMT, "Send CRC-32\r\n");
+    uart_send_string("Send CRC-32\r\n");
 
     /* The sending side will now send its calculated CRC-32 */
-    uart_receive_bytes(STM_UART_MGMT, (void *) &crc, sizeof(crc), 10000);
+    uart_receive_bytes((void *) &crc, sizeof(crc), 10000);
 
-    uart_send_string2(STM_UART_MGMT, "CRC-32 0x");
-    uart_send_number2(STM_UART_MGMT, crc, 1, 16);
-    uart_send_string2(STM_UART_MGMT, ", calculated CRC 0x");
-    uart_send_number2(STM_UART_MGMT, my_crc, 1, 16);
+    uart_send_string("CRC-32 0x");
+    uart_send_hex(crc, 1);
+    uart_send_string(", calculated CRC 0x");
+    uart_send_hex(my_crc, 1);
     if (crc == my_crc) {
-	uart_send_string2(STM_UART_MGMT, "CRC checksum MATCHED\r\n");
+	uart_send_string("CRC checksum MATCHED\r\n");
         return 0;
     } else {
-	uart_send_string2(STM_UART_MGMT, "CRC checksum did NOT match\r\n");
+	uart_send_string("CRC checksum did NOT match\r\n");
     }
 
     led_on(LED_RED);

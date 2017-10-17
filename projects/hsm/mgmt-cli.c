@@ -112,8 +112,8 @@ void HAL_UART1_RxCpltCallback(UART_HandleTypeDef *huart)
 static void uart_cli_print(struct cli_def *cli __attribute__ ((unused)), const char *buf)
 {
     char crlf[] = "\r\n";
-    uart_send_string2(STM_UART_MGMT, buf);
-    uart_send_string2(STM_UART_MGMT, crlf);
+    uart_send_string(buf);
+    uart_send_string(crlf);
 }
 
 static ssize_t uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void *buf, size_t count)
@@ -127,7 +127,7 @@ static ssize_t uart_cli_read(struct cli_def *cli __attribute__ ((unused)), void 
 
 static ssize_t uart_cli_write(struct cli_def *cli __attribute__ ((unused)), const void *buf, size_t count)
 {
-    uart_send_bytes(STM_UART_MGMT, (uint8_t *) buf, count);
+    uart_send_bytes((uint8_t *) buf, count);
     return (ssize_t)count;
 }
 

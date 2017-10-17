@@ -56,11 +56,11 @@ static void _time_check(char *label, const uint32_t t0)
     uint32_t t = HAL_GetTick() - t0;
 
     uart_send_string(label);
-    uart_send_integer(t / 1000, 0);
+    uart_send_integer(t / 1000, 1);
     uart_send_char('.');
     uart_send_integer(t % 1000, 3);
     uart_send_string(" seconds, ");
-    uart_send_integer(((1000 * TEST_NUM_ROUNDS) / t), 0);
+    uart_send_integer(((1000 * TEST_NUM_ROUNDS) / t), 1);
     uart_send_string("/sec\r\n");
 }
 

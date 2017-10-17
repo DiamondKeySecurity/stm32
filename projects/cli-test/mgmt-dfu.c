@@ -64,8 +64,8 @@ static int cmd_dfu_dump(struct cli_def *cli, const char *command, char *argv[], 
 
     cli_print(cli, "First 256 bytes from DFU application address %p:\r\n", dfu_firmware);
 
-    uart_send_hexdump(STM_UART_MGMT, (uint8_t *) dfu_firmware, 0, 0xff);
-    uart_send_string2(STM_UART_MGMT, (char *) "\r\n\r\n");
+    uart_send_hexdump((uint8_t *) dfu_firmware, 0, 0xff);
+    cli_print(cli, "\n");
 
     return CLI_OK;
 }

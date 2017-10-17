@@ -94,7 +94,7 @@ void dump_sram()
     request_data(buf, RTC_RTC_ADDR, 0x0, RTC_SRAM_TOTAL_BYTES);
 
     uart_send_string("SRAM contents:\r\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, RTC_SRAM_TOTAL_BYTES);
+    uart_send_hexdump(buf, 0, RTC_SRAM_TOTAL_BYTES);
 
     uart_send_string("\r\n");
 }
@@ -104,12 +104,12 @@ void dump_eeprom()
     request_data(buf, RTC_EEPROM_ADDR, 0x0, RTC_EEPROM_TOTAL_BYTES);
 
     uart_send_string("EEPROM contents:\r\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, 0, RTC_EEPROM_TOTAL_BYTES);
+    uart_send_hexdump(buf, 0, RTC_EEPROM_TOTAL_BYTES);
     uart_send_string("\r\n");
 
     request_data(buf, RTC_EEPROM_ADDR, RTC_EEPROM_EUI48_OFFSET, RTC_EEPROM_EUI48_BYTES);
     uart_send_string("EEPROM EUI-48:\r\n");
-    uart_send_hexdump(STM_UART_MGMT, buf, RTC_EEPROM_EUI48_OFFSET, RTC_EEPROM_EUI48_BYTES);
+    uart_send_hexdump(buf, RTC_EEPROM_EUI48_OFFSET, RTC_EEPROM_EUI48_BYTES);
 
     uart_send_string("\r\n");
 }
@@ -131,7 +131,6 @@ int
 main()
 {
     stm_init();
-    uart_set_default(STM_UART_MGMT);
     uart_send_string("\r\n\r\n*** Init done\r\n");
 
     dump_sram();

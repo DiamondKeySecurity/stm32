@@ -121,9 +121,9 @@ int test_fpga_data_bus(struct cli_def *cli, uint32_t test_rounds)
 	data_diff = buf ^ rnd;
 	if (data_diff) {
 	    cli_print(cli, "Data bus FAIL: expected %lx got %lx", rnd, buf);
-	    uart_send_string2(STM_UART_MGMT, (char *) "Binary diff: ");
-	    uart_send_number2(STM_UART_MGMT, data_diff, 32, 2);
-	    uart_send_string2(STM_UART_MGMT, "\r\n");
+	    uart_send_string((char *) "Binary diff: ");
+	    uart_send_binary(data_diff, 32);
+	    uart_send_string("\r\n");
 
 	    break;
 	}
@@ -192,9 +192,9 @@ int test_fpga_address_bus(struct cli_def *cli, uint32_t test_rounds)
 	addr_diff = buf ^ addr;
 	if (addr_diff) {
 	    cli_print(cli, "Address bus FAIL: expected 0x%lx got 0x%lx", addr, buf);
-	    uart_send_string2(STM_UART_MGMT, (char *) "Binary diff: ");
-	    uart_send_number2(STM_UART_MGMT, addr_diff, 32, 2);
-	    uart_send_string2(STM_UART_MGMT, "\r\n");
+	    uart_send_string((char *) "Binary diff: ");
+	    uart_send_binary(addr_diff, 32);
+	    uart_send_string("\r\n");
 
 	    break;
 	}

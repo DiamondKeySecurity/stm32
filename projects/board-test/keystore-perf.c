@@ -22,7 +22,7 @@ static void test_read_data(void)
         err = keystore_read_data(i * KEYSTORE_SUBSECTOR_SIZE, read_buf, KEYSTORE_SUBSECTOR_SIZE);
         if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_read_data returned ");
-            uart_send_integer(err, 0);
+            uart_send_integer(err, 1);
             uart_send_string("\r\n");
             break;
         }
@@ -42,13 +42,13 @@ static void _read_verify(uint8_t *vrfy_buf)
         err = keystore_read_data(i * KEYSTORE_SUBSECTOR_SIZE, read_buf, KEYSTORE_SUBSECTOR_SIZE);
         if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_read_data returned ");
-            uart_send_integer(err, 0);
+            uart_send_integer(err, 1);
             uart_send_string("\r\n");
             break;
         }
         if (memcmp(read_buf, vrfy_buf, KEYSTORE_SUBSECTOR_SIZE) != 0) {
             uart_send_string("ERROR: verify failed in subsector ");
-            uart_send_integer(i, 0);
+            uart_send_integer(i, 1);
             uart_send_string("\r\n");
             break;
         }
@@ -67,7 +67,7 @@ static void test_erase_sector(void)
         err = keystore_erase_sector(i);
         if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_erase_sector returned ");
-            uart_send_integer(err, 0);
+            uart_send_integer(err, 1);
             uart_send_string("\r\n");
             break;
         }
@@ -86,7 +86,7 @@ static void test_erase_subsector(void)
         err = keystore_erase_subsector(i);
         if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_erase_subsector returned ");
-            uart_send_integer(err, 0);
+            uart_send_integer(err, 1);
             uart_send_string("\r\n");
             break;
         }
@@ -123,9 +123,9 @@ static void test_write_data(void)
         err = keystore_write_data(i * KEYSTORE_SUBSECTOR_SIZE, write_buf, KEYSTORE_SUBSECTOR_SIZE);
         if (err != HAL_OK) {
             uart_send_string("ERROR: keystore_write_data returned ");
-            uart_send_integer(err, 0);
+            uart_send_integer(err, 1);
             uart_send_string(" for subsector ");
-            uart_send_integer(i, 0);
+            uart_send_integer(i, 1);
             uart_send_string("\r\n");
             break;
         }
@@ -151,15 +151,15 @@ static void _time_check(char *label, const uint32_t t0, uint32_t n_rounds)
     uint32_t t = HAL_GetTick() - t0;
 
     uart_send_string(label);
-    uart_send_integer(t / 1000, 0);
+    uart_send_integer(t / 1000, 1);
     uart_send_char('.');
     uart_send_integer(t % 1000, 3);
     uart_send_string(" sec");
     if (n_rounds > 1) {
         uart_send_string(" for ");
-        uart_send_integer(n_rounds, 0);
+        uart_send_integer(n_rounds, 1);
         uart_send_string(" rounds, ");
-        uart_send_integer(t / n_rounds, 0);
+        uart_send_integer(t / n_rounds, 1);
         uart_send_char('.');
         uart_send_integer(((t % n_rounds) * 100) / n_rounds, 2);
         uart_send_string(" ms each");
@@ -177,7 +177,6 @@ static void _time_check(char *label, const uint32_t t0, uint32_t n_rounds)
 int main(void)
 {
     stm_init();
-    uart_set_default(STM_UART_MGMT);
 
     if (keystore_check_id() != HAL_OK) {
         uart_send_string("ERROR: keystore_check_id failed\r\n");

@@ -57,7 +57,6 @@ int
 main()
 {
     stm_init();
-    uart_set_default(STM_UART_MGMT);
 
     led_on(LED_GREEN);
 
