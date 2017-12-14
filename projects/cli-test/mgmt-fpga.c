@@ -3,7 +3,7 @@
  * -----------
  * CLI code to manage the FPGA configuration etc.
  *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -56,8 +56,13 @@ static HAL_StatusTypeDef _flash_write_callback(uint8_t *buf, size_t len)
 	if ((res = fpgacfg_erase_sector(dfu_offset / FPGACFG_SECTOR_SIZE)) != HAL_OK)
 	    return res;
 
-    res = fpgacfg_write_data(dfu_offset, buf, len);
-    dfu_offset += len;
+    /* fpgacfg_write_data (a thin wrapper around n25q128_write_data)
+     * requires the offset and length to be page-aligned. The last chunk
+     * will be short, so we pad it out to the full chunk size.
+     */
+    len = len;
+    res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE);
+    dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
     return res;
 }
 
