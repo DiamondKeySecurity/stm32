@@ -90,18 +90,11 @@ static uint8_t busy_stack[BUSY_STACK_SIZE];
 #endif
 static uint8_t cli_stack[CLI_STACK_SIZE];
 
-#ifndef MAX_PKT_SIZE
-/* An arbitrary number, more or less driven by the 4096-bit RSA
- * keygen test.
- */
-#define MAX_PKT_SIZE 4096
-#endif
-
 /* RPC buffers. For each active request, there will be two - input and output.
  */
 typedef struct rpc_buffer_s {
     size_t len;
-    uint8_t buf[MAX_PKT_SIZE];
+    uint8_t buf[HAL_RPC_MAX_PKT_SIZE];
     struct rpc_buffer_s *next;  /* for ibuf queue linking */
 } rpc_buffer_t;
 
