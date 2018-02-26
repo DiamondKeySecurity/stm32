@@ -180,6 +180,8 @@ static int cmd_keystore_delete_key(struct cli_def *cli, const char *command, cha
     return CLI_OK;
 }
 
+#include "ks.h"
+
 static int show_keys(struct cli_def *cli, const char *title)
 {
     const hal_client_handle_t  client  = { -1 };
@@ -197,6 +199,16 @@ static int show_keys(struct cli_def *cli, const char *title)
     int done = 0;
 
     cli_print(cli, title);
+
+    size_t avail;
+    if ((status = hal_ks_available(hal_ks_token, &avail)) == HAL_OK)
+        cli_print(cli, "Token keystore: %d available", avail);
+    else
+        cli_print(cli, "Error reading token keystore: %s", hal_error_string(status));
+    if ((status = hal_ks_available(hal_ks_volatile, &avail)) == HAL_OK)
+        cli_print(cli, "Volatile keystore: %d available", avail);
+    else
+        cli_print(cli, "Error reading volatile keystore: %s", hal_error_string(status));
 
     while (!done) {
 
@@ -248,6 +260,10 @@ static int show_keys(struct cli_def *cli, const char *title)
 	    case HAL_KEY_TYPE_RSA_PUBLIC:	type_name = "RSA public";	break;
 	    case HAL_KEY_TYPE_EC_PRIVATE:	type_name = "EC private";	break;
 	    case HAL_KEY_TYPE_EC_PUBLIC:	type_name = "EC public";	break;
+            case HAL_KEY_TYPE_HASHSIG_PRIVATE:  type_name = "hashsig private";  break;
+            case HAL_KEY_TYPE_HASHSIG_PUBLIC:   type_name = "hashsig public";   break;
+            case HAL_KEY_TYPE_HASHSIG_LMS:      type_name = "hashsig lms";      break;
+            case HAL_KEY_TYPE_HASHSIG_LMOTS:    type_name = "hashsig lmots";    break;
 	    }
 
 	    const char *curve_name = "unknown";
