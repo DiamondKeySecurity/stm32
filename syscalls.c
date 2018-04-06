@@ -48,6 +48,7 @@
 
 /***************************************************************************/
 
+#ifndef DO_PROFILING
 int _read_r (struct _reent *r, int file, char * ptr, int len)
 {
   r = r;
@@ -106,6 +107,7 @@ int _close_r (struct _reent *r, int file)
 
   return 0;
 }
+#endif
 
 /***************************************************************************/
 
@@ -148,6 +150,7 @@ caddr_t _sbrk_r (struct _reent *r, int incr)
 
 /***************************************************************************/
 
+#ifndef DO_PROFILING
 int _fstat_r (struct _reent *r, int file, struct stat * st)
 {
   r = r; 
@@ -186,6 +189,7 @@ int _kill (int a, int b)
   
   return 0;
 }
+#endif
 
 /***************************************************************************/
 
@@ -198,6 +202,7 @@ int _getpid(int a)
 
 /***************************************************************************/
 
+#ifndef DO_PROFILING
 int _open(int a, int b)
 {
   a = a;
@@ -205,5 +210,6 @@ int _open(int a, int b)
   
   return 0;
 }
+#endif
 
 /*** EOF ***/

@@ -27,6 +27,16 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# A couple features that can be enabled at build time, but are not turned on
+# by default:
+# DO_PROFILING: Enable gmon profiling. See libraries/libprof/README.md for
+# more details.
+# DO_TASK_METRICS: Enable task metrics - average/max time between yields. This
+# can be helpful when experimentally adding yields to improve responsiveness.
+#
+# To enable, run `make DO_PROFILING=1 DO_TASK_METRICS=1`
+# (or DO_PROFILING=xyzzy - `make` just cares that the symbol is defined)
+
 # export all variables to child processes by default
 .EXPORT_ALL_VARIABLES:
 
@@ -50,6 +60,9 @@ LIBCLI_BLD = $(LIBS_DIR)/libcli
 
 LIBTFM_SRC = $(CRYPTECH_ROOT)/sw/thirdparty/libtfm
 LIBTFM_BLD = $(LIBS_DIR)/libtfm
+
+LIBPROF_SRC = $(LIBS_DIR)/libprof
+LIBPROF_BLD = $(LIBS_DIR)/libprof
 
 LIBS = $(MBED_DIR)/libstmf4.a
 
@@ -114,6 +127,9 @@ CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4
 CFLAGS += -I$(MBED_DIR)/targets/cmsis/TARGET_STM/TARGET_STM32F4/$(BOARD)
 CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4
 CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
+ifdef DO_TASK_METRICS
+CFLAGS += -DDO_TASK_METRICS
+endif
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -121,7 +137,13 @@ CFLAGS += -I$(MBED_DIR)/targets/hal/TARGET_STM/TARGET_STM32F4/$(BOARD)
 %.o : %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+ifdef DO_PROFILING
+CFLAGS += -pg -DDO_PROFILING
+LIBS += $(LIBPROF_BLD)/libprof.a
+all: hsm
+else
 all: board-test cli-test libhal-test hsm bootloader
+endif
 
 $(MBED_DIR)/libstmf4.a: .FORCE
 	$(MAKE) -C $(MBED_DIR)
@@ -140,6 +162,9 @@ $(LIBHAL_BLD)/libhal.a: $(LIBTFM_BLD)/libtfm.a .FORCE
 
 $(LIBCLI_BLD)/libcli.a: .FORCE
 	$(MAKE) -C $(LIBCLI_BLD)
+
+$(LIBPROF_BLD)/libprof.a: .FORCE
+	$(MAKE) -C $(LIBPROF_BLD)
 
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
 	$(MAKE) -C projects/libhal-test
@@ -177,3 +202,4 @@ distclean: clean
 	$(MAKE) -C $(MBED_DIR) clean
 	$(MAKE) -C $(LIBTFM_BLD) clean
 	$(MAKE) -C $(LIBCLI_BLD) clean
+	$(MAKE) -C $(LIBPROF_BLD) clean

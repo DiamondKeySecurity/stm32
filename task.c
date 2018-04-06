@@ -81,6 +81,18 @@ static tcb_t *cur_task = NULL;
 
 #define STACK_GUARD_WORD 0x55AA5A5A
 
+#ifdef DO_TASK_METRICS
+static uint32_t tick_start = 0;
+static uint32_t tick_idle  = 0;
+static uint32_t tick_max   = 0;
+static uint32_t nyield     = 0;
+#endif
+
+static uint32_t tick_prev  = 0;
+#ifndef TASK_YIELD_THRESHOLD
+#define TASK_YIELD_THRESHOLD 100
+#endif
+
 /* Add a task.
  */
 tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stack_len)
@@ -180,6 +192,10 @@ void task_yield(void)
     if (tail == NULL)
 	return;
 
+#ifdef DO_TASK_METRICS
+    uint32_t tick0 = HAL_GetTick();
+#endif
+
     /* Find the next runnable task. Loop if every task is waiting. */
     while (1) {
         next = next_task();
@@ -196,6 +212,22 @@ void task_yield(void)
      *     next = next_task();
      * } while (next == NULL);
      */
+
+#ifdef DO_TASK_METRICS
+    uint32_t tick = HAL_GetTick();
+    tick_idle += (tick - tick0);
+    if (tick_start == 0)
+        tick_start = tick;
+    if (tick_prev != 0) {
+        uint32_t duration = tick0 - tick_prev;
+        if (duration > tick_max)
+            tick_max = duration;
+    }
+    tick_prev = tick;
+    ++nyield;
+#else
+    tick_prev = HAL_GetTick();
+#endif
 
     /* If there are no other runnable tasks (and cur_task is runnable),
      * we don't need to context-switch.
@@ -228,6 +260,14 @@ void task_yield(void)
         __asm("pop {r0-r12, lr}");
         return;
     }
+}
+
+/* Yield if it's been "too long" since the last yield.
+ */
+void task_yield_maybe(void)
+{
+    if (HAL_GetTick() - tick_prev >= TASK_YIELD_THRESHOLD)
+        task_yield();
 }
 
 /* Put the current task to sleep (make it non-runnable).
@@ -354,3 +394,25 @@ void task_mutex_unlock(task_mutex_t *mutex)
     if (mutex != NULL)
 	mutex->locked = 0;
 }
+
+#ifdef DO_TASK_METRICS
+void task_get_metrics(struct task_metrics *tm)
+{
+    if (tm != NULL) {
+        tm->avg.tv_sec  = 0;
+        tm->avg.tv_usec = (HAL_GetTick() - tick_start - tick_idle) * 1000 / nyield;
+        if (tm->avg.tv_usec > 1000000) {
+            tm->avg.tv_sec  = tm->avg.tv_usec / 1000000;
+            tm->avg.tv_usec = tm->avg.tv_usec % 1000000;
+        }
+        tm->max.tv_sec  = tick_max / 1000;
+        tm->max.tv_usec = (tick_max % 1000) * 1000;
+    }
+}
+
+void task_reset_metrics(void)
+{
+    tick_start = HAL_GetTick();
+    tick_prev = tick_idle = tick_max = nyield = 0;
+}
+#endif

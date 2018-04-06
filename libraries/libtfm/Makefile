@@ -30,7 +30,12 @@ LIB  := tomsfastmath/libtfm.a
 # for now, at least until we confirm that it hasn't already been fixed
 # in a newer version of libtfm.
 
+ifdef DO_PROFILING
+# arm-none-eabi-gcc: error: -pg and -fomit-frame-pointer are incompatible
+STM32_LIBTFM_CFLAGS_OPTIMIZATION := -O3 -funroll-loops
+else
 STM32_LIBTFM_CFLAGS_OPTIMIZATION := -O3 -funroll-loops -fomit-frame-pointer
+endif
 
 CFLAGS := $(subst ${STM32_CFLAGS_OPTIMIZATION},${STM32_LIBTFM_CFLAGS_OPTIMIZATION},${CFLAGS})
 CFLAGS += -DTFM_ARM -Dasm=__asm__ -Wa,-mimplicit-it=thumb
