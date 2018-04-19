@@ -197,7 +197,7 @@ HAL_StatusTypeDef n25q128_write_page(struct spiflash_ctx *ctx, uint32_t page_off
 }
 
 
-static int n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, uint32_t byte_offset)
+static HAL_StatusTypeDef n25q128_erase_something(struct spiflash_ctx *ctx, uint8_t command, uint32_t byte_offset)
 {
     // check offset
     if (byte_offset >= N25Q128_NUM_BYTES) return HAL_ERROR;

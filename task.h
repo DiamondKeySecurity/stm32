@@ -51,6 +51,7 @@ typedef struct { unsigned locked; } task_mutex_t;
 typedef void (*funcp_t)(void);
 
 extern tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stack_len);
+extern void task_mod(char *name, funcp_t func, void *cookie);
 
 extern void task_set_idle_hook(funcp_t func);
 
