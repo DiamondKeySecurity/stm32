@@ -5,7 +5,7 @@ CFLAGS += -Wno-unused-parameter
 
 ###########################################
 
-vpath %.c targets/cmsis/TARGET_STM/TARGET_STM32F4 targets/cmsis/TARGET_STM/TARGET_STM32F4/TARGET_CRYPTECH_DEV_BRIDGE
+vpath %.c $(CMSIS_DIR) $(BOARD_DIR)
 
 SRCS =	stm32f4xx_hal.c \
 	stm32f4xx_hal_adc.c \
