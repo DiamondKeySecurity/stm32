@@ -409,6 +409,12 @@ task_mutex_t ks_mutex = { 0 };
 void hal_ks_lock(void)   { task_mutex_lock(&ks_mutex); }
 void hal_ks_unlock(void) { task_mutex_unlock(&ks_mutex); }
 
+/* A mutex to arbitrary concurrent access to the RSA blinding factors cache.
+ */
+task_mutex_t rsa_bf_mutex = { 0 };
+void hal_rsa_bf_lock(void)   { task_mutex_lock(&rsa_bf_mutex); }
+void hal_rsa_bf_unlock(void) { task_mutex_unlock(&rsa_bf_mutex); }
+
 /* Sleep for specified number of seconds.
  */
 void hal_sleep(const unsigned seconds) { task_delay(seconds * 1000); }
