@@ -184,38 +184,19 @@ static HAL_StatusTypeDef _fmc_nwait_idle(void)
 HAL_StatusTypeDef fmc_write_32(uint32_t addr, uint32_t *data)
 {
     // calculate target fpga address
-    uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
+    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 
-    __disable_irq();
+    // write data to fpga
+   *ptr = *data;
 
-    HAL_StatusTypeDef status =
-        // write data to fpga
-        HAL_SRAM_Write_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
-    if (status == HAL_OK)
-        // wait for transaction to complete
-        status = _fmc_nwait_idle();
-
-    __enable_irq();
-
-    return status;
-}
-
-static inline HAL_StatusTypeDef _fmc_read_32(uint32_t *ptr, uint32_t *data)
-{
-    HAL_StatusTypeDef status =
-        // read data from fpga
-        HAL_SRAM_Read_32b(&_fmc_fpga_inst, (uint32_t *)ptr, data, 1);
-    if (status == HAL_OK)
-        // wait for transaction to complete
-        status = _fmc_nwait_idle();
-
-    return status;
+   // wait for transaction to complete
+    return _fmc_nwait_idle();
 }
 
 HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data)
 {
     // calculate target fpga address
-    uint32_t ptr = FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK);
+    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 
     /* Pavel says:
      * The short story is like, on one hand STM32 has a dedicated FMC_NWAIT
@@ -227,20 +208,16 @@ HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data)
      * two times.
      */
 
-    /* Add some level of reentrancy protection. When running under a
-     * preemptive multitasker, with two threads banging on the fpga, we appear
-     * to sometimes read the wrong value. I think this is because the second
-     * read counts on the first read to put the correct value on the address
-     * bus.
-     */
-    __disable_irq();
+    HAL_StatusTypeDef status;
 
-    HAL_StatusTypeDef status =
-        _fmc_read_32((uint32_t *)ptr, data);
-    if (status == HAL_OK)
-        status = _fmc_read_32((uint32_t *)ptr, data);
+    *data = *ptr;
+    status = _fmc_nwait_idle();
 
-    __enable_irq();
+    if (status != HAL_OK)
+        return status;
+
+    *data = *ptr;
+    status = _fmc_nwait_idle();
 
     return status;
 }
