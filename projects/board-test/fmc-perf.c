@@ -31,7 +31,7 @@ static void sanity(void)
     uint32_t rnd, data;
   
     rnd = random();  
-    if (fmc_write_32(0, &rnd) != 0) {
+    if (fmc_write_32(0, rnd) != 0) {
 	uart_send_string("fmc_write_32 failed\r\n");
 	Error_Handler();
     }
@@ -88,7 +88,7 @@ static void test_write(void)
     uint32_t i;
     
     for (i = 0; i < TEST_NUM_ROUNDS; ++i) {
-	if (fmc_write_32(0, &i) != 0) {
+	if (fmc_write_32(0, i) != 0) {
 	    uart_send_string("fmc_write_32 failed\r\n");
 	    Error_Handler();
 	}

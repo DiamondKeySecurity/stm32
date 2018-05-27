@@ -73,19 +73,19 @@ static inline HAL_StatusTypeDef _fmc_nwait_idle(void)
     return HAL_ERROR;
 }
 
-static inline HAL_StatusTypeDef fmc_write_32(uint32_t addr, uint32_t *data)
+static inline HAL_StatusTypeDef fmc_write_32(const uint32_t addr, const uint32_t data)
 {
     // calculate target fpga address
     uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 
     // write data to fpga
-   *ptr = *data;
+   *ptr = data;
 
    // wait for transaction to complete
     return _fmc_nwait_idle();
 }
 
-static inline HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data)
+static inline HAL_StatusTypeDef fmc_read_32(const uint32_t addr, uint32_t * const data)
 {
     // calculate target fpga address
     uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));

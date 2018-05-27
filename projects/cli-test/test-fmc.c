@@ -76,7 +76,7 @@ volatile uint32_t data_diff = 0;
 volatile uint32_t addr_diff = 0;
 
 
-static int _write_then_read(struct cli_def *cli, uint32_t addr, uint32_t *write_buf, uint32_t *read_buf)
+static int _write_then_read(struct cli_def *cli, uint32_t addr, uint32_t write_buf, uint32_t *read_buf)
 {
     int ok;
 
@@ -115,7 +115,7 @@ int test_fpga_data_bus(struct cli_def *cli, uint32_t test_rounds)
 	}
 
 	/* write value to fpga at address 0 and then read it back from the test register */
-	if (! _write_then_read(cli, 0, &rnd, &buf)) break;
+	if (! _write_then_read(cli, 0, rnd, &buf)) break;
 
 	/* compare (abort testing in case of error) */
 	data_diff = buf ^ rnd;
@@ -137,7 +137,7 @@ int test_fpga_data_bus(struct cli_def *cli, uint32_t test_rounds)
         for (i = 0; i < 31; i++) {
             data = 1 << i;
 
-	    if (! _write_then_read(cli, 0, &data, &buf)) break;
+	    if (! _write_then_read(cli, 0, data, &buf)) break;
 
 	    if (data == buf) {
 	        cli_print(cli, "Data 0x%08lx (FMC_D%02i) - OK", data, i + 1);
@@ -181,7 +181,7 @@ int test_fpga_address_bus(struct cli_def *cli, uint32_t test_rounds)
 	/* write dummy value to fpga at some non-zero address and then read from the
 	   test register to see what address the FPGA thought we wrote to
 	*/
-	if (! _write_then_read(cli, addr, &dummy, &buf)) break;
+	if (! _write_then_read(cli, addr, dummy, &buf)) break;
 
 	/* fpga receives address of 32-bit word, while we need
 	   byte address here to compare
@@ -210,7 +210,7 @@ int test_fpga_address_bus(struct cli_def *cli, uint32_t test_rounds)
 
 	    shifted_addr = addr << 2;
 
-	    if (! _write_then_read(cli, shifted_addr, &dummy, &buf)) break;
+	    if (! _write_then_read(cli, shifted_addr, dummy, &buf)) break;
 
 	    if (addr == buf) {
 	        cli_print(cli, "Address 0x%08lx (FMC_A%02i) - OK", addr, i + 1);

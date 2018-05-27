@@ -171,7 +171,7 @@ int test_fpga_data_bus(void)
       if (hal_result != HAL_OK) break;
 
       // write value to fpga at address 0
-      ok = fmc_write_32(0, &rnd);
+      ok = fmc_write_32(0, rnd);
       if (ok != 0) break;
 
       // read value from fpga
@@ -239,7 +239,7 @@ int test_fpga_address_bus(void)
       if (rnd == 0) continue;
 
       // write dummy value to fpga at some non-zero address
-      ok = fmc_write_32(rnd, &buf);
+      ok = fmc_write_32(rnd, buf);
       if (ok != 0) break;
 
       // read value from fpga
