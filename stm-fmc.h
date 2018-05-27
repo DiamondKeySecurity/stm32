@@ -57,7 +57,61 @@
 
 
 extern void fmc_init(void);
-extern HAL_StatusTypeDef fmc_write_32(uint32_t addr, uint32_t *data);
-extern HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data);
+
+static inline HAL_StatusTypeDef _fmc_nwait_idle(void)
+{
+    int cnt;
+
+    // poll NWAIT (number of iterations is limited)
+    for (cnt=0; cnt<FMC_FPGA_NWAIT_MAX_POLL_TICKS; cnt++)
+    {
+        // read pin state
+        if (HAL_GPIO_ReadPin(FMC_GPIO_PORT_NWAIT, FMC_GPIO_PIN_NWAIT) == FMC_NWAIT_IDLE)
+            return HAL_OK;
+    }
+
+    return HAL_ERROR;
+}
+
+static inline HAL_StatusTypeDef fmc_write_32(uint32_t addr, uint32_t *data)
+{
+    // calculate target fpga address
+    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
+
+    // write data to fpga
+   *ptr = *data;
+
+   // wait for transaction to complete
+    return _fmc_nwait_idle();
+}
+
+static inline HAL_StatusTypeDef fmc_read_32(uint32_t addr, uint32_t *data)
+{
+    // calculate target fpga address
+    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
+
+    /* Pavel says:
+     * The short story is like, on one hand STM32 has a dedicated FMC_NWAIT
+     * pin, that can be used in variable-latency data transfer mode. On the
+     * other hand STM32 also has a very nasty hardware bug associated with
+     * FMC_WAIT, that causes processor to freeze under certain conditions.
+     * Because of this FMC_NWAIT cannot be used and FPGA can't properly signal
+     * to STM32, when data transfer is done. Because of that we have to read
+     * two times.
+     */
+
+    HAL_StatusTypeDef status;
+
+    *data = *ptr;
+    status = _fmc_nwait_idle();
+
+    if (status != HAL_OK)
+        return status;
+
+    *data = *ptr;
+    status = _fmc_nwait_idle();
+
+    return status;
+}
 
 #endif /* __STM_FMC_H */
