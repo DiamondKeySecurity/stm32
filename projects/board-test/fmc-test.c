@@ -158,7 +158,7 @@ int main(void)
 int test_fpga_data_bus(void)
 //------------------------------------------------------------------------------
 {
-  int c, ok;
+  int c;
   uint32_t rnd, buf;
   HAL_StatusTypeDef hal_result;
 
@@ -171,12 +171,10 @@ int test_fpga_data_bus(void)
       if (hal_result != HAL_OK) break;
 
       // write value to fpga at address 0
-      ok = fmc_write_32(0, rnd);
-      if (ok != 0) break;
+      fmc_write_32(0, rnd);
 
       // read value from fpga
-      ok = fmc_read_32(0, &buf);
-      if (ok != 0) break;
+      fmc_read_32(0, &buf);
 
       // compare (abort testing in case of error)
       if (buf != rnd)
@@ -218,7 +216,7 @@ int test_fpga_data_bus(void)
 int test_fpga_address_bus(void)
 //------------------------------------------------------------------------------
 {
-  int c, ok;
+  int c;
   uint32_t rnd, buf;
   HAL_StatusTypeDef hal_result;
 
@@ -239,12 +237,10 @@ int test_fpga_address_bus(void)
       if (rnd == 0) continue;
 
       // write dummy value to fpga at some non-zero address
-      ok = fmc_write_32(rnd, buf);
-      if (ok != 0) break;
+      fmc_write_32(rnd, buf);
 
       // read value from fpga
-      ok = fmc_read_32(0, &buf);
-      if (ok != 0) break;
+      fmc_read_32(0, &buf);
 
       // fpga receives address of 32-bit word, while we need
       // byte address here to compare
