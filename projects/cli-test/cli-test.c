@@ -88,3 +88,9 @@ void *hal_allocate_static_memory(const size_t size)
 {
     return NULL;
 }
+
+int hal_free_static_memory(const void * const ptr)
+{
+    return 0;
+}
+

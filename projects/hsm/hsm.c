@@ -90,23 +90,16 @@ static uint8_t busy_stack[BUSY_STACK_SIZE];
 #endif
 static uint8_t cli_stack[CLI_STACK_SIZE];
 
-#ifndef MAX_PKT_SIZE
-/* An arbitrary number, more or less driven by the 4096-bit RSA
- * keygen test.
- */
-#define MAX_PKT_SIZE 4096
-#endif
-
 /* RPC buffers. For each active request, there will be two - input and output.
  */
 typedef struct rpc_buffer_s {
     size_t len;
-    uint8_t buf[MAX_PKT_SIZE];
+    uint8_t buf[HAL_RPC_MAX_PKT_SIZE];
     struct rpc_buffer_s *next;  /* for ibuf queue linking */
 } rpc_buffer_t;
 
 /* RPC input (requst) buffers */
-static rpc_buffer_t ibufs[NUM_RPC_TASK];
+static rpc_buffer_t *ibufs;
 
 /* ibuf queue structure */
 typedef struct {
@@ -348,34 +341,71 @@ static void busy_task(void)
     }
 }
 
-/* Allocate memory from SDRAM1. There is only malloc, no free, so we don't
- * worry about fragmentation. */
+#include "stm-fpgacfg.h"
+#include "hashsig.h"
+
+static void hashsig_restart_task(void)
+{
+    /* wait for the fpga to configure itself on cold-boot */
+    while (fpgacfg_check_done() != CMSIS_HAL_OK)
+        task_yield();
+
+    /* reinitialize the hashsig key structures after a device restart */
+    hal_hashsig_ks_init();
+
+    /* done, convert this task to an RPC handler */
+    task_mod((char *)task_get_cookie(NULL), dispatch_task, NULL);
+}
+
+/* end of variables declared with __attribute__((section(".sdram1"))) */
+extern uint8_t _esdram1 __asm ("_esdram1");
+/* end of SDRAM1 section */
+extern uint8_t __end_sdram1 __asm ("__end_sdram1");
+static uint8_t *sdram_heap = &_esdram1;
+
+/* Allocate memory from SDRAM1. */
 static uint8_t *sdram_malloc(size_t size)
 {
-    /* end of variables declared with __attribute__((section(".sdram1"))) */
-    extern uint8_t _esdram1 __asm ("_esdram1");
-    /* end of SDRAM1 section */
-    extern uint8_t __end_sdram1 __asm ("__end_sdram1");
-
-    static uint8_t *sdram_heap = &_esdram1;
     uint8_t *p = sdram_heap;
 
 #define pad(n) (((n) + 3) & ~3)
     size = pad(size);
 
-    if (p + size > &__end_sdram1)
+    if (p + size + sizeof(uint32_t) > &__end_sdram1)
         return NULL;
 
-    sdram_heap += size;
+    *(uint32_t *)p = (uint32_t)size;
+    p += sizeof(uint32_t);
+
+    sdram_heap += size + sizeof(uint32_t);
     return p;
 }
 
-/* Implement static memory allocation for libhal over sdram_malloc().
- * Once again, there's only alloc, not free. */
+/* A very limited form of free(), which only frees memory if it's at the
+ * top of the heap.
+ */
+static hal_error_t sdram_free(uint8_t *ptr)
+{
+    uint8_t *p = ptr - sizeof(uint32_t);
+    uint32_t size = *(uint32_t *)p;
+    if (ptr + size == sdram_heap) {
+        sdram_heap = p;
+        return LIBHAL_OK;
+    }
+    else
+        return HAL_ERROR_FORBIDDEN;
+}
 
+/* Implement static memory allocation for libhal over sdram_malloc().
+ */
 void *hal_allocate_static_memory(const size_t size)
 {
     return sdram_malloc(size);
+}
+
+hal_error_t hal_free_static_memory(const void * const ptr)
+{
+    return sdram_free((uint8_t *)ptr);
 }
 
 /* Critical section start/end - temporarily disable interrupts.
@@ -431,9 +461,13 @@ int main(void)
         Error_Handler();
 
     /* Initialize the ibuf queues. */
+    ibufs = (rpc_buffer_t *)sdram_malloc(NUM_RPC_TASK * sizeof(rpc_buffer_t));
+    if (ibufs == NULL)
+        Error_Handler();
+    memset(ibufs, 0, NUM_RPC_TASK * sizeof(rpc_buffer_t));
     memset(&ibuf_waiting, 0, sizeof(ibuf_waiting));
     memset(&ibuf_ready, 0, sizeof(ibuf_ready));
-    for (size_t i = 0; i < sizeof(ibufs)/sizeof(ibufs[0]); ++i)
+    for (size_t i = 0; i < NUM_RPC_TASK; ++i)
         ibuf_put(&ibuf_waiting, &ibufs[i]);
 
     /* Create the rpc dispatch worker tasks. */
@@ -443,8 +477,14 @@ int main(void)
         void *stack = (void *)sdram_malloc(TASK_STACK_SIZE);
         if (stack == NULL)
             Error_Handler();
-        if (task_add(label[i], dispatch_task, &ibufs[i], stack, TASK_STACK_SIZE) == NULL)
-            Error_Handler();
+        if (i == NUM_RPC_TASK - 1) {
+            if (task_add("hashsig_restart", hashsig_restart_task, label[i], stack, TASK_STACK_SIZE) == NULL)
+                Error_Handler();
+        }
+        else {
+            if (task_add(label[i], dispatch_task, NULL, stack, TASK_STACK_SIZE) == NULL)
+                Error_Handler();
+        }
     }
 
     /* Create the busy task. */
@@ -466,4 +506,7 @@ int main(void)
 
     /* Start the tasker */
     task_yield();
+
+    /*NOTREACHED*/
+    return 0;
 }

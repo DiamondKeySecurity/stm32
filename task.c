@@ -131,6 +131,24 @@ tcb_t *task_add(char *name, funcp_t func, void *cookie, void *stack, size_t stac
     return t;
 }
 
+/* Reinitalize the current task.
+ * NOTE: This will destroy any state in the running task.
+ * DO NOT CALL THIS UNLESS YOU ARE REALLY SURE THAT'S WHAT YOU WANT TO DO.
+ */
+void task_mod(char *name, funcp_t func, void *cookie)
+{
+    tcb_t *t = cur_task;
+    t->name = name;
+    t->func = func;
+    t->cookie = cookie;
+    t->state = TASK_INIT;
+    t->stack_ptr = t->stack_base + t->stack_len;
+    for (uint32_t *p = (uint32_t *)t->stack_base; p < (uint32_t *)t->stack_ptr; ++p)
+        *p = STACK_GUARD_WORD;
+    __set_MSP((uint32_t)cur_task->stack_ptr);
+    task_yield();
+}
+
 /* Set the idle hook function pointer.
  *
  * This function is called repeatedly when the system is idle (there are
@@ -232,11 +250,11 @@ void task_yield(void)
     /* If there are no other runnable tasks (and cur_task is runnable),
      * we don't need to context-switch.
      */
-    if (next == cur_task)
+    if (next == cur_task && cur_task->state != TASK_INIT)
         return;
 
     /* Save current context, if there is one. */
-    if (cur_task != NULL) {
+    if (cur_task != NULL && cur_task->state != TASK_INIT) {
         __asm("push {r0-r12, lr}");
         cur_task->stack_ptr = (void *)__get_MSP();
 
