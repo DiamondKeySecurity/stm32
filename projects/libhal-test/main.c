@@ -43,6 +43,7 @@ extern void __main(void);
 int main(void)
 {
     stm_init();
+    HAL_Delay(500);
     led_on(LED_GREEN);
 
     __main();
