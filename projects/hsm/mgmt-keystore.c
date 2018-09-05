@@ -50,6 +50,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 
 
@@ -320,12 +321,33 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
 {
     hal_error_t err;
     HAL_StatusTypeDef status;
+    int preserve_PINs = 0;
 
     command = command;
 
-    if (argc != 1 || strcmp(argv[0], "YesIAmSure") != 0) {
-	cli_print(cli, "Syntax: keystore erase YesIAmSure");
+    if (argc < 1 || argc > 2 || strcmp(argv[0], "YesIAmSure") != 0) {
+    usage:
+	cli_print(cli, "Syntax: keystore erase YesIAmSure [preservePINs]");
 	return CLI_ERROR;
+    }
+    if (argc == 2) {
+        if (strcasecmp(argv[1], "preservePINs") != 0)
+            goto usage;
+        else
+            preserve_PINs = 1;
+    }
+
+    hal_user_t users[3] = { HAL_USER_NORMAL, HAL_USER_SO, HAL_USER_WHEEL };
+    hal_ks_pin_t pins[3];
+    if (preserve_PINs) {
+        for (size_t i = 0; i < 3; ++i) {
+            const hal_ks_pin_t *pin;
+            if (hal_get_pin(users[i], &pin) != HAL_OK) {
+                cli_print(cli, "Failed to get the PINs");
+                return CLI_ERROR;
+            }
+            memcpy(&pins[i], pin, sizeof(*pin));
+        }
     }
 
     cli_print(cli, "OK, erasing keystore, this will take about 45 seconds...");
@@ -342,6 +364,15 @@ static int cmd_keystore_erase(struct cli_def *cli, const char *command, char *ar
     if ((err = hal_ks_init(hal_ks_volatile, 0)) != LIBHAL_OK) {
         cli_print(cli, "Failed to reinitialize memory keystore: %s", hal_error_string(err));
 	return CLI_ERROR;
+    }
+
+    if (preserve_PINs) {
+        for (size_t i = 0; i < 3; ++i) {
+            if (hal_set_pin(users[i], &pins[i]) != HAL_OK) {
+                cli_print(cli, "Failed to restore the PINs");
+                return CLI_ERROR;
+            }
+        }
     }
 
     cli_print(cli, "Keystore erased");
