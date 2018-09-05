@@ -60,24 +60,6 @@ static char * _status2str(const hal_error_t status)
     }
 }
 
-static int _parse_hex_groups(uint8_t *buf, size_t len, char *argv[], int argc)
-{
-    int i;
-    uint32_t *dst = (uint32_t *) buf;
-    uint32_t *end = (uint32_t *) buf + len - 1;
-    char *err_ptr = NULL;
-
-    if (! argc) return 0;
-
-    for (i = 0; i < argc; i++) {
-	if (dst >= end) return -1;
-	*dst++ = strtoul(argv[i], &err_ptr, 16);
-	if (*err_ptr) return -2;
-    }
-
-    return 1;
-}
-
 static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     hal_error_t status;
@@ -97,12 +79,54 @@ static int cmd_masterkey_status(struct cli_def *cli, const char *command, char *
     return CLI_OK;
 }
 
+static int str_to_hex_digit(char c)
+{
+    if (c >= '0' && c <= '9')
+        c -= '0';
+    else if (c >= 'a' && c <= 'f')
+        c =  c - 'a' + 10;
+    else if (c >= 'A' && c <= 'F')
+        c =  c - 'A' + 10;
+    else
+        return -1;
+
+    return c;
+}
+
+static inline char hex_to_str_digit(const uint8_t c)
+{
+    return (c < 10) ? ((char)c + '0') : ((char)c + 'A' - 10);
+}
+
+static char *hexdump_kek(const uint8_t * const kek)
+{
+    /* This is only for dumping masterkey values, so has no length checks.
+     * Do not use it for anything else.
+     *
+     * For convenience of possibly hand-copying and hand-retyping, the key
+     * is divided into 8 4-byte (8-character) groups.
+     */
+
+    static char buf[2 * KEK_LENGTH + 8];
+    char *dst = buf;
+
+    for (size_t i = 0; i < KEK_LENGTH; ++i) {
+        uint8_t b = kek[i];
+        *dst++ = hex_to_str_digit(b >> 4);
+        *dst++ = hex_to_str_digit(b & 0xf);
+        if ((i & 3) == 3)
+            *dst++ = ' ';
+    }
+    buf[sizeof(buf) - 1] = '\0';
+
+    return buf;
+}
+
 static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
                           char *label, hal_error_t (*writer)(const uint8_t * const, const size_t))
 {
     uint8_t buf[KEK_LENGTH] = {0};
     hal_error_t err;
-    int i;
 
     if (argc == 0) {
         /* fill master key with yummy randomness */
@@ -110,20 +134,32 @@ static int _masterkey_set(struct cli_def *cli, char *argv[], int argc,
             cli_print(cli, "Error getting random key: %s", hal_error_string(err));
             return CLI_ERROR;
         }
-        cli_print(cli, "Random key:\n");
-        uart_send_hexdump(buf, 0, sizeof(buf) - 1);
-        cli_print(cli, "\n");
+        cli_print(cli, "Random key:\n%s", hexdump_kek(buf));
     }
 
     else {
-        if ((i = _parse_hex_groups(&buf[0], sizeof(buf), argv, argc)) != 1) {
-            cli_print(cli, "Failed parsing master key, expected up to 8 groups of 32-bit hex chars (%i)", i);
+        /* input is 32 hex bytes, arranged however the user wants */
+        size_t len = 0;
+        for (int i = 0; i < argc; ++i) {
+            for (char *cp = argv[i]; *cp != '\0'; ) {
+                int c;
+                if ((c = str_to_hex_digit(*cp++)) < 0)
+                    goto errout;
+                buf[len] = c << 4;
+                if ((c = str_to_hex_digit(*cp++)) < 0)
+                    goto errout;
+                buf[len] |= c & 0xf;
+                if (++len > KEK_LENGTH)
+                    goto errout;
+            }
+        }
+        if (len < KEK_LENGTH) {
+        errout:
+            cli_print(cli, "Failed parsing master key, expected exactly %d hex bytes", KEK_LENGTH);
             return CLI_ERROR;
         }
 
-        cli_print(cli, "Parsed key:\n");
-        uart_send_hexdump(buf, 0, sizeof(buf) - 1);
-        cli_print(cli, "\n");
+        cli_print(cli, "Parsed key:\n%s", hexdump_kek(buf));
     }
 
     if ((err = writer(buf, sizeof(buf))) == LIBHAL_OK) {

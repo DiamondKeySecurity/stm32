@@ -11,7 +11,8 @@ CFLAGS += \
 	-DDO_REGULAR=0 \
 	-DDO_SOCKET=0 \
 	-DDO_TAB_COMPLETION=1 \
-	-DDO_TELNET=0
+	-DDO_TELNET=0 \
+	-DCLI_MAX_LINE_WORDS=36
 CFLAGS += -Wno-unused-parameter
 
 all: libcli.a
