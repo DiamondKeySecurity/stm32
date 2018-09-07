@@ -153,7 +153,18 @@ void fmc_init(void)
     fmc_timing.BusTurnAroundDuration = 0;
 
     // use smallest allowed divisor for best performance
-    fmc_timing.CLKDivision = 2;
+    //
+    // FMC_CLK = HCLK / CLKDivision, HCLK is 180 MHz
+    //
+    // Allowed values for CLKDivision are integers >= 2.
+    //
+    // Division == 2: FMC_CLK = 180 / 2 = 90 MHz (highest allowed frequency)
+    // Division == 3: FMC_CLK = 180 / 3 = 60 MHz (one step below)
+    // ...
+    //
+
+//  fmc_timing.CLKDivision = 2;     // 90 MHz
+    fmc_timing.CLKDivision = 3;     // 60 MHz
 
     // use min suitable for fastest transfer
     fmc_timing.DataLatency = 4;
@@ -164,22 +175,21 @@ void fmc_init(void)
     // initialize fmc
     HAL_SRAM_Init(&_fmc_fpga_inst, &fmc_timing, NULL);
 		
-		// STM32 only enables FMC clock right before the very first read/write
-		// access. FPGA takes certain time (<= 100 us) to lock its PLL to this frequency,
-		// so a certain number of initial FMC transactions may be missed. One read transaction
-		// takes ~0.1 us (9 ticks @ 90 MHz), so doing 1000 dummy reads will make sure, that FPGA
-		// has already locked its PLL and is ready. Another way around is to repeatedly read
-		// some register that is guaranteed to have known value until reading starts returning
-		// correct data.
+    // STM32 only enables FMC clock right before the very first read/write
+    // access. FPGA takes certain time (<= 100 us) to lock its PLL to this frequency,
+    // so a certain number of initial FMC transactions may be missed. One read transaction
+    // takes ~0.1 us (9 ticks @ 90 MHz), so doing 1000 dummy reads will make sure, that FPGA
+    // has already locked its PLL and is ready. Another way around is to repeatedly read
+    // some register that is guaranteed to have known value until reading starts returning
+    // correct data.
 		
-		// to prevent compiler from optimizing this away, we pretent we're calculating sum
-		int cyc;
-		uint32_t sum;
-		volatile uint32_t part;
-		
-		for (cyc=0; cyc<1000; cyc++)
-		{
-			part = *(__IO uint32_t *)FMC_FPGA_BASE_ADDR;
-			sum += part;
-		}
+    // to prevent compiler from optimizing this away, we pretent we're calculating sum
+    int cyc;
+    uint32_t sum;
+    volatile uint32_t part;
+
+    for (cyc = 0; cyc < 1000; cyc++) {
+      part = *(__IO uint32_t *)FMC_FPGA_BASE_ADDR;
+      sum += part;
+    }
 }
