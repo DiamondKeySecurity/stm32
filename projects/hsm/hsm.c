@@ -86,9 +86,8 @@ static uint8_t busy_stack[BUSY_STACK_SIZE];
  * 4096-byte block of an FPGA or bootloader image upload.
  */
 #ifndef CLI_STACK_SIZE
-#define CLI_STACK_SIZE 8*1024
+#define CLI_STACK_SIZE 16*1024
 #endif
-static uint8_t cli_stack[CLI_STACK_SIZE];
 
 /* RPC buffers. For each active request, there will be two - input and output.
  */
@@ -501,7 +500,8 @@ int main(void)
      */
 
     /* Create the CLI task. */
-    if (task_add("cli", (funcp_t)cli_main, NULL, cli_stack, sizeof(cli_stack)) == NULL)
+    void *cli_stack = (void *)sdram_malloc(CLI_STACK_SIZE);
+    if (task_add("cli", (funcp_t)cli_main, NULL, cli_stack, CLI_STACK_SIZE) == NULL)
         Error_Handler();
 
     /* Start the tasker */
