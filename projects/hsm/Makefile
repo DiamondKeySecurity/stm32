@@ -25,7 +25,6 @@ LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS += -Wl,--gc-sections
 
 ifdef DO_PROFILING
-OBJS += $(TOPLEVEL)/memfunc.o
 LDFLAGS += --specs=rdimon.specs -lc -lrdimon
 endif
 
