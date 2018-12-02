@@ -36,289 +36,226 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <stdint.h>
-#include "gmon.h"
-#include "profil.h"
 #include <string.h>
+#include "gmon.h"
 
 #define bzero(ptr,size) memset (ptr, 0, size);
 #define ERR(s) write(2, s, sizeof(s))
 
-struct gmonparam _gmonparam = { GMON_PROF_OFF, NULL, 0, NULL, 0, NULL, 0, 0L, 0, 0, 0};
-static char already_setup = 0; /* flag to indicate if we need to init */
-static int	s_scale;
-/* see profil(2) where this is described (incorrectly) */
-#define		SCALE_1_TO_1	0x10000L
+/* profiling frequency.  (No larger than 1000) */
+/* Note this doesn't set the frequency, but merely describes it. */
+#define PROF_HZ                 1000
 
-static void moncontrol(int mode);
+struct gmonparam _gmonparam = { off, NULL, 0, NULL, 0, NULL, 0, 0, 0, 0, 0};
 
-void monstartup (size_t lowpc, size_t highpc) {
-	register size_t o;
-	char *cp;
-	struct gmonparam *p = &_gmonparam;
+void monstartup(size_t lowpc, size_t highpc)
+{
+  static char already_setup = 0;
+  struct gmonparam *p = &_gmonparam;
 
-	if (already_setup) {
-            /* zero out cp as value will be added there */
-            bzero(p->tos, p->kcountsize + p->fromssize + p->tossize);
-            moncontrol(1); /* start */
-            return;
-        }
-        already_setup = 1;
+  if (already_setup) {
+    /* reinitialize counters and arcs */
+    bzero(p->kcount, p->kcountsize);
+    bzero(p->froms, p->fromssize);
+    bzero(p->tos, p->tossize);
+    p->state = on;
+    return;
+  }
+  already_setup = 1;
 
-        /* enable semihosting, for eventual output */
-        extern void initialise_monitor_handles(void);
-        initialise_monitor_handles();
+  /* enable semihosting, for eventual output */
+  extern void initialise_monitor_handles(void);
+  initialise_monitor_handles();
 
-	/*
-	 * round lowpc and highpc to multiples of the density we're using
-	 * so the rest of the scaling (here and in gprof) stays in ints.
-	 */
-	p->lowpc = ROUNDDOWN(lowpc, HISTFRACTION * sizeof(HISTCOUNTER));
-	p->highpc = ROUNDUP(highpc, HISTFRACTION * sizeof(HISTCOUNTER));
-        p->textsize = p->highpc - p->lowpc + 0x20;
-	p->kcountsize = p->textsize / HISTFRACTION;
-	p->fromssize = p->textsize / HASHFRACTION;
-	p->tolimit = p->textsize * ARCDENSITY / 100;
-	if (p->tolimit < MINARCS) {
-		p->tolimit = MINARCS;
-	} else if (p->tolimit > MAXARCS) {
-		p->tolimit = MAXARCS;
-	}
-	p->tossize = p->tolimit * sizeof(struct tostruct);
+  /*
+   * round lowpc and highpc to multiples of the density we're using
+   * so the rest of the scaling (here and in gprof) stays in ints.
+   */
+  p->lowpc = ROUNDDOWN(lowpc, HISTFRACTION * sizeof(HISTCOUNTER));
+  p->highpc = ROUNDUP(highpc, HISTFRACTION * sizeof(HISTCOUNTER));
+  p->textsize = p->highpc - p->lowpc;
+  p->kcountsize = p->textsize / HISTFRACTION;
+  p->fromssize = p->textsize / HASHFRACTION;
+  p->tolimit = p->textsize * ARCDENSITY / 100;
+  if (p->tolimit < MINARCS) {
+    p->tolimit = MINARCS;
+  } else if (p->tolimit > MAXARCS) {
+    p->tolimit = MAXARCS;
+  }
+  p->tossize = p->tolimit * sizeof(struct tostruct);
 
-        extern void *hal_allocate_static_memory(const size_t size);
-        cp = hal_allocate_static_memory(p->kcountsize + p->fromssize + p->tossize);
-	if (cp == NULL) {
-		ERR("monstartup: out of memory\n");
-		return;
-	}
+  extern void *hal_allocate_static_memory(const size_t size);
+  void *cp = hal_allocate_static_memory(p->kcountsize + p->fromssize + p->tossize);
+  if (cp == NULL) {
+    ERR("monstartup: out of memory\n");
+    return;
+  }
 
-	/* zero out cp as value will be added there */
-	bzero(cp, p->kcountsize + p->fromssize + p->tossize);
+  bzero(cp, p->kcountsize + p->fromssize + p->tossize);
+  p->kcount = (unsigned short *)cp; cp += p->kcountsize;
+  p->froms = (unsigned short *)cp;  cp += p->fromssize;
+  p->tos = (struct tostruct *)cp;
 
-	p->tos = (struct tostruct *)cp;
-	cp += p->tossize;
-	p->kcount = (unsigned short *)cp;
-	cp += p->kcountsize;
-	p->froms = (unsigned short *)cp;
-
-	p->tos[0].link = 0;
-
-	o = p->highpc - p->lowpc;
-	if (p->kcountsize < o) {
-#ifndef notdef
-		s_scale = ((float)p->kcountsize / o ) * SCALE_1_TO_1;
-#else /* avoid floating point */
-		int quot = o / p->kcountsize;
-
-		if (quot >= 0x10000)
-			s_scale = 1;
-		else if (quot >= 0x100)
-			s_scale = 0x10000 / quot;
-		else if (o >= 0x800000)
-			s_scale = 0x1000000 / (o / (p->kcountsize >> 8));
-		else
-			s_scale = 0x1000000 / ((o << 8) / p->kcountsize);
-#endif
-	} else {
-		s_scale = SCALE_1_TO_1;
-	}
-	moncontrol(1); /* start */
+  p->state = on;
 }
 
-void _mcleanup(void) {
-	static const char gmon_out[] = "gmon.out";
-	int fd;
-	int fromindex;
-	int endfrom;
-	size_t frompc;
-	int toindex;
-	struct rawarc rawarc;
-	struct gmonparam *p = &_gmonparam;
-	struct gmonhdr gmonhdr = {0}, *hdr;
-	const char *proffile;
-#ifdef DEBUG
-	int log, len;
-	char dbuf[200];
-#endif
+void _mcleanup(void)
+{
+  static const char gmon_out[] = "gmon.out";
+  int fd;
+  struct gmonparam *p = &_gmonparam;
 
-	if (p->state == GMON_PROF_ERROR) {
-		ERR("_mcleanup: tos overflow\n");
-	}
-	moncontrol(0); /* stop */
-	proffile = gmon_out;
-	fd = open(proffile , O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666);
-	if (fd < 0) {
-		perror( proffile );
-		return;
-	}
-#ifdef DEBUG
-	log = open("gmon.log", O_CREAT|O_TRUNC|O_WRONLY, 0664);
-	if (log < 0) {
-		perror("mcount: gmon.log");
-		return;
-	}
-	len = sprintf(dbuf, "[mcleanup1] kcount 0x%x ssiz %d\n",
-                      (unsigned int)p->kcount, p->kcountsize);
-	write(log, dbuf, len);
-#endif
-	hdr = (struct gmonhdr *)&gmonhdr;
-	hdr->lpc = p->lowpc;
-	hdr->hpc = p->highpc;
-	hdr->ncnt = p->kcountsize + sizeof(gmonhdr);
-	hdr->version = GMONVERSION;
-	hdr->profrate = PROF_HZ;
-	hdr->spare[0] = hdr->spare[1] = hdr->spare[2] = 0;
-	write(fd, (char *)hdr, sizeof *hdr);
-	write(fd, p->kcount, p->kcountsize);
-	endfrom = p->fromssize / sizeof(*p->froms);
-	for (fromindex = 0; fromindex < endfrom; fromindex++) {
-		if (p->froms[fromindex] == 0) {
-			continue;
-		}
-		frompc = p->lowpc;
-		frompc += fromindex * HASHFRACTION * sizeof(*p->froms);
-		for (toindex = p->froms[fromindex]; toindex != 0; toindex = p->tos[toindex].link) {
-#ifdef DEBUG
-			len = sprintf(dbuf,
-			"[mcleanup2] frompc 0x%x selfpc 0x%x count %ld\n" ,
-				frompc, p->tos[toindex].selfpc,
-				p->tos[toindex].count);
-			write(log, dbuf, len);
-#endif
-			rawarc.raw_frompc = frompc;
-			rawarc.raw_selfpc = p->tos[toindex].selfpc;
-			rawarc.raw_count = p->tos[toindex].count;
-			write(fd, &rawarc, sizeof rawarc);
-		}
-	}
-	close(fd);
+  if (p->state == err) {
+    ERR("_mcleanup: tos overflow\n");
+  }
+
+  fd = open(gmon_out , O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666);
+  if (fd < 0) {
+    perror( gmon_out );
+    return;
+  }
+
+  struct gmonhdr hdr = {
+    .lpc = p->lowpc,
+    .hpc = p->highpc,
+    .ncnt = p->kcountsize + sizeof(struct gmonhdr),
+    .version = GMONVERSION,
+    .profrate = PROF_HZ
+  };
+  write(fd, &hdr, sizeof(hdr));
+
+  write(fd, p->kcount, p->kcountsize);
+
+  for (size_t fromindex = 0; fromindex < p->fromssize / sizeof(*p->froms); fromindex++) {
+    size_t frompc = p->lowpc + fromindex * HASHFRACTION * sizeof(*p->froms);
+    for (size_t toindex = p->froms[fromindex]; toindex != 0; toindex = p->tos[toindex].next) {
+      struct rawarc arc = {
+        .frompc = frompc,
+        .selfpc = p->tos[toindex].selfpc,
+        .count = p->tos[toindex].count
+      };
+      write(fd, &arc, sizeof(arc));
+    }
+  }
+
+  close(fd);
 }
 
-/*
- * Control profiling
- *	profiling is what mcount checks to see if
- *	all the data structures are ready.
- */
-static void moncontrol(int mode) {
-	struct gmonparam *p = &_gmonparam;
-
-	if (mode) {
-		/* start */
-		profil((char *)p->kcount, p->kcountsize, p->lowpc, s_scale);
-		p->state = GMON_PROF_ON;
-	} else {
-		/* stop */
-		profil((char *)0, 0, 0, 0);
-		p->state = GMON_PROF_OFF;
-	}
-}
-
-void _mcount_internal(uint32_t *frompcindex, uint32_t *selfpc) {
-  register struct tostruct	*top;
-  register struct tostruct	*prevtop;
-  register long			toindex;
+void _mcount_internal(size_t frompc, size_t selfpc)
+{
+  register unsigned short       *fromptr;
+  register struct tostruct      *top;
+  register unsigned short       toindex;
   struct gmonparam *p = &_gmonparam;
 
   /*
-   *	check that we are profiling
-   *	and that we aren't recursively invoked.
+   *    check that we are profiling and that we aren't recursively invoked.
+   *    check that frompc is a reasonable pc value.
    */
-  if (p->state!=GMON_PROF_ON) {
-    goto out;
+  if (p->state != on || (frompc -= p->lowpc) > p->textsize) {
+    return;
   }
-  p->state++;
-  /*
-   *	check that frompcindex is a reasonable pc value.
-   *	for example:	signal catchers get called from the stack,
-   *			not from text space.  too bad.
-   */
-  frompcindex = (uint32_t*)((long)frompcindex - (long)p->lowpc);
-  if ((unsigned long)frompcindex > p->textsize) {
-      goto done;
-  }
-  frompcindex = (uint32_t*)&p->froms[((long)frompcindex) / (HASHFRACTION * sizeof(*p->froms))];
-  toindex = *((unsigned short*)frompcindex); /* get froms[] value */
-  if (toindex == 0) {
-    /*
-    *	first time traversing this arc
-    */
-    toindex = ++p->tos[0].link; /* the link of tos[0] points to the last used record in the array */
+
+  fromptr = &p->froms[frompc / (HASHFRACTION * sizeof(*p->froms))];
+  toindex = *fromptr;           /* get froms[] value */
+
+  if (toindex == 0) {           /* we haven't seen this caller before */
+    toindex = ++p->tos[0].next; /* index of the last used record in the array */
     if (toindex >= p->tolimit) { /* more tos[] entries than we can handle! */
-	    goto overflow;
-	  }
-    *((unsigned short*)frompcindex) = (unsigned short)toindex; /* store new 'to' value into froms[] */
-    top = &p->tos[toindex];
-    top->selfpc = (size_t)selfpc;
-    top->count = 1;
-    top->link = 0;
-    goto done;
-  }
-  top = &p->tos[toindex];
-  if (top->selfpc == (size_t)selfpc) {
-    /*
-     *	arc at front of chain; usual case.
-     */
-    top->count++;
-    goto done;
-  }
-  /*
-   *	have to go looking down chain for it.
-   *	top points to what we are looking at,
-   *	prevtop points to previous top.
-   *	we know it is not at the head of the chain.
-   */
-  for (; /* goto done */; ) {
-    if (top->link == 0) {
-      /*
-       *	top is end of the chain and none of the chain
-       *	had top->selfpc == selfpc.
-       *	so we allocate a new tostruct
-       *	and link it to the head of the chain.
-       */
-      toindex = ++p->tos[0].link;
-      if (toindex >= p->tolimit) {
-        goto overflow;
-      }
-      top = &p->tos[toindex];
-      top->selfpc = (size_t)selfpc;
-      top->count = 1;
-      top->link = *((unsigned short*)frompcindex);
-      *(unsigned short*)frompcindex = (unsigned short)toindex;
-      goto done;
+    overflow:
+      p->state = err; /* halt further profiling */
+#define TOLIMIT "mcount: tos overflow\n"
+      write (2, TOLIMIT, sizeof(TOLIMIT));
+      return;
     }
-    /*
-     *	otherwise, check the next arc on the chain.
-     */
-    prevtop = top;
-    top = &p->tos[top->link];
-    if (top->selfpc == (size_t)selfpc) {
+    *fromptr = toindex;         /* store new 'to' value into froms[] */
+    top = &p->tos[toindex];
+    top->selfpc = selfpc;
+    top->count = 1;
+    top->next = 0;
+  }
+
+  else {                        /* we've seen this caller before */
+    top = &p->tos[toindex];
+    if (top->selfpc == selfpc) {
       /*
-       *	there it is.
-       *	increment its count
-       *	move it to the head of the chain.
+       *  arc at front of chain; usual case.
        */
       top->count++;
-      toindex = prevtop->link;
-      prevtop->link = top->link;
-      top->link = *((unsigned short*)frompcindex);
-      *((unsigned short*)frompcindex) = (unsigned short)toindex;
-      goto done;
+    }
+
+    else {
+      /*
+       *  have to go looking down chain for it.
+       *  top points to what we are looking at,
+       *  prevtop points to previous top.
+       *  we know it is not at the head of the chain.
+       */
+      while (1) {
+        if (top->next == 0) {
+          /*
+           *    top is end of the chain and none of the chain
+           *    had top->selfpc == selfpc.
+           *    so we allocate a new tostruct
+           *    and put it at the head of the chain.
+           */
+          toindex = ++p->tos[0].next;
+          if (toindex >= p->tolimit) {
+            goto overflow;
+          }
+          top = &p->tos[toindex];
+          top->selfpc = selfpc;
+          top->count = 1;
+          top->next = *fromptr;
+          *fromptr = toindex;
+          break;
+        }
+
+        else {
+          /*
+           *    otherwise, check the next arc on the chain.
+           */
+          register struct tostruct *prevtop = top;
+          top = &p->tos[top->next];
+          if (top->selfpc == selfpc) {
+            /*
+             *  there it is.
+             *  increment its count
+             *  move it to the head of the chain.
+             */
+            top->count++;
+            toindex = prevtop->next;
+            prevtop->next = top->next;
+            top->next = *fromptr;
+            *fromptr = toindex;
+            break;
+          }
+        }
+      }
     }
   }
-  done:
-    p->state--;
-    /* and fall through */
-  out:
-    return;		/* normal return restores saved registers */
-  overflow:
-    p->state++; /* halt further profiling */
-    #define	TOLIMIT	"mcount: tos overflow\n"
-    write (2, TOLIMIT, sizeof(TOLIMIT));
-  goto out;
+
+  return;               /* normal return restores saved registers */
 }
 
-void _monInit(void) {
-  _gmonparam.state = GMON_PROF_OFF;
-  already_setup = 0;
+#include <stdint.h>
+#include "stm32f4xx_hal.h"      /* __get_MSP */
+
+/* called from the SysTick handler */
+void profil_callback(void)
+{
+  struct gmonparam *p = &_gmonparam;
+
+  if (p->state == on) {
+    /* The interrupt mechanism pushes xPSR, PC, LR, R12, and R3-R0 onto the
+     * stack, so PC is the 6th word from the top at that point. However, the
+     * normal function entry code pushes registers as well, so the stack
+     * offset right now depends on the call tree that got us here.
+     */
+    size_t pc = (size_t)((uint32_t *)__get_MSP())[6 + 6];
+    if ((pc -= p->lowpc) < p->textsize) {
+      size_t idx = pc / (HISTFRACTION * sizeof(*p->kcount));
+      p->kcount[idx]++;
+    }
+  }
 }

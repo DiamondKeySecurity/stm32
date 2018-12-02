@@ -1,6 +1,6 @@
 LIB = libprof.a
 
-OBJS = gmon.o profil.o profiler.o memfunc.o
+OBJS = gmon.o profiler.o memfunc.o
 
 # Don't profile the profiling code, because that way lies madness (and recursion).
 CFLAGS := $(subst -pg,,$(CFLAGS))

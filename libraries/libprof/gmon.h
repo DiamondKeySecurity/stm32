@@ -40,28 +40,6 @@
 #ifndef _SYS_GMON_H_
 #define _SYS_GMON_H_
 
-#ifndef __P
-#define __P(x) x
-#endif
-
-/* On POSIX systems, profile.h is a KRB5 header.  To avoid collisions, just
-   pull in profile.h's content here.  The profile.h header won't be provided
-   by Mingw-w64 anymore at one point. */
-#if 0
-#include <profile.h>
-#else
-#ifndef _WIN64
-#define _MCOUNT_CALL __attribute__ ((regparm (2)))
-extern void _mcount(void);
-#else
-#define _MCOUNT_CALL
-extern void mcount(void);
-#endif
-#define _MCOUNT_DECL __attribute__((gnu_inline)) __inline__ \
-   void _MCOUNT_CALL _mcount_private
-#define MCOUNT
-#endif
-
 /*
  * Structure prepended to gmon.out profiling data file.
  */
@@ -83,7 +61,8 @@ struct gmonhdr {
 /*
  * fraction of text space to allocate for histogram counters here, 1/2
  */
-#define	HISTFRACTION	2
+//#define	HISTFRACTION	2
+#define	HISTFRACTION	1
 
 /*
  * Fraction of text space to allocate for from hash buckets.
@@ -113,7 +92,8 @@ struct gmonhdr {
  * profiling data structures without (in practice) sacrificing
  * any granularity.
  */
-#define	HASHFRACTION	2
+//#define	HASHFRACTION	2
+#define	HASHFRACTION	1
 
 /*
  * percent of text space to allocate for tostructs with a minimum.
@@ -123,10 +103,10 @@ struct gmonhdr {
 #define MAXARCS		 ((1 << (8 * sizeof(HISTCOUNTER))) - 2)
 
 struct tostruct {
-	size_t	selfpc; /* callee address/program counter. The caller address is in froms[] array which points to tos[] array */
-	long	count;    /* how many times it has been called */
-	unsigned short link;   /* link to next entry in hash table. For tos[0] this points to the last used entry */
-	unsigned short pad;    /* additional padding bytes, to have entries 4byte aligned */
+	size_t         selfpc;  /* callee address. The caller address is in froms[] array which points to tos[] array */
+	unsigned long  count;   /* how many times it has been called */
+	unsigned short next;    /* next entry in hash table. For tos[0] this is the index of the last used entry */
+	unsigned short pad;     /* additional padding bytes, to have entries 4byte aligned */
 };
 
 /*
@@ -134,9 +114,9 @@ struct tostruct {
  * the called site and a count.
  */
 struct rawarc {
-	size_t	raw_frompc;
-	size_t	raw_selfpc;
-	long	raw_count;
+	size_t	frompc;
+	size_t	selfpc;
+	long	count;
 };
 
 /*
@@ -149,29 +129,20 @@ struct rawarc {
  * The profiling data structures are housed in this structure.
  */
 struct gmonparam {
-	int		state;
+  enum { off, on, err } state;
 	unsigned short	*kcount;    /* histogram PC sample array */
 	size_t		kcountsize; /* size of kcount[] array in bytes */
 	unsigned short	*froms;     /* array of hashed 'from' addresses. The 16bit value is an index into the tos[] array */
 	size_t		fromssize;  /* size of froms[] array in bytes */
-	struct tostruct	*tos; /* to struct, contains histogram counter */
+	struct tostruct	*tos;       /* to struct, contains arc counters */
 	size_t		tossize;    /* size of tos[] array in bytes */
-	long		tolimit;
+	size_t		tolimit;
 	size_t		lowpc;      /* low program counter of area */
 	size_t		highpc;     /* high program counter */
 	size_t		textsize;   /* code size */
 };
 extern struct gmonparam _gmonparam;
 
-/*
- * Possible states of profiling.
- */
-#define	GMON_PROF_ON	  0
-#define	GMON_PROF_BUSY	1
-#define	GMON_PROF_ERROR	2
-#define	GMON_PROF_OFF	  3
-
 void _mcleanup(void); /* routine to be called to write gmon.out file */
-void _monInit(void); /* initialization routine */
 
 #endif /* !_SYS_GMONH_ */
