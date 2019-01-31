@@ -48,6 +48,7 @@
 #include "mgmt-misc.h"
 #include "mgmt-keystore.h"
 #include "mgmt-masterkey.h"
+#include "mgmt-tamper.h"
 #include "mgmt-task.h"
 
 #undef HAL_OK
@@ -197,6 +198,7 @@ int cli_main(void)
     configure_cli_bootloader(cli);
     configure_cli_misc(cli);
     configure_cli_task(cli);
+    configure_cli_tamper(cli);
 
     while (1) {
         control_mgmt_uart_dma_rx(DMA_RX_START);

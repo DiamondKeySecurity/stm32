@@ -70,7 +70,7 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
 {
     cli_print(cli, "Permission denied.");
     return CLI_ERROR;
-    
+
     // command = command;
     // argv = argv;
     // argc = argc;
@@ -91,13 +91,45 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
     // return ret;
 }
 
+static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "Light: Permission denied.");
+    return CLI_ERROR;
+}
+
+static int cmd_tamper_threshold_set_temp(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "Temp: Permission denied.");
+    return CLI_ERROR;
+}
+
+static int cmd_tamper_threshold_set_accel(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    cli_print(cli, "Accel: Permission denied.");
+    return CLI_ERROR;
+}
+
 void configure_cli_tamper(struct cli_def *cli)
 {
     struct cli_command *c;
+    struct cli_command *threshold;
+    struct cli_command *threshold_set;
 
     c = cli_register_command(cli, NULL, "tamper", NULL, 0, 0, NULL);
 
+    // create command for upload
     cli_register_command(cli, c, "upload", cmd_tamper_upload, 0, 0, "Upload new tamper image");
+
+    // create parent for threshold commands
+    threshold = cli_register_command(cli, c, "threshold", NULL, 0, 0, NULL);
+
+    // create parent for threshold set commands
+    threshold_set = cli_register_command(cli, threshold, "set", NULL, 0, 0, NULL);
+
+    // create threshold set commands
+    cli_register_command(cli, threshold_set, "light", cmd_tamper_threshold_set_light, 0, 0, "Set the threshold for light sensors");
+    cli_register_command(cli, threshold_set, "temperature", cmd_tamper_threshold_set_temp, 0, 0, "Set the threshold for temparture sensors");
+    cli_register_command(cli, threshold_set, "accel", cmd_tamper_threshold_set_accel, 0, 0, "Set the threshold for accelerometer");
 }
 
 int dfu_receive_firmware(void)

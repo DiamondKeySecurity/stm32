@@ -9,6 +9,7 @@ OBJS =	mgmt-cli.o \
 	mgmt-masterkey.o \
 	mgmt-misc.o \
 	mgmt-task.o \
+	mgmt-tamper.o \
 	log.o \
 	$(TOPLEVEL)/task.o
 
