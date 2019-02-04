@@ -45,15 +45,6 @@
 
 #include <libcli.h>
 
-// /* symbols defined in the linker script (STM32F429BI_bootloader.ld) */
-extern uint32_t CRYPTECH_BOOTLOADER_START;
-extern uint32_t CRYPTECH_BOOTLOADER_END;
-extern uint32_t CRYPTECH_DFU_CONTROL;
-
-#define DFU_TAMPER_ADDR       ((uint32_t) &CRYPTECH_BOOTLOADER_START)
-#define DFU_TAMPER_END_ADDR   ((uint32_t) &CRYPTECH_BOOTLOADER_END)
-#define DFU_UPLOAD_CHUNK_SIZE     4096
-
 extern void configure_cli_tamper(struct cli_def *cli);
 
 #endif /* __STM32_CLI_MGMT_TAMPER_H */

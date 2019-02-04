@@ -45,8 +45,11 @@
 #include "stm-init.h"
 #include "stm-uart.h"
 #include "stm-flash.h"
+#include "stm-fpgacfg.h"
+
 #include "mgmt-cli.h"
 #include "mgmt-misc.h"
+#include "mgmt-fpga.h"
 #include "mgmt-tamper.h"
 
 #undef HAL_OK
@@ -54,41 +57,63 @@
 #include "hal.h"
 #undef HAL_OK
 
+#define TAMPERCFG_SECTOR_SIZE		N25Q128_SECTOR_SIZE
+
 extern hal_user_t user;
 
-static uint32_t dfu_offset;
+static volatile uint32_t dfu_offset = 0;
 
-static HAL_StatusTypeDef _tamper_flash_write_callback(uint8_t *buf, size_t len)
+
+static HAL_StatusTypeDef _tamper_write_callback(uint8_t *buf, size_t len)
 {
-    // HAL_StatusTypeDef status = stm_flash_write32(dfu_offset, (uint32_t *)buf, len/4);
-    // dfu_offset += DFU_UPLOAD_CHUNK_SIZE;
-    // return status;
+    HAL_StatusTypeDef res;
+
+    if ((dfu_offset % TAMPERCFG_SECTOR_SIZE) == 0)
+	/* first page in sector, need to erase sector */
+	//TODO//if ((res = fpgacfg_erase_sector(dfu_offset / TAMPERCFG_SECTOR_SIZE)) != CMSIS_HAL_OK)
+	//TODO//    return res;
+
+    /* fpgacfg_write_data (a thin wrapper around n25q128_write_data)
+     * requires the offset and length to be page-aligned. The last chunk
+     * will be short, so we pad it out to the full chunk size.
+     */
+    len = len;
+    //TODO//res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE);
+    dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
+    //TODO// return res;
+
     return CMSIS_HAL_OK;
 }
 
 static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    cli_print(cli, "Permission denied.");
-    return CLI_ERROR;
+    command = command;
+    argv = argv;
+    argc = argc;
 
-    // command = command;
-    // argv = argv;
-    // argc = argc;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
 
-    // if (user < HAL_USER_SO) {
-    //     cli_print(cli, "Permission denied.");
-    //     return CLI_ERROR;
-    // }
+    uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
 
-    // uint8_t buf[DFU_UPLOAD_CHUNK_SIZE];
-    // dfu_offset = DFU_TAMPER_ADDR;
+    dfu_offset = 0;
 
-    // int ret = cli_receive_data(cli, buf, sizeof(buf), _tamper_flash_write_callback);
-    // if (ret == CLI_OK) {
-    //     cli_print(cli, "\nRebooting\n");
-    //     HAL_NVIC_SystemReset();
-    // }
-    // return ret;
+    //TODO//fpgacfg_access_control(ALLOW_ARM);
+
+    //TODO//cli_print(cli, "Checking if FPGA config memory is accessible");
+    //TODO//if (fpgacfg_check_id() != CMSIS_HAL_OK) {
+	//TODO//cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
+	//TODO//return CLI_ERROR;
+    //TODO//}
+
+    cli_receive_data(cli, &buf[0], sizeof(buf), _tamper_write_callback);
+
+    //TODO//fpgacfg_access_control(ALLOW_FPGA);
+
+    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / BITSTREAM_UPLOAD_CHUNK_SIZE);
+    return CLI_OK;
 }
 
 static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *command, char *argv[], int argc)
@@ -130,102 +155,4 @@ void configure_cli_tamper(struct cli_def *cli)
     cli_register_command(cli, threshold_set, "light", cmd_tamper_threshold_set_light, 0, 0, "Set the threshold for light sensors");
     cli_register_command(cli, threshold_set, "temperature", cmd_tamper_threshold_set_temp, 0, 0, "Set the threshold for temparture sensors");
     cli_register_command(cli, threshold_set, "accel", cmd_tamper_threshold_set_accel, 0, 0, "Set the threshold for accelerometer");
-}
-
-int dfu_receive_firmware(void)
-{
-    // uint32_t offset = DFU_FIRMWARE_ADDR, n = DFU_UPLOAD_CHUNK_SIZE;
-    // hal_crc32_t crc = 0, my_crc = hal_crc32_init();
-    // uint32_t filesize = 0, counter = 0;
-    // uint8_t buf[DFU_UPLOAD_CHUNK_SIZE];
-
-    // if (do_login() != 0)
-    //     return -1;
-
-    // /* Fake the CLI */
-    // uart_send_string("\r\ncryptech> ");
-    // char cmd[64];
-    // if (getline(cmd, sizeof(cmd)) <= 0)
-    //     return -1;
-    // if (strcmp(cmd, "firmware upload") != 0) {
-    //     uart_send_string("\r\nInvalid command \"");
-    //     uart_send_string(cmd);
-    //     uart_send_string("\"\r\n");
-    //     return -1;
-    // }
-
-    // uart_send_string("OK, write size (4 bytes), data in 4096 byte chunks, CRC-32 (4 bytes)\r\n");
-
-    // /* Read file size (4 bytes) */
-    // uart_receive_bytes((void *) &filesize, sizeof(filesize), 10000);
-    // if (filesize < 512 || filesize > DFU_FIRMWARE_END_ADDR - DFU_FIRMWARE_ADDR) {
-    //     uart_send_string("Invalid filesize ");
-    //     uart_send_integer(filesize, 1);
-    //     uart_send_string("\r\n");
-	// return -1;
-    // }
-
-    // HAL_FLASH_Unlock();
-
-    // uart_send_string("Send ");
-    // uart_send_integer(filesize, 1);
-    // uart_send_string(" bytes of data\r\n");
-
-    // while (filesize) {
-	// /* By initializing buf to the same value that erased flash has (0xff), we don't
-	//  * have to try and be smart when writing the last page of data to the memory.
-	//  */
-	// memset(buf, 0xff, sizeof(buf));
-
-	// if (filesize < n) {
-	//     n = filesize;
-	// }
-
-	// if (uart_receive_bytes((void *) buf, n, 10000) != CMSIS_HAL_OK) {
-	//     return -2;
-	// }
-	// filesize -= n;
-
-	// /* After reception of a chunk but before ACKing we have "all" the time in the world to
-	//  * calculate CRC and write it to flash.
-	//  */
-	// my_crc = hal_crc32_update(my_crc, buf, n);
-	// stm_flash_write32(offset, (uint32_t *)buf, sizeof(buf)/4);
-	// offset += DFU_UPLOAD_CHUNK_SIZE;
-
-	// /* ACK this chunk by sending the current chunk counter (4 bytes) */
-	// counter++;
-	// uart_send_bytes((void *) &counter, 4);
-	// led_toggle(LED_BLUE);
-    // }
-
-    // my_crc = hal_crc32_finalize(my_crc);
-
-    // HAL_FLASH_Lock();
-
-    // uart_send_string("Send CRC-32\r\n");
-
-    // /* The sending side will now send its calculated CRC-32 */
-    // uart_receive_bytes((void *) &crc, sizeof(crc), 10000);
-
-    // uart_send_string("CRC-32 0x");
-    // uart_send_hex(crc, 1);
-    // uart_send_string(", calculated CRC 0x");
-    // uart_send_hex(my_crc, 1);
-    // if (crc == my_crc) {
-	// uart_send_string("CRC checksum MATCHED\r\n");
-    //     return 0;
-    // } else {
-	// uart_send_string("CRC checksum did NOT match\r\n");
-    // }
-
-    // led_on(LED_RED);
-    // led_on(LED_YELLOW);
-
-    // /* Better to erase the known bad firmware */
-    // stm_flash_erase_sectors(DFU_FIRMWARE_ADDR, DFU_FIRMWARE_END_ADDR);
-
-    // led_off(LED_YELLOW);
-
-    return 0;
 }

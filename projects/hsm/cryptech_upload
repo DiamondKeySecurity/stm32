@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# Copyright (c) 2019 Diamond Key Security, NFP  All rights reserved.
+#
+#!/usr/bin/env python
 #
 # Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
 #
