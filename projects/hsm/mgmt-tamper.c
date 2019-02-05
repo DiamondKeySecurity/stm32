@@ -119,18 +119,30 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
 static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "Light: Permission denied.");
+    for (int i = 0; i < argc; i++)
+    {
+        cli_print(cli, "%s", argv[i]);
+    }
     return CLI_ERROR;
 }
 
 static int cmd_tamper_threshold_set_temp(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "Temp: Permission denied.");
+    for (int i = 0; i < argc; i++)
+    {
+        cli_print(cli, "%s", argv[i]);
+    }
     return CLI_ERROR;
 }
 
 static int cmd_tamper_threshold_set_accel(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     cli_print(cli, "Accel: Permission denied.");
+    for (int i = 0; i < argc; i++)
+    {
+        cli_print(cli, "%s", argv[i]);
+    }
     return CLI_ERROR;
 }
 

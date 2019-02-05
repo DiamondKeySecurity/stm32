@@ -51,6 +51,7 @@ from binascii import crc32
 
 FIRMWARE_CHUNK_SIZE = 4096
 FPGA_CHUNK_SIZE     = 4096
+TAMPER_CHUNK_SIZE   = 4096
 
 
 def parse_args():
@@ -108,6 +109,10 @@ def parse_args():
     actions.add_argument("--firmware", "--hsm",
                          action = "store_true",
                          help = "Upload HSM firmware image",
+                         )
+    actions.add_argument("--tamper",
+                         action = "store_true",
+                         help = "Upload tamper firmware image",
                          )
     actions.add_argument("--bootloader",
                          action = "store_true",
@@ -256,6 +261,9 @@ def send_file(src, size, args, dst):
     elif args.bootloader:
         chunk_size = FIRMWARE_CHUNK_SIZE
         response = dst.execute("bootloader upload")
+    elif args.tamper:
+        chunk_size = TAMPER_CHUNK_SIZE
+        response = dst.execute("tamper upload")
     if "Access denied" in response:
         print "Access denied"
         return False
