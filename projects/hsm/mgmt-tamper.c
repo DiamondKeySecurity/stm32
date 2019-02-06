@@ -5,11 +5,11 @@
  *
  * Copyright (c) 2019 Diamond Key Security, NFP  All rights reserved.
  *
- * Contains Code from mgmt-bootloader.c
+ * Contains Code from mgmt-fpga.c
  * 
- * mgmt-bootloader.c
- * ---------------
- * Management CLI bootloader upgrade code.
+ * mgmt-fpga.c
+ * -----------
+ * CLI code to manage the FPGA configuration etc.
  *
  * Copyright (c) 2016, NORDUnet A/S All rights reserved.
  *
@@ -116,34 +116,116 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
     return CLI_OK;
 }
 
+/* Write a chunk of received data to flash. */
+typedef int (*set_param_callback)(float argv[], int argc);
+
+/*
+set_tamper_attribute
+Used to parse and verify parameters and call set functions
+*/
+int set_tamper_attribute(struct cli_def *cli, const char *name, char *argv[], int argc, int num_args,
+                         float min_value, float max_value, set_param_callback set_callback)
+{
+    float parsed_parameters[argc];
+
+    if (num_args != argc)
+    {
+        cli_print(cli, "Error: Set %s must have exactly %i argument(s)", name, num_args);
+        return CLI_ERROR;
+    }
+
+    // parse all of the parameters
+    for (int i = 0; i < argc; ++i)
+    {
+        int parse_result = sscanf(argv[i], "%f", &parsed_parameters[i]);
+
+        if (parse_result != 1)
+        {
+            cli_print(cli, "Error: Attribute index:%i, %s is not a number. (result == %i)", i, argv[i], parse_result);
+        }
+        else if (parsed_parameters[i] < min_value)
+        {
+            cli_print(cli, "Error: Attribute index:%i is less than the min value", i);
+        }
+        else if (parsed_parameters[i] > max_value)
+        {
+            cli_print(cli, "Error: Attribute index:%i is greater than the max value", i);
+        }
+        else
+        {
+            // parsed correctly
+            continue;
+        }
+
+        // parser error
+        return CLI_ERROR;
+    }
+
+    // use callback to set the actual value
+    if (set_callback(parsed_parameters, argc) != 0)
+    {
+        cli_print(cli, "Error setting %s", name);
+        for(int n = 0; n < argc; ++n)
+        {
+            cli_print(cli, "%f", parsed_parameters[n]);
+        }
+        return CLI_ERROR;
+    }
+
+    cli_print(cli, "%s set", name);
+
+    return CLI_OK;
+}
+
+static int set_tamper_threshold_light(float argv[], int argc)
+{
+    return -1;
+}
+
+static int set_tamper_threshold_temperature(float argv[], int argc)
+{
+    return -1;
+}
+
+static int set_tamper_threshold_accelerometer(float argv[], int argc)
+{
+    return -1;
+}
+
 static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    cli_print(cli, "Light: Permission denied.");
-    for (int i = 0; i < argc; i++)
-    {
-        cli_print(cli, "%s", argv[i]);
-    }
-    return CLI_ERROR;
+    return set_tamper_attribute(cli,
+                                "light threshold",
+                                argv,
+                                argc,
+                                1,
+                                0.0f,
+                                1.0f,
+                                set_tamper_threshold_light);
 }
 
 static int cmd_tamper_threshold_set_temp(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    cli_print(cli, "Temp: Permission denied.");
-    for (int i = 0; i < argc; i++)
-    {
-        cli_print(cli, "%s", argv[i]);
-    }
-    return CLI_ERROR;
+    return set_tamper_attribute(cli,
+                                "temperature threshold",
+                                argv,
+                                argc,
+                                2,
+                                0.0f,
+                                100.0f,
+                                set_tamper_threshold_temperature);
 }
 
 static int cmd_tamper_threshold_set_accel(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
-    cli_print(cli, "Accel: Permission denied.");
-    for (int i = 0; i < argc; i++)
-    {
-        cli_print(cli, "%s", argv[i]);
-    }
-    return CLI_ERROR;
+    return set_tamper_attribute(cli,
+                                "accelerometer threshold",
+                                argv,
+                                argc,
+                                1,
+                                0.0f,
+                                1.0f,
+                                set_tamper_threshold_accelerometer);
 }
 
 void configure_cli_tamper(struct cli_def *cli)
