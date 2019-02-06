@@ -117,16 +117,16 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
 }
 
 /* Write a chunk of received data to flash. */
-typedef int (*set_param_callback)(float argv[], int argc);
+typedef int (*set_param_callback)(int argv[], int argc);
 
 /*
 set_tamper_attribute
 Used to parse and verify parameters and call set functions
 */
 int set_tamper_attribute(struct cli_def *cli, const char *name, char *argv[], int argc, int num_args,
-                         float min_value, float max_value, set_param_callback set_callback)
+                         int min_value, int max_value, set_param_callback set_callback)
 {
-    float parsed_parameters[argc];
+    int parsed_parameters[argc];
 
     if (num_args != argc)
     {
@@ -137,7 +137,7 @@ int set_tamper_attribute(struct cli_def *cli, const char *name, char *argv[], in
     // parse all of the parameters
     for (int i = 0; i < argc; ++i)
     {
-        int parse_result = sscanf(argv[i], "%f", &parsed_parameters[i]);
+        int parse_result = sscanf(argv[i], "%i", &parsed_parameters[i]);
 
         if (parse_result != 1)
         {
@@ -167,7 +167,7 @@ int set_tamper_attribute(struct cli_def *cli, const char *name, char *argv[], in
         cli_print(cli, "Error setting %s", name);
         for(int n = 0; n < argc; ++n)
         {
-            cli_print(cli, "%f", parsed_parameters[n]);
+            cli_print(cli, "%i", parsed_parameters[n]);
         }
         return CLI_ERROR;
     }
@@ -177,18 +177,21 @@ int set_tamper_attribute(struct cli_def *cli, const char *name, char *argv[], in
     return CLI_OK;
 }
 
-static int set_tamper_threshold_light(float argv[], int argc)
+static int set_tamper_threshold_light(int argv[], int argc)
 {
+    // the arguments have been parsed and validated
     return -1;
 }
 
-static int set_tamper_threshold_temperature(float argv[], int argc)
+static int set_tamper_threshold_temperature(int argv[], int argc)
 {
+    // the arguments have been parsed and validated
     return -1;
 }
 
-static int set_tamper_threshold_accelerometer(float argv[], int argc)
+static int set_tamper_threshold_accelerometer(int argv[], int argc)
 {
+    // the arguments have been parsed and validated
     return -1;
 }
 
@@ -199,8 +202,8 @@ static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *comma
                                 argv,
                                 argc,
                                 1,
-                                0.0f,
-                                1.0f,
+                                0,
+                                100,
                                 set_tamper_threshold_light);
 }
 
@@ -211,8 +214,8 @@ static int cmd_tamper_threshold_set_temp(struct cli_def *cli, const char *comman
                                 argv,
                                 argc,
                                 2,
-                                0.0f,
-                                100.0f,
+                                0,
+                                100,
                                 set_tamper_threshold_temperature);
 }
 
@@ -223,8 +226,8 @@ static int cmd_tamper_threshold_set_accel(struct cli_def *cli, const char *comma
                                 argv,
                                 argc,
                                 1,
-                                0.0f,
-                                1.0f,
+                                0,
+                                100,
                                 set_tamper_threshold_accelerometer);
 }
 
