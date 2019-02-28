@@ -395,6 +395,17 @@ static hal_error_t sdram_free(uint8_t *ptr)
         return HAL_ERROR_FORBIDDEN;
 }
 
+hal_error_t sdram_stats(size_t *used, size_t *available)
+{
+    if (used == NULL || available == NULL)
+        return HAL_ERROR_BAD_ARGUMENTS;
+
+    *used = sdram_heap - &_esdram1;
+    *available = &__end_sdram1 - sdram_heap;
+
+    return LIBHAL_OK;
+}
+
 /* Implement static memory allocation for libhal over sdram_malloc().
  */
 void *hal_allocate_static_memory(const size_t size)
