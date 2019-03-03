@@ -92,8 +92,12 @@ for port in ports:
         try:
             tty = serial.Serial(port, 921600, timeout=0.1)
             break
-        except serial.SerialException:
-            time.sleep(0.2)
+        except serial.SerialException as serial_exception:
+            if args.debug:
+                sys.stderr.write(str("{}\n".format(serial_exception)))
+                time.sleep(2)
+            else:
+                time.sleep(0.2)
 
     for c in probe_string:
         tty.write(c)
