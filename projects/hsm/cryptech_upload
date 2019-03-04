@@ -51,7 +51,7 @@ from binascii import crc32
 
 FIRMWARE_CHUNK_SIZE = 4096
 FPGA_CHUNK_SIZE     = 4096
-TAMPER_CHUNK_SIZE   = 4096
+TAMPER_CHUNK_SIZE   = 7168
 
 
 def parse_args():
