@@ -61,26 +61,12 @@
 
 extern hal_user_t user;
 
-static volatile uint32_t dfu_offset = 0;
-
-
 static HAL_StatusTypeDef _tamper_write_callback(uint8_t *buf, size_t len)
+// This uses the same pattern as _flash_write_callback, but it should only
+// be called once because the chunk size is the firmware size.
 {
-    HAL_StatusTypeDef res;
-
-    if ((dfu_offset % TAMPERCFG_SECTOR_SIZE) == 0)
-	/* first page in sector, need to erase sector */
-	//TODO//if ((res = fpgacfg_erase_sector(dfu_offset / TAMPERCFG_SECTOR_SIZE)) != CMSIS_HAL_OK)
-	//TODO//    return res;
-
-    /* fpgacfg_write_data (a thin wrapper around n25q128_write_data)
-     * requires the offset and length to be page-aligned. The last chunk
-     * will be short, so we pad it out to the full chunk size.
-     */
-    len = len;
-    //TODO//res = fpgacfg_write_data(dfu_offset, buf, BITSTREAM_UPLOAD_CHUNK_SIZE);
-    dfu_offset += BITSTREAM_UPLOAD_CHUNK_SIZE;
-    //TODO// return res;
+    // int result = flash_tamper_firmware(buf);
+    // TODO evaluate result
 
     return CMSIS_HAL_OK;
 }
@@ -96,23 +82,14 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
         return CLI_ERROR;
     }
 
-    uint8_t buf[BITSTREAM_UPLOAD_CHUNK_SIZE];
-
-    dfu_offset = 0;
-
-    //TODO//fpgacfg_access_control(ALLOW_ARM);
-
-    //TODO//cli_print(cli, "Checking if FPGA config memory is accessible");
-    //TODO//if (fpgacfg_check_id() != CMSIS_HAL_OK) {
-	//TODO//cli_print(cli, "ERROR: FPGA config memory not accessible. Check that jumpers JP7 and JP8 are installed.");
-	//TODO//return CLI_ERROR;
-    //TODO//}
+    uint8_t buf[TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE];
+    memset((void *)&buf[0], 0xff, TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE);
 
     cli_receive_data(cli, &buf[0], sizeof(buf), _tamper_write_callback);
 
-    //TODO//fpgacfg_access_control(ALLOW_FPGA);
+    uint32_t uploaded = TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE;
 
-    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / BITSTREAM_UPLOAD_CHUNK_SIZE);
+    cli_print(cli, "Tamper uploaded: %li (%li chunks)", uploaded, uploaded / TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE);
     return CLI_OK;
 }
 

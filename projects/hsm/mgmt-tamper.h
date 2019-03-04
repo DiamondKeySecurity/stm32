@@ -45,6 +45,8 @@
 
 #include <libcli.h>
 
+#define TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE 7168
+
 extern void configure_cli_tamper(struct cli_def *cli);
 
 #endif /* __STM32_CLI_MGMT_TAMPER_H */
