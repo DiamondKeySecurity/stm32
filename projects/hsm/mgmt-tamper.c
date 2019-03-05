@@ -61,12 +61,15 @@
 
 extern hal_user_t user;
 
+static volatile uint32_t dfu_offset = 0;
+
 static HAL_StatusTypeDef _tamper_write_callback(uint8_t *buf, size_t len)
 // This uses the same pattern as _flash_write_callback, but it should only
 // be called once because the chunk size is the firmware size.
 {
     // int result = flash_tamper_firmware(buf);
     // TODO evaluate result
+    dfu_offset += TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE;
 
     return CMSIS_HAL_OK;
 }
@@ -83,13 +86,16 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
     }
 
     uint8_t buf[TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE];
+
+    dfu_offset = 0;
+
     memset((void *)&buf[0], 0xff, TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE);
 
     cli_receive_data(cli, &buf[0], sizeof(buf), _tamper_write_callback);
 
     uint32_t uploaded = TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE;
 
-    cli_print(cli, "Tamper uploaded: %li (%li chunks)", uploaded, uploaded / TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE);
+    cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE);
     return CLI_OK;
 }
 
