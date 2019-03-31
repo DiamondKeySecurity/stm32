@@ -341,7 +341,6 @@ static void busy_task(void)
 }
 
 #include "stm-fpgacfg.h"
-#include "hashsig.h"
 
 static void hashsig_restart_task(void)
 {
