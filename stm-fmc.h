@@ -52,22 +52,9 @@
 
 extern void fmc_init(void);
 
-static inline void fmc_write_32(const uint32_t addr, const uint32_t data)
+static inline void *fmc_fpga_addr(off_t addr)
 {
-    // calculate target fpga address
-    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
-
-    // write data to fpga
-   *ptr = data;
-}
-
-static inline void fmc_read_32(const uint32_t addr, uint32_t * const data)
-{
-    // calculate target fpga address
-    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
-
-		// read data from fpga
-    *data = *ptr; 
+    return (void *)(FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 }
 
 #endif /* __STM_FMC_H */
