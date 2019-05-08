@@ -51,6 +51,7 @@
 #include "mgmt-misc.h"
 #include "mgmt-fpga.h"
 #include "mgmt-tamper.h"
+#include "usart3_avrboot.h"
 
 #undef HAL_OK
 #define HAL_OK LIBHAL_OK
@@ -67,7 +68,7 @@ static HAL_StatusTypeDef _tamper_write_callback(uint8_t *buf, size_t len)
 // This uses the same pattern as _flash_write_callback, but it should only
 // be called once because the chunk size is the firmware size.
 {
-    // int result = flash_tamper_firmware(buf);
+    int result = avrboot_write_page(buf);
     // TODO evaluate result
     dfu_offset += TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE;
 
@@ -97,6 +98,210 @@ static int cmd_tamper_upload(struct cli_def *cli, const char *command, char *arg
 
     cli_print(cli, "DFU offset now: %li (%li chunks)", dfu_offset, dfu_offset / TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE);
     return CLI_OK;
+}
+
+static int cmd_tamper_reset(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    avrboot_start_tamper();
+
+    cli_print(cli, "Tamper app started");
+    return CLI_OK;
+}
+
+static int cmd_tamper_check(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+    uint8_t resp;
+    uart_send_char_tamper(&huart_tmpr, 0x4B);
+    HAL_Delay(5);
+   	HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+    HAL_Delay(200);
+
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		cli_print(cli, "Tamper ok");
+		return CLI_OK;
+	}
+	else{
+		return -1;
+	}
+
+}
+
+static int cmd_light_check(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t val1, val2, resp;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x47);
+    HAL_Delay(5);
+   	HAL_UART_Receive(&huart_tmpr, &val1, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &val2, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+    HAL_Delay(200);
+    temp = (signed int) (val1 | val2);
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		cli_print(cli, "Light is %d", temp);
+		return CLI_OK;
+	}
+	else{
+		return -1;
+	}
+
+}
+
+static int cmd_temp_check(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t val1, val2, resp;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x48);
+    HAL_Delay(5);
+   	HAL_UART_Receive(&huart_tmpr, &val1, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &val2, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+    HAL_Delay(200);
+    temp = (signed int) (val1 | val2);
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		cli_print(cli, "Temperature is %d", temp);
+		return CLI_OK;
+	}
+	else{
+		return -1;
+	}
+
+}
+
+static int cmd_vibe_check(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t val1, val2, resp;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x49);
+    HAL_Delay(5);
+   	HAL_UART_Receive(&huart_tmpr, &val1, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &val2, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+    HAL_Delay(200);
+    temp = (signed int) (val1 | val2);
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		cli_print(cli, "Vibe is %d", temp);
+		return CLI_OK;
+	}
+	else{
+		return -1;
+	}
+
+}
+
+static int cmd_set_config(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t resp;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x4A);
+    HAL_Delay(5);
+   	HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+
+	if (resp == AVRBOOT_STK_INSYNC) {
+		cli_print(cli, "Configuration is set", temp);
+		return CLI_OK;
+	}
+	else{
+		return -1;
+	}
+
+}
+
+static int cmd_chk_fault(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t resp, fault_code, fault_val1, fault_val2;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x4C);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &fault_code, 1, 1000);
+    HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &fault_val1, 1, 1000);
+    HAL_Delay(200);
+    temp = (signed int) (fault_val1 | fault_val2);
+	if (resp == AVRBOOT_STK_INSYNC) {
+		if (fault_code == LIGHT){
+			cli_print(cli, "Light tamper value is %ix", temp);
+		}
+		if (fault_code == TEMP){
+			cli_print(cli, "Temperature tamper value is %ix", temp);
+		}
+		if (fault_code == USART){
+			cli_print(cli, "USART failure is %ix", temp);
+		}
+		cli_print(cli, "Configuration is set", temp);
+		return CLI_OK;
+	}
+	else{
+		return -1;
+	}
+
 }
 
 /* Write a chunk of received data to flash. */
@@ -162,22 +367,129 @@ int set_tamper_attribute(struct cli_def *cli, const char *name, char *argv[], in
 
 static int set_tamper_threshold_light(int argv[], int argc)
 {
-    // the arguments have been parsed and validated
-    return -1;
+	uint8_t resp;
+	uint8_t val1, val2;
+
+	val1 = (uint8_t)argv[0];
+	val2 = (uint8_t)(argv[0]>>8);
+	uart_send_char_tamper(&huart_tmpr, 0x41);
+	HAL_Delay(5);
+
+	uart_send_char_tamper(&huart_tmpr, val2);
+	HAL_Delay(5);
+
+	uart_send_char_tamper(&huart_tmpr, val1);
+	HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+	HAL_Delay(200);
+
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		return 0;
+	}
+	else{
+		return -1;
+	}
 }
 
 static int set_tamper_threshold_temperature(int argv[], int argc)
 {
-    // the arguments have been parsed and validated
-    return -1;
+	uint8_t resp;
+		uint8_t val1, val2;
+
+		val1 = (uint8_t)argv[0];
+		uart_send_char_tamper(&huart_tmpr, 0x42);
+		HAL_Delay(5);
+
+		uart_send_char_tamper(&huart_tmpr, val1);
+		HAL_Delay(5);
+
+		HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+		HAL_Delay(200);
+
+		// the arguments have been parsed and validated
+		if (resp == AVRBOOT_STK_INSYNC) {
+			return 0;
+		}
+		else{
+			return -1;
+		}
 }
 
 static int set_tamper_threshold_accelerometer(int argv[], int argc)
 {
-    // the arguments have been parsed and validated
-    return -1;
+	uint8_t resp;
+	uint8_t val1, val2;
+
+	val1 = (uint8_t)argv[0];
+	val2 = (uint8_t)(argv[0]>>8);
+	uart_send_char_tamper(&huart_tmpr, 0x44);
+	HAL_Delay(5);
+
+	uart_send_char_tamper(&huart_tmpr, val1);
+	HAL_Delay(5);
+
+	uart_send_char_tamper(&huart_tmpr, val2);
+	HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+	HAL_Delay(200);
+
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		return 0;
+	}
+	else{
+		return -1;
+	}
 }
 
+static int set_tamper_disable(int argv[], int argc)
+{
+	uint8_t resp;
+	uint8_t val1, val2;
+
+	val1 = (uint8_t)argv[0];
+
+	uart_send_char_tamper(&huart_tmpr, 0x46);
+	HAL_Delay(5);
+
+	uart_send_char_tamper(&huart_tmpr, val1);
+	HAL_Delay(5);
+	HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+	HAL_Delay(200);
+
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		return 0;
+	}
+	else{
+		return -1;
+	}
+}
+
+static int set_tamper_enable(int argv[], int argc)
+{
+	uint8_t resp;
+	uint8_t val1, val2;
+
+	val1 = (uint8_t)argv[0];
+
+	uart_send_char_tamper(&huart_tmpr, 0x45);
+	HAL_Delay(5);
+
+	uart_send_char_tamper(&huart_tmpr, val1);
+	HAL_Delay(5);
+	HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+	HAL_Delay(200);
+
+	// the arguments have been parsed and validated
+	if (resp == AVRBOOT_STK_INSYNC) {
+		return 0;
+	}
+	else{
+		return -1;
+	}
+}
+
+//7057 mdockter63 TmobTippy1
 static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
     return set_tamper_attribute(cli,
@@ -186,7 +498,7 @@ static int cmd_tamper_threshold_set_light(struct cli_def *cli, const char *comma
                                 argc,
                                 1,
                                 0,
-                                100,
+                                65535,
                                 set_tamper_threshold_light);
 }
 
@@ -198,7 +510,7 @@ static int cmd_tamper_threshold_set_temp(struct cli_def *cli, const char *comman
                                 argc,
                                 2,
                                 0,
-                                100,
+                                250,
                                 set_tamper_threshold_temperature);
 }
 
@@ -210,8 +522,31 @@ static int cmd_tamper_threshold_set_accel(struct cli_def *cli, const char *comma
                                 argc,
                                 1,
                                 0,
-                                100,
+                                65535,
                                 set_tamper_threshold_accelerometer);
+}
+
+static int cmd_tamper_set_disable(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    return set_tamper_attribute(cli,
+                                "tamper disable",
+                                argv,
+                                argc,
+                                1,
+                                0,
+                                255,
+                                set_tamper_disable);
+}
+static int cmd_tamper_set_enable(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    return set_tamper_attribute(cli,
+                                "tamper disable",
+                                argv,
+                                argc,
+                                1,
+                                0,
+                                255,
+                                set_tamper_enable);
 }
 
 void configure_cli_tamper(struct cli_def *cli)
@@ -225,6 +560,27 @@ void configure_cli_tamper(struct cli_def *cli)
     // create command for upload
     cli_register_command(cli, c, "upload", cmd_tamper_upload, 0, 0, "Upload new tamper image");
 
+    // create command for tamper app reset
+    cli_register_command(cli, c, "reset", cmd_tamper_reset, 0, 0, "Start tamper application");
+
+    // create command for tamper app event polling
+    cli_register_command(cli, c, "check", cmd_tamper_check, 0, 0, "Check tamper application");
+
+    //create command for reading light sensor
+    cli_register_command(cli, c, "light value", cmd_light_check, 0, 0, "Check light value");
+
+    //create command for reading temperature sensor
+    cli_register_command(cli, c, "temperature value", cmd_temp_check, 0, 0, "Check temperature value");
+
+    //create command for reading vibe sensor
+    cli_register_command(cli, c, "vibe value", cmd_vibe_check, 0, 0, "Check vibe value");
+
+    //create command for setting config to release MKM and begin tamper detection
+    cli_register_command(cli, c, "set config", cmd_set_config, 0, 0, "Set configuration");
+
+    //create command for checking tamper fault
+    cli_register_command(cli, c, "check fault", cmd_chk_fault, 0, 0, "Set configuration");
+
     // create parent for threshold commands
     threshold = cli_register_command(cli, c, "threshold", NULL, 0, 0, NULL);
 
@@ -233,6 +589,10 @@ void configure_cli_tamper(struct cli_def *cli)
 
     // create threshold set commands
     cli_register_command(cli, threshold_set, "light", cmd_tamper_threshold_set_light, 0, 0, "Set the threshold for light sensors");
-    cli_register_command(cli, threshold_set, "temperature", cmd_tamper_threshold_set_temp, 0, 0, "Set the threshold for temparture sensors");
+    cli_register_command(cli, threshold_set, "temperature", cmd_tamper_threshold_set_temp, 0, 0, "Set the threshold for temperature sensors");
     cli_register_command(cli, threshold_set, "accel", cmd_tamper_threshold_set_accel, 0, 0, "Set the threshold for accelerometer");
+    cli_register_command(cli, threshold_set, "disable", cmd_tamper_set_disable, 0, 0, "Disable specific tamper functions");// create command for tamper sensor disable
+    cli_register_command(cli, threshold_set, "enable", cmd_tamper_set_enable, 0, 0, "Enable specific tamper functions");// create command for tamper sensor disable
+
+
 }

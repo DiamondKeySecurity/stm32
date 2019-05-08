@@ -121,6 +121,17 @@ void USART2_IRQHandler(void)
 }
 
 /**
+ * @brief  This function handles UART interrupt request.
+ * @param  None
+ * @retval None
+ * @Note   HAL_UART_IRQHandler will call HAL_UART_RxCpltCallback below.
+ */
+void USART3_IRQHandler(void)
+{
+    HAL_UART_IRQHandler(&huart_user);
+}
+
+/**
   * @brief  Rx Transfer completed callbacks.
   * @param  huart: pointer to a UART_HandleTypeDef structure that contains
   *                the configuration information for the specified UART module.

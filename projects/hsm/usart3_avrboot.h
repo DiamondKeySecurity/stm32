@@ -1,17 +1,12 @@
 /*
- * mgmt-tamper.h
- * ---------------
- * Management CLI Device Tamper Upgrade code.
+ * usart3_avrboot.h
+ * ------------------
+ * Functions and defines for accessing SPI flash with part number n25q128.
  *
- * Copyright (c) 2019 Diamond Key Security, NFP  All rights reserved.
+ * The Alpha board has two of these SPI flash memorys, the FPGA config memory
+ * and the keystore memory.
  *
- * Contains Code from mgmt-bootloader.h
- * 
- * mgmt-bootloader.h
- * ---------------
- * Management CLI bootloader upgrade code.
- *
- * Copyright (c) 2016, NORDUnet A/S All rights reserved.
+ * Copyright (c) 2016-2017, NORDUnet A/S All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,22 +35,33 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __STM32_CLI_MGMT_TAMPER_H
-#define __STM32_CLI_MGMT_TAMPER_H
+#ifndef __STM32_USART3_AVRBOOT_H
+#define __STM32_USART3_AVRBOOT_H
 
-#include <libcli.h>
+#include "stm32f4xx_hal.h"
 
-#define TAMPER_BITSTREAM_UPLOAD_CHUNK_SIZE 7168
-#define LIGHT		0x01
-#define TEMP		0x02
-#define VIBE		0x04
-#define CASE		0x08
-#define SSP			0x10
-#define N25			0x20
-#define USART		0x40
-#define UNK			0x80
+#define AVRBOOT_STK_OK              0x10
+#define AVRBOOT_STK_FAILED          0x11  // Not used
+#define AVRBOOT_STK_UNKNOWN         0x12  // Not used
+#define AVRBOOT_STK_NODEVICE        0x13  // Not used
+#define AVRBOOT_STK_INSYNC          0x14  // ' '
+#define AVRBOOT_STK_NOSYNC          0x15  // Not used
+#define AVRBOOT_STK_GET_PARAMETER 	0x41
+#define AVRBOOT_STK_LOAD_ADDRESS 	0x55
+#define AVRBOOT_STK_ENTER_PROGMODE  0x50  // 'P'
+#define AVRBOOT_STK_LEAVE_PROGMODE  0x51  // 'Q'
+#define AVRBOOT_STK_PROG_PAGE 		0x64
+#define AVRBOOT_STK_READ_PAGE       0x74  // 't'
+#define AVRBOOT_STK_SW_MAJOR 		0x81
+#define AVRBOOT_STK_SW_MINOR 		0x82
 
-extern void configure_cli_tamper(struct cli_def *cli);
-static int cmd_tamper_reset(struct cli_def *cli, const char *command, char *argv[], int argc);
 
-#endif /* __STM32_CLI_MGMT_TAMPER_H */
+#define AVRBOOT_PAGE_SIZE			0x40	// 64
+#define AVRBOOT_NUM_PAGES			0x70	// 112
+
+
+extern void avrboot_start_tamper(void);
+extern HAL_StatusTypeDef avrboot_write_page(uint8_t *page_buffer);
+
+
+#endif /* __STM32_USART3_AVRBOOT_H */

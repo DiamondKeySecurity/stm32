@@ -9,6 +9,7 @@ OBJS =	mgmt-cli.o \
 	mgmt-masterkey.o \
 	mgmt-misc.o \
 	mgmt-task.o \
+	usart3_avrboot.o \
 	mgmt-tamper.o \
 	log.o \
 	$(TOPLEVEL)/task.o
@@ -39,7 +40,7 @@ all: $(PROJ:=.elf)
 	$(CC) $^ -o $@ -T$(LDSCRIPT) -g -Wl,-Map=$*.map $(LDFLAGS)
 	$(OBJCOPY) -O binary $*.elf $*.bin
 	$(SIZE) $*.elf
-
+	
 clean:
 	rm -f *.o
 	rm -f *.elf
