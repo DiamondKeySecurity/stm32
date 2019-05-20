@@ -80,16 +80,8 @@ static int _write_then_read(struct cli_def *cli, uint32_t addr, uint32_t write_b
 {
     int ok;
 
-    ok = fmc_write_32(addr, write_buf);
-    if (ok != 0) {
-	cli_print(cli, "FMC write failed: 0x%x", ok);
-	return 0;
-    }
-    ok = fmc_read_32(0, read_buf);
-    if (ok != 0) {
-	cli_print(cli, "FMC read failed: 0x%x", ok);
-	return 0;
-    }
+    fmc_write_32(addr, write_buf);
+    fmc_read_32(0, read_buf);
 
     return 1;
 }

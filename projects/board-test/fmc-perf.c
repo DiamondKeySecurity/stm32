@@ -31,14 +31,8 @@ static void sanity(void)
     uint32_t rnd, data;
   
     rnd = random();  
-    if (fmc_write_32(0, rnd) != 0) {
-	uart_send_string("fmc_write_32 failed\r\n");
-	Error_Handler();
-    }
-    if (fmc_read_32(0, &data) != 0) {
-	uart_send_string("fmc_read_32 failed\r\n");
-	Error_Handler();
-    }
+    fmc_write_32(0, rnd);
+    fmc_read_32(0, &data);
     if (data != rnd) {
 	uart_send_string("Data bus fail: expected ");
 	uart_send_hex(rnd, 8);
@@ -76,10 +70,7 @@ static void test_read(void)
     uint32_t i, data;
     
     for (i = 0; i < TEST_NUM_ROUNDS; ++i) {
-	if (fmc_read_32(0, &data) != 0) {
-	    uart_send_string("fmc_read_32 failed\r\n");
-	    Error_Handler();
-	}
+        fmc_read_32(0, &data);
     }
 }
 
@@ -88,10 +79,7 @@ static void test_write(void)
     uint32_t i;
     
     for (i = 0; i < TEST_NUM_ROUNDS; ++i) {
-	if (fmc_write_32(0, i) != 0) {
-	    uart_send_string("fmc_write_32 failed\r\n");
-	    Error_Handler();
-	}
+	fmc_write_32(0, i);
     }
 }
 

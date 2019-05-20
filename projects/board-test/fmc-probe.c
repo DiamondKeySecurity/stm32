@@ -21,10 +21,7 @@ static uint32_t read0(uint32_t addr)
 {
     uint32_t data;
 
-    if (fmc_read_32(addr, &data) != 0) {
-	uart_send_string("fmc_read_32 failed\r\n");
-	Error_Handler();
-    }
+    fmc_read_32(addr, &data);
 
     return data;
 }
