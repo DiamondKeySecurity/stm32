@@ -149,10 +149,10 @@ $(MBED_DIR)/libstmf4.a: .FORCE
 	$(MAKE) -C $(MBED_DIR)
 
 board-test: $(BOARD_OBJS) $(LIBS) .FORCE
-	$(MAKE) -C projects/board-test
+#	$(MAKE) -C projects/board-test
 
 cli-test: $(BOARD_OBJS) $(LIBS) $(LIBCLI_BLD)/libcli.a $(LIBHAL_BLD)/libhal.a .FORCE
-	$(MAKE) -C projects/cli-test
+#	$(MAKE) -C projects/cli-test
 
 $(LIBTFM_BLD)/libtfm.a: .FORCE
 	$(MAKE) -C $(LIBTFM_BLD) PREFIX=$(PREFIX)
@@ -167,7 +167,7 @@ $(LIBPROF_BLD)/libprof.a: .FORCE
 	$(MAKE) -C $(LIBPROF_BLD)
 
 libhal-test: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a .FORCE
-	$(MAKE) -C projects/libhal-test
+#	$(MAKE) -C projects/libhal-test
 
 hsm: $(BOARD_OBJS) $(LIBS) $(LIBHAL_BLD)/libhal.a $(LIBCLI_BLD)/libcli.a .FORCE
 	$(MAKE) -C projects/hsm
