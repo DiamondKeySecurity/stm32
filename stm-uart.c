@@ -183,11 +183,11 @@ HAL_StatusTypeDef uart_send_bytes2(UART_HandleTypeDef *uart, uint8_t *buf, size_
 /* send raw bytes */
 HAL_StatusTypeDef uart_send_bytes_tamper(UART_HandleTypeDef *uart, uint8_t *buf, size_t len)
 {
-    for (int timeout = 0; timeout < 100; ++timeout) {
+    for (int timeout = 0; timeout < 10; ++timeout) {
         HAL_UART_StateTypeDef status = HAL_UART_GetState(uart);
         if (status == HAL_UART_STATE_READY ||
             status == HAL_UART_STATE_BUSY_RX)
-            return HAL_UART_Transmit(uart, (uint8_t *) buf, (uint32_t) len, 0x1000);
+            return HAL_UART_Transmit(uart, (uint8_t *) buf, (uint32_t) len, 0x1);
     }
 
     return HAL_TIMEOUT;
