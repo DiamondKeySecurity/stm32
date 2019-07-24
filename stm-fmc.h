@@ -58,6 +58,11 @@
 
 extern void fmc_init(void);
 
+static inline void *fmc_fpga_addr(off_t addr)
+{
+	return (void *)(FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
+}
+
 static inline HAL_StatusTypeDef _fmc_nwait_idle(void)
 {
     int cnt;
