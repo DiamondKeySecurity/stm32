@@ -139,6 +139,7 @@ static int cmd_tamper_check(struct cli_def *cli, const char *command, char *argv
 		return CLI_OK;
 	}
 	else{
+		cli_print(cli, "Tamper not ok");
 		return -1;
 	}
 
@@ -322,6 +323,12 @@ static int cmd_chk_fault(struct cli_def *cli, const char *command, char *argv[],
 				}
 		if (fault_code == USART){
 			cli_print(cli, "USART failure is %i", temp);
+		}
+		if (fault_code == LL){
+					cli_print(cli, "Low line (battery)");
+		}
+		if (fault_code == 0){
+					cli_print(cli, "No faults detected");
 		}
 //		cli_print(cli, "Configuration is set", temp);
 		return CLI_OK;

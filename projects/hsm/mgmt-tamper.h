@@ -51,7 +51,7 @@
 #define VIBE		0x04
 #define CASE		0x08
 #define SSP			0x10
-#define N25			0x20
+#define LL			0x20
 #define USART		0x40
 #define UNK			0x80
 

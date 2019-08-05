@@ -53,7 +53,7 @@
 extern void fmc_init(void);
 
 static inline void *fmc_fpga_addr(off_t addr)
-//<<<<<<< HEAD
+
 {
 	return (void *)(FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 }
@@ -86,8 +86,7 @@ static inline HAL_StatusTypeDef fmc_write_32(const uint32_t addr, const uint32_t
 }
 
 static inline HAL_StatusTypeDef fmc_read_32(const uint32_t addr, uint32_t * const data)
-//=======
-//>>>>>>> 30953268c979a71838a251a288736918380349a6
+
 {
     return (void *)(FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 }
