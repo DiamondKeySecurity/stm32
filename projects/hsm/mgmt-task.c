@@ -74,6 +74,12 @@ static int cmd_task_show(struct cli_def *cli, const char *command, char *argv[],
     cli_print(cli, " ");
     cli_print(cli, "UART receive queue maximum length: %u", uart_rx_max);
 
+    size_t used, available;
+    extern void sdram_stats(size_t *used, size_t *available);
+    sdram_stats(&used, &available);
+    cli_print(cli, " ");
+    cli_print(cli, "SDRAM used: %u, available: %u", used, available);
+
     return CLI_OK;
 }
 

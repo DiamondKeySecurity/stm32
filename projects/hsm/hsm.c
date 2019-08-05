@@ -341,7 +341,10 @@ static void busy_task(void)
 }
 
 #include "stm-fpgacfg.h"
+<<<<<<< HEAD
 //#include "hashsig.h"
+=======
+>>>>>>> 30953268c979a71838a251a288736918380349a6
 
 static void hashsig_restart_task(void)
 {
@@ -393,6 +396,17 @@ static hal_error_t sdram_free(uint8_t *ptr)
     }
     else
         return HAL_ERROR_FORBIDDEN;
+}
+
+hal_error_t sdram_stats(size_t *used, size_t *available)
+{
+    if (used == NULL || available == NULL)
+        return HAL_ERROR_BAD_ARGUMENTS;
+
+    *used = sdram_heap - &_esdram1;
+    *available = &__end_sdram1 - sdram_heap;
+
+    return LIBHAL_OK;
 }
 
 /* Implement static memory allocation for libhal over sdram_malloc().

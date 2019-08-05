@@ -39,12 +39,6 @@
 
 #define FMC_FPGA_BASE_ADDR              0x60000000
 #define FMC_FPGA_ADDR_MASK              0x03FFFFFC  // there are 26 physical lines, but "only" 24 usable for now
-#define FMC_FPGA_NWAIT_MAX_POLL_TICKS   10
-
-#define FMC_GPIO_PORT_NWAIT             GPIOD
-#define FMC_GPIO_PIN_NWAIT              GPIO_PIN_6
-
-#define FMC_NWAIT_IDLE                  GPIO_PIN_SET
 
 #define fmc_af_gpio(port, pins)			       \
     GPIO_InitStruct.Pin = pins;			       \
@@ -59,6 +53,7 @@
 extern void fmc_init(void);
 
 static inline void *fmc_fpga_addr(off_t addr)
+//<<<<<<< HEAD
 {
 	return (void *)(FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 }
@@ -91,32 +86,10 @@ static inline HAL_StatusTypeDef fmc_write_32(const uint32_t addr, const uint32_t
 }
 
 static inline HAL_StatusTypeDef fmc_read_32(const uint32_t addr, uint32_t * const data)
+//=======
+//>>>>>>> 30953268c979a71838a251a288736918380349a6
 {
-    // calculate target fpga address
-    uint32_t *ptr = (uint32_t *) (FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
-
-    /* Pavel says:
-     * The short story is like, on one hand STM32 has a dedicated FMC_NWAIT
-     * pin, that can be used in variable-latency data transfer mode. On the
-     * other hand STM32 also has a very nasty hardware bug associated with
-     * FMC_WAIT, that causes processor to freeze under certain conditions.
-     * Because of this FMC_NWAIT cannot be used and FPGA can't properly signal
-     * to STM32, when data transfer is done. Because of that we have to read
-     * two times.
-     */
-
-    HAL_StatusTypeDef status;
-
-    *data = *ptr;
-    status = _fmc_nwait_idle();
-
-    if (status != HAL_OK)
-        return status;
-
-    *data = *ptr;
-    status = _fmc_nwait_idle();
-
-    return status;
+    return (void *)(FMC_FPGA_BASE_ADDR + (addr & FMC_FPGA_ADDR_MASK));
 }
 
 #endif /* __STM_FMC_H */

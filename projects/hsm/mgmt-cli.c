@@ -48,6 +48,7 @@
 #include "mgmt-misc.h"
 #include "mgmt-keystore.h"
 #include "mgmt-masterkey.h"
+#include "mgmt-tamper.h"
 #include "mgmt-task.h"
 #include "mgmt-tamper.h"
 
