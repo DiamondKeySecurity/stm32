@@ -312,25 +312,37 @@ static int cmd_chk_fault(struct cli_def *cli, const char *command, char *argv[],
 		if (fault_code == LIGHT){
 			cli_print(cli, "Light tamper value is %i", temp);
 		}
-		if (fault_code == TEMP){
+		else if (fault_code == TEMP){
 			cli_print(cli, "Temperature tamper value is %i", temp);
 		}
-		if (fault_code == VIBE){
+		else if (fault_code == VIBE){
 					cli_print(cli, "Vibe, check vibe values");
 		}
-		if (fault_code == CASE){
+		else if (fault_code == CASE){
 							cli_print(cli, "Case open");
-				}
-		if (fault_code == USART){
+		}
+		else if (fault_code == USART){
 			cli_print(cli, "USART failure is %i", temp);
 		}
-		if (fault_code == LL){
+		else if (fault_code == LL){
 					cli_print(cli, "Low line (battery)");
 		}
-		if (fault_code == 0){
+		else if (fault_code == 0){
 					cli_print(cli, "No faults detected");
 		}
+		else {
+			cli_print(cli, "fault code is %d, fault1 val is %d, fault2 val is %d", fault_code, fault_val1, fault_val2);
+		}
 //		cli_print(cli, "Configuration is set", temp);
+		/*#define LIGHT		0x01
+#define TEMP		0x02
+#define VIBE		0x04
+#define CASE		0x08
+#define SSP			0x10
+#define LL			0x20
+#define USART		0x40
+#define UNK			0x80*/
+
 		return CLI_OK;
 	}
 	else{
