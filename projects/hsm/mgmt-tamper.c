@@ -290,8 +290,8 @@ static int cmd_chk_fault(struct cli_def *cli, const char *command, char *argv[],
     command = command;
     argv = argv;
     argc = argc;
-    uint8_t resp, fault_code, fault_val1, fault_val2;
-    signed int temp;
+    uint8_t resp, fault_code[6], fault_val1[6], fault_val2[6];
+    signed int temp[6];
     if (user < HAL_USER_SO) {
         cli_print(cli, "Permission denied.");
         return CLI_ERROR;
@@ -299,39 +299,45 @@ static int cmd_chk_fault(struct cli_def *cli, const char *command, char *argv[],
 
     uart_send_char_tamper(&huart_tmpr, 0x4C);
     //HAL_Delay(5);
-    HAL_UART_Receive(&huart_tmpr, &fault_code, 1, 1000);
-    //HAL_Delay(5);
-    HAL_UART_Receive(&huart_tmpr, &fault_val1, 1, 1000);
-    //HAL_Delay(5);
-    HAL_UART_Receive(&huart_tmpr, &fault_val2, 1, 1000);
+    for (int i = 0; i<5; i++){
+		HAL_UART_Receive(&huart_tmpr, &fault_code[i], 1, 1000);
+		//HAL_Delay(5);
+		HAL_UART_Receive(&huart_tmpr, &fault_val1[i], 1, 1000);
+		//HAL_Delay(5);
+		HAL_UART_Receive(&huart_tmpr, &fault_val2[i], 1, 1000);
+    }
     //HAL_Delay(5);
     HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
     HAL_Delay(200);
-    temp = (signed int) (fault_val1 | fault_val2);
+
 	if (resp == AVRBOOT_STK_INSYNC) {
-		if (fault_code == LIGHT){
-			cli_print(cli, "Light tamper value is %i", temp);
-		}
-		else if (fault_code == TEMP){
-			cli_print(cli, "Temperature tamper value is %i", temp);
-		}
-		else if (fault_code == VIBE){
-					cli_print(cli, "Vibe, check vibe values");
-		}
-		else if (fault_code == CASE){
-							cli_print(cli, "Case open");
-		}
-		else if (fault_code == USART){
-			cli_print(cli, "USART failure is %i", temp);
-		}
-		else if (fault_code == LL){
-					cli_print(cli, "Low line (battery)");
-		}
-		else if (fault_code == 0){
-					cli_print(cli, "No faults detected");
-		}
-		else {
-			cli_print(cli, "fault code is %d, fault1 val is %d, fault2 val is %d", fault_code, fault_val1, fault_val2);
+		cli_print(cli, "USART failure is %i", fault_val1[0]);
+		for (int i = 1; i<5; i++){
+			temp[i] = (signed int) (fault_val1[i] | fault_val2[i]);
+			if (fault_code[i] == LIGHT){
+				cli_print(cli, "Light tamper value is %i", temp[i]);
+			}
+			else if (fault_code[i] == TEMP){
+				cli_print(cli, "Temperature tamper value is %i", temp[i]);
+			}
+			else if (fault_code[i] == VIBE){
+						cli_print(cli, "Vibe, check vibe values");
+			}
+			else if (fault_code[i] == CASE){
+								cli_print(cli, "Case open");
+			}
+			else if (fault_code[i] == USART){
+				cli_print(cli, "USART failure is %i", temp[i]);
+			}
+			else if (fault_code[i] == LL){
+						cli_print(cli, "Low line (battery)");
+			}
+			else if (fault_code[i] == 0){
+						cli_print(cli, "No faults detected");
+			}
+			else {
+				cli_print(cli, "fault code is %d, fault1 val is %d, fault2 val is %d", fault_code[i], fault_val1[i], fault_val2[i]);
+			}
 		}
 //		cli_print(cli, "Configuration is set", temp);
 		/*#define LIGHT		0x01
@@ -351,6 +357,32 @@ static int cmd_chk_fault(struct cli_def *cli, const char *command, char *argv[],
 
 }
 
+static int cmd_chk_config(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t resp, config;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x50);
+    //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &config, 1, 1000);
+    //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+    HAL_Delay(200);
+    if (resp == AVRBOOT_STK_INSYNC) {
+			cli_print(cli, "Config value is %i", config);
+			return CLI_OK;
+    }
+	else{
+			return -1;
+	}
+}
 /* Write a chunk of received data to flash. */
 typedef int (*set_param_callback)(int argv[], int argc);
 
@@ -702,6 +734,9 @@ void configure_cli_tamper(struct cli_def *cli)
 
     // create parent for threshold set commands
     threshold_set = cli_register_command(cli, threshold, "set", NULL, 0, 0, NULL);
+
+    //create command for reading config status
+    cli_register_command(cli, c, "config status", cmd_chk_config, 0, 0, "Get config status");
 
     // create threshold set commands
     cli_register_command(cli, threshold_set, "light", cmd_tamper_threshold_set_light, 0, 0, "Set the threshold for light sensors");
