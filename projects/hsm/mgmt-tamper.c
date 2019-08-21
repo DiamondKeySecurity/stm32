@@ -151,7 +151,7 @@ static int cmd_light_check(struct cli_def *cli, const char *command, char *argv[
     argv = argv;
     argc = argc;
     uint8_t val1, val2, resp;
-    signed int temp;
+    int temp;
     val1 = 0;
     val2 = 0;
     resp = 0;
@@ -466,6 +466,61 @@ static int cmd_chk_config(struct cli_def *cli, const char *command, char *argv[]
 			cli_print(cli, "Config value is %i", config);
 			cli_print(cli, "spi_disable value is %i", spi_disable);
 			cli_print(cli, "spi_disabled value is %i", spi_disabled);
+			return CLI_OK;
+    }
+	else{
+			cli_print(cli, "Config value reporting error");
+			return -1;
+	}
+}
+
+static int cmd_chk_config_ext(struct cli_def *cli, const char *command, char *argv[], int argc)
+{
+    command = command;
+    argv = argv;
+    argc = argc;
+    uint8_t resp, vibe_enable, light_enable, temp_enable, case_enable, ll_enable, vibe_hi_thresh, vibe_lo_thresh
+	light_hi_thresh, light_lo_thresh, temp_hi_thresh, temp_lo_thresh;
+    signed int temp;
+    if (user < HAL_USER_SO) {
+        cli_print(cli, "Permission denied.");
+        return CLI_ERROR;
+    }
+
+    uart_send_char_tamper(&huart_tmpr, 0x50);
+    //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &light_enable, 1, 1000);
+    //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &temp_enable, 1, 1000);
+        //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &case_enable, 1, 1000);
+        //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &ll_enable, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &vibe_hi_thresh, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &vibe_lo_thresh, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &light_hi_thresh, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &light_lo_thresh, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &temp_hi_thres, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &temp_lo_thresh, 1, 1000);
+           //HAL_Delay(5);
+    HAL_UART_Receive(&huart_tmpr, &resp, 1, 1000);
+
+    HAL_Delay(200);
+    if (resp == AVRBOOT_STK_INSYNC) {
+			cli_print(cli, "Light enable value is %i", light_enable);
+			cli_print(cli, "Temp enable value is %i", temp_enable);
+			cli_print(cli, "Case enable value is %i", case_enable);
+			cli_print(cli, "Low Line enable value is %i", ll_enable);
+			cli_print(cli, "Vibe threshold value is %i", (uint16_t) vibe_hi_thresh | (uint16_t) vibe_lo_thresh);
+			cli_print(cli, "Light threshold value is %i", (uint16_t) light_hi_thresh | (uint16_t) light_lo_thresh);
+			cli_print(cli, "Temphi threshold is %i", temp_hi_thres);
+			cli_print(cli, "Templo threshold value is %i", temp_lo_thresh);
 			return CLI_OK;
     }
 	else{
@@ -827,6 +882,9 @@ void configure_cli_tamper(struct cli_def *cli)
 
     //create command for reading config status
     cli_register_command(cli, c, "config status", cmd_chk_config, 0, 0, "Get config status");
+
+    //create command for reading config status
+        cli_register_command(cli, c, "variable status", cmd_chk_config_ext, 0, 0, "Get config status");
 
     //create command for reading config status
     cli_register_command(cli, c, "extended faults", cmd_chk_fault_long, 0, 0, "Get extended fault(s)");
