@@ -39,6 +39,7 @@
 
 UART_HandleTypeDef huart_mgmt;  /* USART1 */
 UART_HandleTypeDef huart_user;  /* USART2 */
+UART_HandleTypeDef huart_tmpr;  /* USART3 */
 
 DMA_HandleTypeDef hdma_usart_mgmt_rx;
 DMA_HandleTypeDef hdma_usart_user_rx;
@@ -109,6 +110,24 @@ static void MX_USART2_UART_Init(void)
   }
 }
 
+/* USART3 init function */
+static void MX_USART3_UART_Init(void)
+{
+  huart_tmpr.Instance = USART3;
+  huart_tmpr.Init.BaudRate = 4800;
+  huart_tmpr.Init.WordLength = UART_WORDLENGTH_8B;
+  huart_tmpr.Init.StopBits = UART_STOPBITS_1;
+  huart_tmpr.Init.Parity = UART_PARITY_NONE;
+  huart_tmpr.Init.Mode = UART_MODE_TX_RX;
+  huart_tmpr.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart_tmpr.Init.OverSampling = UART_OVERSAMPLING_16;
+
+  if (HAL_UART_Init(&huart_tmpr) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+}
 void uart_init(void)
 {
 #ifdef HAL_DMA_MODULE_ENABLED
@@ -116,6 +135,7 @@ void uart_init(void)
 #endif
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
 }
 
 void uart_set_default(UART_HandleTypeDef *uart)
@@ -127,6 +147,12 @@ void uart_set_default(UART_HandleTypeDef *uart)
 HAL_StatusTypeDef uart_send_char2(UART_HandleTypeDef *uart, uint8_t ch)
 {
     return uart_send_bytes2(uart, &ch, 1);
+}
+
+/* send a single character */
+HAL_StatusTypeDef uart_send_char_tamper(UART_HandleTypeDef *uart, uint8_t ch)
+{
+    return uart_send_bytes_tamper(uart, &ch, 1);
 }
 
 /* receive a single character */
@@ -145,6 +171,19 @@ HAL_StatusTypeDef uart_send_string2(UART_HandleTypeDef *uart, const char *s)
 HAL_StatusTypeDef uart_send_bytes2(UART_HandleTypeDef *uart, uint8_t *buf, size_t len)
 {
     for (int timeout = 0; timeout < 100; ++timeout) {
+        HAL_UART_StateTypeDef status = HAL_UART_GetState(uart);
+        if (status == HAL_UART_STATE_READY ||
+            status == HAL_UART_STATE_BUSY_RX)
+            return HAL_UART_Transmit(uart, (uint8_t *) buf, (uint32_t) len, 0x1);
+    }
+
+    return HAL_TIMEOUT;
+}
+
+/* send raw bytes */
+HAL_StatusTypeDef uart_send_bytes_tamper(UART_HandleTypeDef *uart, uint8_t *buf, size_t len)
+{
+    for (int timeout = 0; timeout < 10; ++timeout) {
         HAL_UART_StateTypeDef status = HAL_UART_GetState(uart);
         if (status == HAL_UART_STATE_READY ||
             status == HAL_UART_STATE_BUSY_RX)
