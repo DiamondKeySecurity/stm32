@@ -39,9 +39,11 @@
 
 #define USART_MGMT_BAUD_RATE    921600
 #define USART_USER_BAUD_RATE    921600
+#define USART_TMPR_BAUD_RATE    4800
 
 extern UART_HandleTypeDef huart_mgmt;
 extern UART_HandleTypeDef huart_user;
+extern UART_HandleTypeDef huart_tmpr;
 
 #define STM_UART_USER &huart_user
 #define STM_UART_MGMT &huart_mgmt
@@ -68,9 +70,11 @@ extern HAL_StatusTypeDef uart_recv_char2(UART_HandleTypeDef *uart, uint8_t *cp, 
 extern HAL_StatusTypeDef uart_send_string2(UART_HandleTypeDef *uart, const char *s);
 extern HAL_StatusTypeDef uart_send_number2(UART_HandleTypeDef *uart, uint32_t num, uint8_t digits, uint8_t radix);
 extern HAL_StatusTypeDef uart_send_bytes2(UART_HandleTypeDef *uart, uint8_t *buf, size_t len);
+extern HAL_StatusTypeDef uart_send_bytes_tamper(UART_HandleTypeDef *uart, uint8_t *buf, size_t len);
 extern HAL_StatusTypeDef uart_receive_bytes2(UART_HandleTypeDef *uart, uint8_t *buf, size_t len, uint32_t timeout);
 extern HAL_StatusTypeDef uart_send_hexdump2(UART_HandleTypeDef *uart, const uint8_t *buf,
                                             const uint8_t start_offset, const uint8_t end_offset);
+extern HAL_StatusTypeDef uart_send_char_tamper(UART_HandleTypeDef *uart, uint8_t ch);
 
 #define uart_send_char(c)              uart_send_char2(default_uart, c)
 #define uart_recv_char(cp, t)          uart_recv_char2(default_uart, cp, t)
